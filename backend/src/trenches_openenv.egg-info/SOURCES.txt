@@ -6,6 +6,7 @@ src/trenches_env/entity_knowledge.py
 src/trenches_env/env.py
 src/trenches_env/models.py
 src/trenches_env/openenv_adapter.py
+src/trenches_env/openenv_client.py
 src/trenches_env/rl.py
 src/trenches_env/server.py
 src/trenches_env/session_manager.py
@@ -21,6 +22,7 @@ src/trenches_openenv.egg-info/requires.txt
 src/trenches_openenv.egg-info/top_level.txt
 tests/test_live_source_accessibility.py
 tests/test_openenv_adapter.py
+tests/test_reward_differentiation.py
 tests/test_session_manager.py
 tests/test_source_bundles.py
 tests/test_source_harvester.py

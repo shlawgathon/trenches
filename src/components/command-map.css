@@ -149,6 +149,7 @@
 }
 
 .command-map__canvas,
+.command-globe,
 .command-map__fallback {
   position: absolute;
   inset: 0;
@@ -158,6 +159,89 @@
   background:
     radial-gradient(circle at center, rgba(12, 34, 42, 0.2), transparent 38%),
     #02070a;
+}
+
+.command-globe {
+  display: grid;
+  place-items: center;
+  z-index: 1;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(17, 43, 57, 0.72), transparent 32%),
+    radial-gradient(circle at 22% 18%, rgba(136, 242, 195, 0.08), transparent 18%),
+    linear-gradient(180deg, rgba(3, 8, 11, 0.98) 0%, rgba(1, 4, 6, 0.98) 100%);
+}
+
+.command-globe__svg {
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+.command-globe__svg:active {
+  cursor: grabbing;
+}
+
+.command-globe__sphere {
+  fill: url(#command-globe-ocean);
+  stroke: rgba(123, 176, 201, 0.34);
+  stroke-width: 2;
+  filter: url(#command-globe-glow);
+}
+
+.command-globe__land {
+  fill: rgba(194, 172, 109, 0.58);
+  stroke: rgba(255, 244, 214, 0.08);
+  stroke-width: 0.55;
+}
+
+.command-globe__graticule {
+  fill: none;
+  stroke: rgba(126, 188, 215, 0.14);
+  stroke-width: 0.85;
+}
+
+.command-globe__link {
+  fill: none;
+  stroke: var(--command-globe-link, #90d1ff);
+  stroke-opacity: 0.36;
+  stroke-width: 1.6;
+}
+
+.command-globe__link.is-selected {
+  stroke-opacity: 0.78;
+  stroke-width: 2.4;
+}
+
+.command-globe__point {
+  cursor: pointer;
+}
+
+.command-globe__point-halo {
+  opacity: 0.18;
+}
+
+.command-globe__point-core {
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 1;
+}
+
+.command-globe__hud {
+  position: absolute;
+  right: 1rem;
+  bottom: 5rem;
+  z-index: 2;
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 16px;
+  background: rgba(2, 6, 9, 0.74);
+  border: 1px solid rgba(110, 145, 160, 0.18);
+  backdrop-filter: blur(18px);
+  font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+  font-size: 0.64rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #dff3fb;
 }
 
 .command-map__fallback {
@@ -243,6 +327,7 @@
 
 .command-map__viewer-chip,
 .command-map__timestamp,
+.command-map__render-badge,
 .command-map__legend-line,
 .command-map__swatch {
   backdrop-filter: blur(18px);
@@ -251,11 +336,21 @@
 }
 
 .command-map__viewer-chip,
-.command-map__timestamp {
+.command-map__timestamp,
+.command-map__render-badge {
   padding: 0.55rem 0.8rem;
   border-radius: 999px;
   color: #dff3fb;
   font-size: 0.66rem;
+}
+
+.command-map__render-badge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 2;
+  color: #ffc77e;
+  border-color: rgba(255, 172, 79, 0.36);
 }
 
 .command-map__legend-line {

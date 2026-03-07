@@ -1,5 +1,3 @@
-import "./monitoring.css";
-
 import type { MonitoringPanelSharedProps } from "./monitoring-types";
 import { formatSigned, getFocusedAgent, resolveAgentTone, rewardEntries } from "./monitoring-utils";
 

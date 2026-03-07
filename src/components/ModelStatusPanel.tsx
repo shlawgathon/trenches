@@ -1,5 +1,3 @@
-import "./monitoring.css";
-
 import type { CSSProperties } from "react";
 
 import type { MonitoringAgentSnapshot, MonitoringPanelSharedProps } from "./monitoring-types";
