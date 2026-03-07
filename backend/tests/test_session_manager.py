@@ -2,7 +2,7 @@ import time
 from datetime import datetime, timedelta, timezone
 
 from trenches_env.env import FogOfWarDiplomacyEnv
-from trenches_env.models import AgentAction, LiveControlRequest, StepSessionRequest
+from trenches_env.models import AgentAction, BenchmarkRunRequest, LiveControlRequest, StepSessionRequest
 from trenches_env.session_manager import SessionManager
 from trenches_env.source_bundles import AGENT_LIVE_SOURCE_BUNDLES
 from trenches_env.source_ingestion import SourceHarvester
@@ -73,6 +73,10 @@ def test_session_lifecycle() -> None:
     assert response.session.observations["us"].live_source_bundle
     assert response.session.recent_traces
     assert response.session.recent_traces[-1].turn == 1
+    assert response.session.model_bindings["us"].action_tools
+    assert response.session.model_bindings["us"].decision_mode == "heuristic_fallback"
+    assert response.session.action_log
+    assert {entry.actor for entry in response.session.action_log[-2:]} == {"us", "oversight"}
 
 
 def test_stage_1_disables_live_mode() -> None:
@@ -92,6 +96,15 @@ def test_stage_1_disables_live_mode() -> None:
         pass
     else:
         raise AssertionError("stage_1_dense sessions should reject live mode")
+
+
+def test_session_manager_creates_named_scenarios() -> None:
+    manager = SessionManager()
+    session = manager.create_session(seed=7, scenario_id="shipping_crisis")
+
+    assert session.episode.scenario_id == "shipping_crisis"
+    assert session.episode.scenario_name == "Shipping Crisis"
+    assert session.world.actor_state["gulf"]["shipping_continuity"] < 78.0
 
 
 def test_source_monitor_report_is_available_for_sessions() -> None:
@@ -176,3 +189,20 @@ def test_background_runner_advances_live_sessions_without_dashboard_polling() ->
 
     assert current.world.turn >= 1
     assert current.live.last_auto_step_at is not None
+
+
+def test_session_manager_lists_scenarios_and_runs_benchmarks() -> None:
+    manager = SessionManager()
+
+    scenarios = manager.list_scenarios()
+    assert any(scenario.id == "shipping_crisis" for scenario in scenarios)
+
+    result = manager.run_benchmark(
+        BenchmarkRunRequest(
+            scenario_ids=["shipping_crisis"],
+            seed=9,
+            steps_per_scenario=3,
+        )
+    )
+    assert result.scenario_count == 1
+    assert result.results[0].scenario_id == "shipping_crisis"

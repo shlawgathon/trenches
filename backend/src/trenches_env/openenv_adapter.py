@@ -150,6 +150,7 @@ class TrenchesOpenEnvEnvironment(OpenEnvEnvironmentBase):
         training_agent: str = "us",
         training_stage: TrainingStage = DEFAULT_TRAINING_STAGE,
         max_turns: int | None = None,
+        scenario_id: str | None = None,
         include_joint_observations: bool = False,
         **_: Any,
     ) -> TrenchesOpenEnvObservation:
@@ -161,6 +162,7 @@ class TrenchesOpenEnvEnvironment(OpenEnvEnvironmentBase):
             session_id=episode_id,
             training_stage=training_stage,
             max_turns=max_turns,
+            scenario_id=scenario_id,
         )
         return self._build_observation(self._session)
 
@@ -266,11 +268,13 @@ class OpenEnvAdapter:
         seed: int | None = None,
         training_stage: TrainingStage = DEFAULT_TRAINING_STAGE,
         max_turns: int | None = None,
+        scenario_id: str | None = None,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         session = self.session_manager.create_session(
             seed=seed,
             training_stage=training_stage,
             max_turns=max_turns,
+            scenario_id=scenario_id,
         )
         self._current_session_id = session.session_id
         return session.observations, self._build_info(session=session, oversight=OversightIntervention())

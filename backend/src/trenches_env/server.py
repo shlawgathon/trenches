@@ -9,12 +9,16 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from trenches_env.env import FogOfWarDiplomacyEnv
+from trenches_env.model_runtime import build_entity_model_bindings
 from trenches_env.models import (
+    BenchmarkRunRequest,
+    BenchmarkRunResponse,
     CreateSessionRequest,
     LiveControlRequest,
     ResetEnvRequest,
     ResetEnvResponse,
     ResetSessionRequest,
+    ScenarioSummary,
     SessionState,
     SourceMonitorReport,
     StepEnvRequest,
@@ -108,6 +112,10 @@ def create_app(session_manager: SessionManager | None = None) -> FastAPI:
     async def capabilities() -> dict[str, Any]:
         cors_settings = _resolve_cors_settings()
         return {
+            "model_bindings": {
+                agent_id: binding.model_dump(mode="json")
+                for agent_id, binding in build_entity_model_bindings().items()
+            },
             "session_api": True,
             "legacy_openenv_tuple_api": True,
             "native_openenv_api": OPENENV_CORE_AVAILABLE,
@@ -125,6 +133,7 @@ def create_app(session_manager: SessionManager | None = None) -> FastAPI:
             seed=request.seed,
             training_stage=request.training_stage,
             max_turns=request.max_turns,
+            scenario_id=request.scenario_id,
         )
 
     @app.post("/sessions/{session_id}/reset", response_model=SessionState)
@@ -135,9 +144,23 @@ def create_app(session_manager: SessionManager | None = None) -> FastAPI:
                 seed=request.seed,
                 training_stage=request.training_stage,
                 max_turns=request.max_turns,
+                scenario_id=request.scenario_id,
             )
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=f"Unknown session: {session_id}") from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/scenarios", response_model=list[ScenarioSummary])
+    async def list_scenarios() -> list[ScenarioSummary]:
+        return manager.list_scenarios()
+
+    @app.post("/benchmarks/run", response_model=BenchmarkRunResponse)
+    async def run_benchmark(request: BenchmarkRunRequest) -> BenchmarkRunResponse:
+        try:
+            return manager.run_benchmark(request)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.get("/sessions/{session_id}", response_model=SessionState)
     async def get_session(session_id: str) -> SessionState:
@@ -184,6 +207,7 @@ def create_app(session_manager: SessionManager | None = None) -> FastAPI:
             seed=request.seed,
             training_stage=request.training_stage,
             max_turns=request.max_turns,
+            scenario_id=request.scenario_id,
         )
         return ResetEnvResponse(observations=observations, info=info)
 

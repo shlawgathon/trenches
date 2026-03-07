@@ -18,6 +18,25 @@ CORS is configurable so frontend migrations do not require backend code changes:
 
 If no CORS env vars are set, the backend allows local development origins on `localhost` / `127.0.0.1` for any port.
 
+Entity-model provider bindings are also configurable per agent. The backend does not fake provider readiness:
+if a provider/model is not configured, the runtime reports `heuristic_fallback` explicitly in session state and
+`/capabilities`.
+
+Supported env patterns:
+
+- `TRENCHES_MODEL_PROVIDER=openai|anthropic|openrouter|ollama|vllm|custom`
+- `TRENCHES_MODEL_NAME=<provider model id>`
+- `TRENCHES_MODEL_BASE_URL=<custom base url>`
+- `TRENCHES_MODEL_API_KEY_ENV=<name of env var holding the secret>`
+- `TRENCHES_MODEL_SUPPORTS_TOOL_CALLS=true|false`
+- `TRENCHES_MODEL_SUPPORTS_STRUCTURED_OUTPUT=true|false`
+
+Per-entity overrides use the uppercase agent suffix, for example:
+
+- `TRENCHES_MODEL_PROVIDER_US=openai`
+- `TRENCHES_MODEL_NAME_US=gpt-4.1`
+- `TRENCHES_MODEL_API_KEY_ENV_US=OPENAI_API_KEY`
+
 Relevant OpenEnv pieces in this package:
 
 - `trenches_env.openenv_adapter.TrenchesOpenEnvEnvironment`

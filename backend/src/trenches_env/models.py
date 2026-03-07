@@ -23,6 +23,8 @@ SourcePacketStatus = Literal["pending", "ok", "error"]
 SourceMonitorStatus = Literal["healthy", "degraded", "blocked"]
 SourceMonitorIssueSeverity = Literal["warning", "error"]
 AssetConditionStatus = Literal["operational", "degraded", "malfunctioning", "destroyed"]
+DecisionMode = Literal["heuristic_fallback", "provider_ready"]
+ModelProviderName = Literal["none", "openai", "anthropic", "openrouter", "ollama", "vllm", "custom"]
 
 
 def utc_now() -> datetime:
@@ -118,6 +120,34 @@ class OversightIntervention(BaseModel):
     action_override: dict[str, AgentAction] = Field(default_factory=dict)
 
 
+class ObservationProjection(BaseModel):
+    enabled: bool = False
+    mode: Literal["direct", "partial"] = "direct"
+    worldview_reliability: float = 1.0
+    delayed_source_count: int = 0
+    contested_source_count: int = 0
+    contradiction_packet_count: int = 0
+    obscured_metric_count: int = 0
+    contradiction_topics: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class EntityModelBinding(BaseModel):
+    agent_id: str
+    provider: ModelProviderName = "none"
+    model_name: str = ""
+    base_url: str | None = None
+    api_key_env: str | None = None
+    configured: bool = False
+    ready_for_inference: bool = False
+    decision_mode: DecisionMode = "heuristic_fallback"
+    supports_tool_calls: bool = False
+    supports_structured_output: bool = False
+    action_tools: list[str] = Field(default_factory=list)
+    observation_tools: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
 class AgentObservation(BaseModel):
     public_brief: list[IntelSnippet] = Field(default_factory=list)
     private_brief: list[IntelSnippet] = Field(default_factory=list)
@@ -137,6 +167,7 @@ class AgentObservation(BaseModel):
     source_packets: list[SourcePacket] = Field(default_factory=list)
     training_source_packets: list[SourcePacket] = Field(default_factory=list)
     live_source_packets: list[SourcePacket] = Field(default_factory=list)
+    projection: ObservationProjection = Field(default_factory=ObservationProjection)
 
 
 class WorldState(BaseModel):
@@ -144,6 +175,7 @@ class WorldState(BaseModel):
     tension_level: float = 50.0
     market_stress: float = 30.0
     oil_pressure: float = 40.0
+    latent_state: dict[str, dict[str, float]] = Field(default_factory=dict)
     actor_state: dict[str, dict[str, float]] = Field(default_factory=dict)
     asset_state: dict[str, dict[str, AssetCondition]] = Field(default_factory=dict)
     coalition_graph: dict[str, list[str]] = Field(default_factory=dict)
@@ -169,6 +201,10 @@ class LiveSessionConfig(BaseModel):
 class EpisodeMetadata(BaseModel):
     max_turns: int = DEFAULT_MAX_TURNS
     training_stage: TrainingStage = DEFAULT_TRAINING_STAGE
+    scenario_id: str = "baseline_alert"
+    scenario_name: str = "Baseline Alert Posture"
+    scenario_description: str = ""
+    scenario_tags: list[str] = Field(default_factory=list)
     algorithm_hints: dict[str, str] = Field(default_factory=lambda: ALGORITHM_HINTS.copy())
     dense_rewards: bool = False
     sparse_rewards: bool = True
@@ -189,14 +225,30 @@ class StepTrace(BaseModel):
     created_at: datetime = Field(default_factory=utc_now)
 
 
+class ActionLogEntry(BaseModel):
+    turn: int
+    actor: str
+    action_type: ActionType
+    summary: str
+    target: str | None = None
+    reward_total: float = 0.0
+    tension_after: float = 0.0
+    market_stress_after: float = 0.0
+    oil_pressure_after: float = 0.0
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class SessionState(BaseModel):
     session_id: str
     seed: int | None = None
     world: WorldState
     observations: dict[str, AgentObservation] = Field(default_factory=dict)
     rewards: dict[str, RewardBreakdown] = Field(default_factory=dict)
+    model_bindings: dict[str, EntityModelBinding] = Field(default_factory=dict)
     episode: EpisodeMetadata = Field(default_factory=EpisodeMetadata)
     recent_traces: list[StepTrace] = Field(default_factory=list)
+    action_log: list[ActionLogEntry] = Field(default_factory=list)
     live: LiveSessionConfig = Field(default_factory=LiveSessionConfig)
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
@@ -255,12 +307,14 @@ class CreateSessionRequest(BaseModel):
     seed: int | None = None
     training_stage: TrainingStage = DEFAULT_TRAINING_STAGE
     max_turns: int | None = None
+    scenario_id: str | None = None
 
 
 class ResetSessionRequest(BaseModel):
     seed: int | None = None
     training_stage: TrainingStage = DEFAULT_TRAINING_STAGE
     max_turns: int | None = None
+    scenario_id: str | None = None
 
 
 class LiveControlRequest(BaseModel):
@@ -284,6 +338,7 @@ class ResetEnvRequest(BaseModel):
     seed: int | None = None
     training_stage: TrainingStage = DEFAULT_TRAINING_STAGE
     max_turns: int | None = None
+    scenario_id: str | None = None
 
 
 class ResetEnvResponse(BaseModel):
@@ -302,3 +357,60 @@ class StepEnvResponse(BaseModel):
     terminated: bool = False
     truncated: bool = False
     info: dict[str, Any] = Field(default_factory=dict)
+
+
+class ScenarioSummary(BaseModel):
+    id: str
+    name: str
+    description: str
+    tags: list[str] = Field(default_factory=list)
+    benchmark_turns: int = 0
+    benchmark_enabled: bool = True
+
+
+class BenchmarkEntityScorecard(BaseModel):
+    agent_id: str
+    total_reward: float = 0.0
+    mean_reward: float = 0.0
+    final_reward: float = 0.0
+    final_goal_terms: dict[str, float] = Field(default_factory=dict)
+    aggregated_goal_terms: dict[str, float] = Field(default_factory=dict)
+    final_state: dict[str, float] = Field(default_factory=dict)
+    damaged_asset_count: int = 0
+    asset_pressure: float = 0.0
+    action_counts: dict[str, int] = Field(default_factory=dict)
+    dominant_action: str | None = None
+    warnings: list[str] = Field(default_factory=list)
+
+
+class BenchmarkScenarioResult(BaseModel):
+    scenario_id: str
+    scenario_name: str
+    seed: int | None = None
+    training_stage: TrainingStage = DEFAULT_TRAINING_STAGE
+    turns_executed: int = 0
+    done: bool = False
+    done_reason: str | None = None
+    oversight_trigger_count: int = 0
+    final_tension: float = 0.0
+    final_market_stress: float = 0.0
+    final_oil_pressure: float = 0.0
+    summary: str = ""
+    warnings: list[str] = Field(default_factory=list)
+    scorecards: dict[str, BenchmarkEntityScorecard] = Field(default_factory=dict)
+
+
+class BenchmarkRunRequest(BaseModel):
+    scenario_ids: list[str] = Field(default_factory=list)
+    seed: int | None = None
+    training_stage: TrainingStage = DEFAULT_TRAINING_STAGE
+    steps_per_scenario: int | None = None
+
+
+class BenchmarkRunResponse(BaseModel):
+    seed: int | None = None
+    training_stage: TrainingStage = DEFAULT_TRAINING_STAGE
+    scenario_ids: list[str] = Field(default_factory=list)
+    scenario_count: int = 0
+    results: list[BenchmarkScenarioResult] = Field(default_factory=list)
+    aggregate_mean_total_rewards: dict[str, float] = Field(default_factory=dict)

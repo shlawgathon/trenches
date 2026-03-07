@@ -3,15 +3,20 @@ from __future__ import annotations
 import threading
 from datetime import datetime, timedelta, timezone
 
+from trenches_env.benchmark_runner import ScenarioBenchmarkRunner
 from trenches_env.rl import DEFAULT_TRAINING_STAGE
 from trenches_env.env import FogOfWarDiplomacyEnv
 from trenches_env.models import (
+    BenchmarkRunRequest,
+    BenchmarkRunResponse,
     LiveControlRequest,
+    ScenarioSummary,
     SessionState,
     SourceMonitorReport,
     StepSessionRequest,
     StepSessionResponse,
 )
+from trenches_env.source_ingestion import SourceHarvester
 
 
 class SessionManager:
@@ -53,9 +58,15 @@ class SessionManager:
         seed: int | None = None,
         training_stage: str = DEFAULT_TRAINING_STAGE,
         max_turns: int | None = None,
+        scenario_id: str | None = None,
     ) -> SessionState:
         with self._lock:
-            session = self.env.create_session(seed=seed, training_stage=training_stage, max_turns=max_turns)
+            session = self.env.create_session(
+                seed=seed,
+                training_stage=training_stage,
+                max_turns=max_turns,
+                scenario_id=scenario_id,
+            )
             self._sessions[session.session_id] = session
             return session
 
@@ -65,6 +76,7 @@ class SessionManager:
         seed: int | None = None,
         training_stage: str = DEFAULT_TRAINING_STAGE,
         max_turns: int | None = None,
+        scenario_id: str | None = None,
     ) -> SessionState:
         with self._lock:
             self._require_session(session_id)
@@ -73,6 +85,7 @@ class SessionManager:
                 seed=seed,
                 training_stage=training_stage,
                 max_turns=max_turns,
+                scenario_id=scenario_id,
             )
             self._sessions[session_id] = session
             return session
@@ -114,6 +127,25 @@ class SessionManager:
             refreshed = self.env.refresh_session_sources(current)
             self._sessions[session_id] = refreshed
             return self.env.source_monitor(refreshed)
+
+    def list_scenarios(self) -> list[ScenarioSummary]:
+        return [
+            ScenarioSummary(
+                id=scenario.id,
+                name=scenario.name,
+                description=scenario.description,
+                tags=list(scenario.tags),
+                benchmark_turns=scenario.benchmark_turns,
+                benchmark_enabled=scenario.benchmark_enabled,
+            )
+            for scenario in self.env.list_scenarios()
+        ]
+
+    def run_benchmark(self, request: BenchmarkRunRequest) -> BenchmarkRunResponse:
+        runner = ScenarioBenchmarkRunner(
+            env_factory=lambda: FogOfWarDiplomacyEnv(source_harvester=SourceHarvester(auto_start=False))
+        )
+        return runner.run(request)
 
     def _run_background_loop(self) -> None:
         while not self._background_stop.is_set():

@@ -1,21 +1,26 @@
 from __future__ import annotations
 
+import hashlib
 import random
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from trenches_env.agents import AGENT_IDS, AGENT_PROFILES
 from trenches_env.entity_knowledge import load_entity_pack
+from trenches_env.model_runtime import build_entity_model_bindings
 from trenches_env.models import (
+    ActionLogEntry,
     AgentAction,
     AgentObservation,
     AssetCondition,
     BlackSwanEvent,
     DataSourceContext,
     EpisodeMetadata,
+    EntityModelBinding,
     ExternalSignal,
     IntelSnippet,
     LiveControlRequest,
+    ObservationProjection,
     OversightIntervention,
     RewardBreakdown,
     SessionState,
@@ -26,6 +31,7 @@ from trenches_env.models import (
     StepSessionResponse,
     WorldState,
 )
+from trenches_env.provider_runtime import ProviderDecisionError, ProviderDecisionRequest, ProviderDecisionRuntime
 from trenches_env.rl import (
     AGENT_ALLOWED_ACTIONS,
     AGENT_ACTION_ALIGNMENT,
@@ -43,6 +49,14 @@ from trenches_env.source_catalog import get_source_by_id, get_sources_for_agent
 from trenches_env.source_bundles import AGENT_LIVE_SOURCE_BUNDLES, AGENT_TRAINING_SOURCE_BUNDLES
 from trenches_env.source_ingestion import SourceHarvester, source_ttl_seconds
 from trenches_env.source_monitor import build_source_monitor_report
+from trenches_env.scenarios import (
+    ScenarioAssetImpact,
+    ScenarioDefinition,
+    ScenarioSignal,
+    get_scenario_definition,
+    list_scenario_definitions,
+    scenario_signals_for_turn,
+)
 
 ACTION_STANCE_SCORES: dict[str, float] = {
     "hold": -0.4,
@@ -94,6 +108,36 @@ MAX_TRAINING_SOURCE_BRIEFS = 2
 MAX_LIVE_SOURCE_BRIEFS = 2
 MAX_AUTO_REACTION_SIGNALS = 8
 MIN_LIVE_AUTO_STEP_MS = 1_000
+LOW_FIDELITY_SOURCE_KINDS = {"telegram", "scrape", "video"}
+SOURCE_KIND_BASE_RELIABILITY = {
+    "structured": 0.8,
+    "api": 0.76,
+    "rss": 0.7,
+    "scrape": 0.58,
+    "telegram": 0.46,
+    "video": 0.38,
+}
+SOURCE_DELIVERY_RELIABILITY = {
+    "training_core": 0.06,
+    "live_demo": 0.0,
+}
+CONTRADICTION_TOPIC_LABELS = {
+    "shipping": "shipping disruption",
+    "border": "border escalation",
+    "corridor": "corridor interdiction",
+    "domestic": "domestic stability",
+    "cyber": "cyber disruption",
+}
+PUBLIC_STATE_SYNC_FACTORS = {
+    "support": 0.62,
+    "confidence": 0.6,
+    "clarity": 0.58,
+    "resilience": 0.66,
+    "security": 0.74,
+    "continuity": 0.74,
+    "stability": 0.72,
+    "default": 0.7,
+}
 ASSET_DECISION_SOURCE_LIMITS: dict[str, tuple[int, int]] = {
     "large": (8, 8),
     "medium-large": (6, 6),
@@ -180,9 +224,14 @@ class FogOfWarDiplomacyEnv:
     construction, and observation projection needed by the session API.
     """
 
-    def __init__(self, source_harvester: SourceHarvester | None = None) -> None:
+    def __init__(
+        self,
+        source_harvester: SourceHarvester | None = None,
+        provider_runtime: ProviderDecisionRuntime | None = None,
+    ) -> None:
         self._rng = random.Random()
         self._source_harvester = source_harvester or SourceHarvester(auto_start=False)
+        self._provider_runtime = provider_runtime or ProviderDecisionRuntime()
         self._source_warm_start_enabled = False
 
     def enable_source_warm_start(self) -> "FogOfWarDiplomacyEnv":
@@ -195,11 +244,14 @@ class FogOfWarDiplomacyEnv:
         session_id: str | None = None,
         training_stage: str = DEFAULT_TRAINING_STAGE,
         max_turns: int | None = None,
+        scenario_id: str | None = None,
     ) -> SessionState:
         resolved_session_id = session_id or str(uuid4())
         self._seed(seed)
+        scenario = get_scenario_definition(scenario_id)
         world = self._initial_world()
-        episode = self._build_episode_metadata(training_stage=training_stage, max_turns=max_turns)
+        self._apply_scenario(world, scenario)
+        episode = self._build_episode_metadata(training_stage=training_stage, max_turns=max_turns, scenario=scenario)
         if self._source_warm_start_enabled:
             self._source_harvester.warm_start_agents(
                 include_live=False,
@@ -214,6 +266,7 @@ class FogOfWarDiplomacyEnv:
             world=world,
             observations=observations,
             rewards=rewards,
+            model_bindings=self._build_model_bindings(),
             episode=episode,
         )
         last_sync_at = self._source_harvester.last_sync_at()
@@ -227,12 +280,14 @@ class FogOfWarDiplomacyEnv:
         seed: int | None = None,
         training_stage: str = DEFAULT_TRAINING_STAGE,
         max_turns: int | None = None,
+        scenario_id: str | None = None,
     ) -> SessionState:
         return self.create_session(
             seed=seed,
             session_id=session_id,
             training_stage=training_stage,
             max_turns=max_turns,
+            scenario_id=scenario_id,
         )
 
     def configure_live_session(self, session: SessionState, request: LiveControlRequest) -> SessionState:
@@ -291,6 +346,7 @@ class FogOfWarDiplomacyEnv:
             self._apply_oversight(next_session.world, oversight)
 
         next_session.rewards = self._compute_rewards(world=next_session.world, episode=next_session.episode)
+        next_session.model_bindings = self._build_model_bindings()
         next_session.observations = self._build_observations(
             next_session.world,
             next_session.episode,
@@ -307,6 +363,8 @@ class FogOfWarDiplomacyEnv:
             )
         )
         next_session.recent_traces = next_session.recent_traces[-25:]
+        next_session.action_log.extend(self._build_action_log_entries(next_session, resolved_actions))
+        next_session.action_log = next_session.action_log[-250:]
         next_session.updated_at = datetime.now(timezone.utc)
 
         return StepSessionResponse(
@@ -321,6 +379,7 @@ class FogOfWarDiplomacyEnv:
             self._source_harvester.refresh_agents(include_live=updated.live.enabled, force=True)
         elif self._source_warm_start_enabled:
             self._source_harvester.warm_start_agents(include_live=updated.live.enabled, force=False)
+        updated.model_bindings = self._build_model_bindings()
         updated.observations = self._build_observations(
             updated.world,
             updated.episode,
@@ -334,6 +393,12 @@ class FogOfWarDiplomacyEnv:
 
     def source_monitor(self, session: SessionState) -> SourceMonitorReport:
         return build_source_monitor_report(session, harvester=self._source_harvester)
+
+    def list_scenarios(self) -> list[ScenarioDefinition]:
+        return list_scenario_definitions()
+
+    def scenario_turn_signals(self, scenario_id: str | None, turn: int) -> list[ExternalSignal]:
+        return scenario_signals_for_turn(scenario_id, turn)
 
     def maybe_auto_step_live_session(self, session: SessionState) -> SessionState:
         refreshed = self.refresh_session_sources(session)
@@ -486,6 +551,10 @@ class FogOfWarDiplomacyEnv:
         for agent_id in target_agent_ids:
             if agent_id in actions:
                 continue
+            provider_action, provider_error = self._resolve_provider_action(session, agent_id, signals)
+            if provider_action is not None:
+                actions[agent_id] = provider_action
+                continue
             signal_context, top_headline = self._build_signal_context(agent_id, signals)
             allowed_actions = AGENT_ALLOWED_ACTIONS.get(agent_id, ())
             action_type = max(
@@ -500,10 +569,12 @@ class FogOfWarDiplomacyEnv:
             target = self._select_live_action_target(agent_id, action_type, session, signal_context)
             driver = self._event_driver_label(signal_context)
             metadata: dict[str, object] = {
-                "mode": "live_auto",
+                "mode": "heuristic_fallback",
                 "driver": driver,
                 "signal_count": int(signal_context["relevant_count"]),
             }
+            if provider_error is not None:
+                metadata["provider_error"] = provider_error
             if top_headline:
                 metadata["trigger_headline"] = top_headline
             actions[agent_id] = AgentAction(
@@ -514,6 +585,30 @@ class FogOfWarDiplomacyEnv:
                 metadata=metadata,
             )
         return actions
+
+    def _resolve_provider_action(
+        self,
+        session: SessionState,
+        agent_id: str,
+        signals: list[ExternalSignal],
+    ) -> tuple[AgentAction | None, str | None]:
+        binding = session.model_bindings.get(agent_id)
+        if binding is None or not binding.ready_for_inference:
+            return None, None
+
+        try:
+            action = self._provider_runtime.decide_action(
+                ProviderDecisionRequest(
+                    agent_id=agent_id,
+                    binding=binding,
+                    observation=session.observations[agent_id],
+                    external_signals=signals,
+                )
+            )
+            self._validate_action(agent_id, action)
+            return action, None
+        except ProviderDecisionError as exc:
+            return None, str(exc)
 
     def _select_live_actions(
         self,
@@ -792,17 +887,20 @@ class FogOfWarDiplomacyEnv:
 
     def shutdown(self) -> None:
         self._source_harvester.stop()
+        self._provider_runtime.close()
 
     def _seed(self, seed: int | None) -> None:
         if seed is not None:
             self._rng.seed(seed)
 
     def _initial_world(self) -> WorldState:
+        latent_state = {agent_id: metrics.copy() for agent_id, metrics in AGENT_STATE_BASELINES.items()}
         return WorldState(
             tension_level=50.0,
             market_stress=28.0,
             oil_pressure=36.0,
-            actor_state={agent_id: metrics.copy() for agent_id, metrics in AGENT_STATE_BASELINES.items()},
+            latent_state=latent_state,
+            actor_state={agent_id: metrics.copy() for agent_id, metrics in latent_state.items()},
             asset_state=self._initial_asset_state(),
             coalition_graph={
                 "us": ["israel"],
@@ -835,17 +933,86 @@ class FogOfWarDiplomacyEnv:
             risk_scores={agent_id: 0.25 for agent_id in AGENT_IDS},
         )
 
-    def _build_episode_metadata(self, training_stage: str, max_turns: int | None) -> EpisodeMetadata:
+    def _build_episode_metadata(
+        self,
+        training_stage: str,
+        max_turns: int | None,
+        *,
+        scenario: ScenarioDefinition,
+    ) -> EpisodeMetadata:
         stage_config = TRAINING_STAGE_CONFIGS[training_stage]
         resolved_max_turns = max_turns or DEFAULT_MAX_TURNS
         return EpisodeMetadata(
             max_turns=resolved_max_turns,
             training_stage=training_stage,
+            scenario_id=scenario.id,
+            scenario_name=scenario.name,
+            scenario_description=scenario.description,
+            scenario_tags=list(scenario.tags),
             dense_rewards=stage_config["dense_rewards"],
             sparse_rewards=not stage_config["dense_rewards"],
             fog_of_war=stage_config["fog_of_war"],
             oversight_enabled=stage_config["oversight_enabled"],
             live_mode_capable=stage_config["live_mode_capable"],
+        )
+
+    def _apply_scenario(self, world: WorldState, scenario: ScenarioDefinition) -> None:
+        for field_name, value in scenario.world_overrides.items():
+            if field_name in {"tension_level", "market_stress", "oil_pressure"}:
+                setattr(world, field_name, round(self._clamp_percent(value), 2))
+
+        for agent_id, allies in scenario.coalition_overrides.items():
+            world.coalition_graph[agent_id] = list(allies)
+
+        for agent_id, intent in scenario.hidden_intent_overrides.items():
+            world.hidden_intents[agent_id] = intent
+
+        for shift in scenario.metric_shifts:
+            self._bump_actor_metric(world, shift.agent_id, shift.metric, shift.delta)
+
+        for impact in scenario.asset_impacts:
+            self._apply_scenario_asset_impact(world, impact)
+
+        for index, event in enumerate(scenario.public_events):
+            world.active_events.append(
+                BlackSwanEvent(
+                    id=f"scenario-{scenario.id}-{index}",
+                    summary=event.headline,
+                    source=event.source,
+                    severity=event.severity,
+                    public=True,
+                    affected_agents=self._infer_affected_agents(
+                        ExternalSignal(
+                            source=event.source,
+                            headline=event.headline,
+                            region=event.region,
+                            tags=list(event.tags),
+                            severity=event.severity,
+                        )
+                    ),
+                )
+            )
+        self._resync_public_actor_state(world)
+
+    def _apply_scenario_asset_impact(self, world: WorldState, impact: ScenarioAssetImpact) -> None:
+        if impact.mode == "repair":
+            self._restore_assets(
+                world,
+                owner=impact.owner,
+                intensity=impact.intensity,
+                reason=impact.reason,
+                section_bias=impact.section_bias,
+                max_assets=impact.max_assets,
+            )
+            return
+        self._damage_assets(
+            world,
+            owner=impact.owner,
+            intensity=impact.intensity,
+            reason=impact.reason,
+            section_bias=impact.section_bias,
+            max_assets=impact.max_assets,
+            max_status=impact.max_status,
         )
 
     def _inject_external_signals(self, world: WorldState, signals: list[ExternalSignal]) -> None:
@@ -865,6 +1032,7 @@ class FogOfWarDiplomacyEnv:
                 world.oil_pressure = min(100.0, world.oil_pressure + signal.severity * 10.0)
             self._apply_signal_pressure(world, signal)
             self._apply_signal_asset_effects(world, signal)
+        self._resync_public_actor_state(world)
 
     def _infer_affected_agents(self, signal: ExternalSignal) -> list[str]:
         text = f"{signal.headline} {' '.join(signal.tags)} {(signal.region or '')}".lower()
@@ -919,6 +1087,7 @@ class FogOfWarDiplomacyEnv:
         world.market_stress = round(world.market_stress, 2)
         world.oil_pressure = round(world.oil_pressure, 2)
         self._reconcile_actor_state(world, actions)
+        self._resync_public_actor_state(world)
 
     @staticmethod
     def _validate_action(agent_id: str, action: AgentAction) -> None:
@@ -1109,6 +1278,7 @@ class FogOfWarDiplomacyEnv:
             training_source_bundle = AGENT_TRAINING_SOURCE_BUNDLES.get(agent_id, [])
             live_source_bundle = AGENT_LIVE_SOURCE_BUNDLES.get(agent_id, [])
             available_data_sources = self._build_data_source_context(agent_id)
+            projection_enabled = self._observation_projection_enabled(agent_id, episode)
             training_source_packets, live_source_packets = self._source_harvester.get_packets_for_agent(
                 agent_id,
                 include_live=include_live_sources,
@@ -1134,11 +1304,34 @@ class FogOfWarDiplomacyEnv:
                             confidence=event.severity,
                         )
                     )
-            training_source_brief = self._source_packets_to_briefs(training_source_packets, category="training_source")
-            live_source_brief = (
-                self._source_packets_to_briefs(live_source_packets, category="live_source")
+            projected_state, obscured_metric_count = self._project_strategic_state(
+                world=world,
+                episode=episode,
+                agent_id=agent_id,
+            )
+            projected_assets = self._project_strategic_assets(
+                strategic_assets=strategic_assets,
+                world=world,
+                episode=episode,
+                agent_id=agent_id,
+            )
+            training_source_brief, training_projection = self._source_packets_to_briefs(
+                training_source_packets,
+                category="training_source",
+                world=world,
+                episode=episode,
+                agent_id=agent_id,
+            )
+            live_source_brief, live_projection = (
+                self._source_packets_to_briefs(
+                    live_source_packets,
+                    category="live_source",
+                    world=world,
+                    episode=episode,
+                    agent_id=agent_id,
+                )
                 if include_live_sources
-                else []
+                else ([], {"delayed": 0, "contested": 0, "contradiction_packets": 0, "confidence_sum": 0.0, "contradiction_topics": []})
             )
             private_brief = self._compose_private_brief(
                 baseline_private_brief=baseline_private_brief,
@@ -1146,13 +1339,31 @@ class FogOfWarDiplomacyEnv:
                 training_source_brief=training_source_brief,
                 live_source_brief=live_source_brief,
             )
-            asset_alerts = self._build_asset_alerts(strategic_assets)
+            projection = self._build_observation_projection(
+                agent_id=agent_id,
+                projection_enabled=projection_enabled,
+                obscured_metric_count=obscured_metric_count,
+                delivered_brief_count=len(training_source_brief) + len(live_source_brief),
+                delayed_source_count=int(training_projection["delayed"]) + int(live_projection["delayed"]),
+                contested_source_count=int(training_projection["contested"]) + int(live_projection["contested"]),
+                contradiction_packet_count=int(training_projection["contradiction_packets"])
+                + int(live_projection["contradiction_packets"]),
+                contradiction_topics=sorted(
+                    {
+                        *training_projection["contradiction_topics"],
+                        *live_projection["contradiction_topics"],
+                    }
+                ),
+                confidence_sum=float(training_projection["confidence_sum"]) + float(live_projection["confidence_sum"]),
+            )
+            asset_alerts = self._build_asset_alerts(projected_assets)
             decision_prompt = self._build_decision_prompt(
                 agent_id=agent_id,
                 entity_profile=entity_profile,
-                strategic_assets=strategic_assets,
+                strategic_assets=projected_assets,
                 available_data_sources=available_data_sources,
                 live_enabled=include_live_sources,
+                projection=projection,
             )
 
             observations[agent_id] = AgentObservation(
@@ -1165,8 +1376,8 @@ class FogOfWarDiplomacyEnv:
                 available_actions=list(AGENT_ALLOWED_ACTIONS.get(agent_id, ())),
                 available_data_sources=available_data_sources,
                 entity_profile=entity_profile,
-                strategic_state=world.actor_state.get(agent_id, {}).copy(),
-                strategic_assets=strategic_assets,
+                strategic_state=projected_state,
+                strategic_assets=projected_assets,
                 asset_alerts=asset_alerts,
                 source_bundle=training_source_bundle,
                 training_source_bundle=training_source_bundle,
@@ -1174,12 +1385,25 @@ class FogOfWarDiplomacyEnv:
                 source_packets=training_source_packets + live_source_packets,
                 training_source_packets=training_source_packets,
                 live_source_packets=live_source_packets,
+                projection=projection,
             )
         return observations
 
-    @staticmethod
-    def _source_packets_to_briefs(source_packets: list, category: str) -> list[IntelSnippet]:
+    def _source_packets_to_briefs(
+        self,
+        source_packets: list[SourcePacket],
+        category: str,
+        *,
+        world: WorldState,
+        episode: EpisodeMetadata,
+        agent_id: str,
+    ) -> tuple[list[IntelSnippet], dict[str, float]]:
         briefs: list[IntelSnippet] = []
+        delayed_count = 0
+        contested_count = 0
+        contradiction_packet_count = 0
+        contradiction_topics: set[str] = set()
+        confidence_sum = 0.0
         sorted_packets = sorted(
             (
                 packet
@@ -1192,15 +1416,47 @@ class FogOfWarDiplomacyEnv:
             reverse=True,
         )
         for packet in sorted_packets:
+            if self._should_delay_source_packet(packet, world=world, episode=episode, agent_id=agent_id):
+                delayed_count += 1
+                continue
+            confidence = self._projected_source_confidence(packet, world=world, episode=episode, agent_id=agent_id)
+            contradiction = self._latent_source_contradiction(
+                packet,
+                world=world,
+                episode=episode,
+                agent_id=agent_id,
+            )
+            contested = confidence < 0.52 or (
+                packet.kind in LOW_FIDELITY_SOURCE_KINDS
+                and self._projection_unit(world, episode, agent_id, f"contested:{packet.source_id}") >= 0.72
+            )
+            if contradiction["enabled"]:
+                contradiction_packet_count += 1
+                contradiction_topics.add(str(contradiction["topic"]))
+                confidence = max(0.24, round(confidence - float(contradiction["confidence_penalty"]), 3))
+            if contested:
+                contested_count += 1
             briefs.append(
                 IntelSnippet(
                     source=packet.source_name,
                     category=category,
-                    summary=FogOfWarDiplomacyEnv._clip_summary(packet.summary),
-                    confidence=0.65 if packet.delivery == "training_core" else 0.55,
+                    summary=self._project_source_summary(
+                        packet.summary,
+                        confidence=confidence,
+                        contested=contested,
+                        contradiction=contradiction,
+                    ),
+                    confidence=confidence,
                 )
             )
-        return briefs
+            confidence_sum += confidence
+        return briefs, {
+            "delayed": float(delayed_count),
+            "contested": float(contested_count),
+            "contradiction_packets": float(contradiction_packet_count),
+            "confidence_sum": round(confidence_sum, 3),
+            "contradiction_topics": sorted(contradiction_topics),
+        }
 
     @staticmethod
     def _clip_summary(summary: str, limit: int = MAX_INTEL_SUMMARY_CHARS) -> str:
@@ -1256,17 +1512,321 @@ class FogOfWarDiplomacyEnv:
         jitter = self._rng.uniform(-4.0, 4.0)
         return round(max(0.0, min(100.0, tension_level + jitter)), 2)
 
+    @staticmethod
+    def _observation_projection_enabled(agent_id: str, episode: EpisodeMetadata) -> bool:
+        return episode.fog_of_war and agent_id != "oversight"
+
+    def _project_strategic_state(
+        self,
+        *,
+        world: WorldState,
+        episode: EpisodeMetadata,
+        agent_id: str,
+    ) -> tuple[dict[str, float], int]:
+        canonical_state = world.latent_state.get(agent_id, {}).copy()
+        if not self._observation_projection_enabled(agent_id, episode):
+            return canonical_state, 0
+
+        projected_state: dict[str, float] = {}
+        obscured_metric_count = 0
+        uncertainty_scale = 1.2 + world.risk_scores.get(agent_id, 0.25) * 3.5
+        for metric, value in canonical_state.items():
+            unit = self._projection_unit(world, episode, agent_id, f"metric:{metric}")
+            jitter = (unit - 0.5) * 2.0 * uncertainty_scale
+            if any(token in metric for token in ("support", "confidence", "clarity", "resilience")):
+                jitter *= 1.2
+            observed_value = round(self._clamp_percent(value + jitter), 2)
+            if abs(observed_value - value) >= 0.75:
+                obscured_metric_count += 1
+            projected_state[metric] = observed_value
+        return projected_state, obscured_metric_count
+
+    def _project_strategic_assets(
+        self,
+        *,
+        strategic_assets: list[dict[str, object]],
+        world: WorldState,
+        episode: EpisodeMetadata,
+        agent_id: str,
+    ) -> list[dict[str, object]]:
+        projected_assets = [asset.copy() for asset in strategic_assets]
+        if not self._observation_projection_enabled(agent_id, episode):
+            return projected_assets
+
+        for asset in projected_assets:
+            health = float(asset.get("health", 100.0))
+            status = str(asset.get("status", "operational"))
+            if status == "operational":
+                asset["health"] = round(health / 5.0) * 5.0
+                load = float(asset.get("operational_load", 0.0))
+                asset["operational_load"] = round(load / 5.0) * 5.0
+            else:
+                asset["health"] = round(health, 1)
+        return projected_assets
+
+    def _build_observation_projection(
+        self,
+        *,
+        agent_id: str,
+        projection_enabled: bool,
+        obscured_metric_count: int,
+        delivered_brief_count: int,
+        delayed_source_count: int,
+        contested_source_count: int,
+        contradiction_packet_count: int,
+        contradiction_topics: list[str],
+        confidence_sum: float,
+    ) -> ObservationProjection:
+        if not projection_enabled:
+            return ObservationProjection(
+                enabled=False,
+                mode="direct",
+                worldview_reliability=1.0,
+            )
+
+        mean_confidence = confidence_sum / max(delivered_brief_count, 1)
+        worldview_reliability = max(
+            0.32,
+            min(0.9, mean_confidence - min(obscured_metric_count, 6) * 0.015),
+        )
+        notes = [
+            "Strategic metrics are estimates under fog-of-war, not privileged ground truth.",
+        ]
+        if delayed_source_count > 0:
+            notes.append("Some fast-moving source packets are lagged before they reach you.")
+        if contested_source_count > 0:
+            notes.append("At least part of the source picture is contested or fragmentary; cross-check before escalating.")
+        if contradiction_packet_count > 0:
+            notes.append("Multiple sources may disagree on the same latent development; compare topic framing before acting.")
+        return ObservationProjection(
+            enabled=True,
+            mode="partial",
+            worldview_reliability=round(worldview_reliability, 3),
+            delayed_source_count=delayed_source_count,
+            contested_source_count=contested_source_count,
+            contradiction_packet_count=contradiction_packet_count,
+            obscured_metric_count=obscured_metric_count,
+            contradiction_topics=contradiction_topics,
+            notes=notes,
+        )
+
+    def _should_delay_source_packet(
+        self,
+        packet: SourcePacket,
+        *,
+        world: WorldState,
+        episode: EpisodeMetadata,
+        agent_id: str,
+    ) -> bool:
+        if not self._observation_projection_enabled(agent_id, episode):
+            return False
+        if packet.delivery == "live_demo":
+            return False
+        turn_lag = 0
+        if packet.kind in LOW_FIDELITY_SOURCE_KINDS:
+            turn_lag = 1
+        if world.turn >= turn_lag:
+            return False
+        return self._projection_unit(world, episode, agent_id, f"delay:{packet.source_id}") < 0.35
+
+    def _projected_source_confidence(
+        self,
+        packet: SourcePacket,
+        *,
+        world: WorldState,
+        episode: EpisodeMetadata,
+        agent_id: str,
+    ) -> float:
+        if not self._observation_projection_enabled(agent_id, episode):
+            return 0.65 if packet.delivery == "training_core" else 0.55
+        base_reliability = SOURCE_KIND_BASE_RELIABILITY.get(packet.kind, 0.58) + SOURCE_DELIVERY_RELIABILITY.get(
+            packet.delivery,
+            0.0,
+        )
+        jitter = (self._projection_unit(world, episode, agent_id, f"confidence:{packet.source_id}") - 0.5) * 0.18
+        confidence = base_reliability + jitter
+        return round(max(0.24, min(0.92, confidence)), 3)
+
+    def _project_source_summary(
+        self,
+        summary: str,
+        *,
+        confidence: float,
+        contested: bool,
+        contradiction: dict[str, object] | None = None,
+    ) -> str:
+        clipped = self._clip_summary(summary)
+        if contradiction and contradiction.get("enabled"):
+            topic = str(contradiction["topic"])
+            framing = str(contradiction["framing"])
+            if framing == "stabilizing":
+                clipped = self._clip_summary(
+                    f"Conflicting {topic} reporting: this source emphasizes partial stabilization around the same development. {clipped}"
+                )
+            else:
+                clipped = self._clip_summary(
+                    f"Conflicting {topic} reporting: this source emphasizes renewed deterioration around the same development. {clipped}"
+                )
+        if contested:
+            return self._clip_summary(f"Contested reporting: {clipped}")
+        if confidence < 0.48:
+            return self._clip_summary(f"Unconfirmed reporting: {clipped}")
+        if confidence < 0.62:
+            return self._clip_summary(f"Preliminary reporting: {clipped}")
+        return clipped
+
+    def _latent_source_contradiction(
+        self,
+        packet: SourcePacket,
+        *,
+        world: WorldState,
+        episode: EpisodeMetadata,
+        agent_id: str,
+    ) -> dict[str, object]:
+        if not self._observation_projection_enabled(agent_id, episode):
+            return {"enabled": False}
+
+        topic, contradiction_strength = self._infer_contradiction_topic(packet, world)
+        if topic is None or contradiction_strength < 0.22:
+            return {"enabled": False}
+
+        orientation = self._projection_unit(world, episode, agent_id, f"contradiction:{packet.source_id}:{topic}")
+        framing = "stabilizing" if orientation < 0.5 else "deteriorating"
+        return {
+            "enabled": True,
+            "topic": CONTRADICTION_TOPIC_LABELS.get(topic, topic),
+            "framing": framing,
+            "confidence_penalty": round(min(0.18, contradiction_strength * 0.22), 3),
+        }
+
+    def _infer_contradiction_topic(self, packet: SourcePacket, world: WorldState) -> tuple[str | None, float]:
+        try:
+            source = get_source_by_id(packet.source_id)
+            source_text = " ".join(source.tags)
+        except KeyError:
+            source_text = ""
+        text = f"{packet.summary} {' '.join(packet.sample_items)} {packet.source_name} {source_text}".lower()
+
+        if any(term in text for term in ("shipping", "oil", "tanker", "hormuz", "port", "maritime")):
+            threat = max(
+                (100.0 - self._actor_metric(world, "gulf", "shipping_continuity")) / 100.0,
+                world.oil_pressure / 100.0,
+            )
+            stabilizer = max(
+                self._actor_metric(world, "gulf", "infrastructure_security") / 100.0,
+                self._actor_metric(world, "us", "shipping_security") / 100.0,
+            )
+            return "shipping", min(threat, stabilizer)
+        if any(term in text for term in ("rocket", "missile", "border", "galilee", "idf", "drone", "lebanon")):
+            threat = max(
+                (100.0 - self._actor_metric(world, "israel", "homeland_security")) / 100.0,
+                self._actor_metric(world, "hezbollah", "resistance_credibility") / 100.0,
+            )
+            stabilizer = max(
+                self._actor_metric(world, "israel", "northern_deterrence") / 100.0,
+                self._actor_metric(world, "israel", "us_resupply_confidence") / 100.0,
+            )
+            return "border", min(threat, stabilizer)
+        if any(term in text for term in ("corridor", "bekaa", "syria", "transfer", "logistics", "interdiction")):
+            threat = max(
+                (100.0 - self._actor_metric(world, "iran", "proxy_corridor")) / 100.0,
+                (100.0 - self._actor_metric(world, "hezbollah", "logistics_depth")) / 100.0,
+            )
+            stabilizer = max(
+                self._actor_metric(world, "iran", "deterrence_credibility") / 100.0,
+                self._actor_metric(world, "hezbollah", "launch_survivability") / 100.0,
+            )
+            return "corridor", min(threat, stabilizer)
+        if any(term in text for term in ("sanction", "unrest", "protest", "inflation", "currency", "domestic")):
+            threat = max(
+                (100.0 - self._actor_metric(world, "iran", "regime_stability")) / 100.0,
+                (100.0 - self._actor_metric(world, "us", "domestic_support")) / 100.0,
+            )
+            stabilizer = max(
+                self._actor_metric(world, "iran", "deterrence_credibility") / 100.0,
+                self._actor_metric(world, "us", "regional_access") / 100.0,
+            )
+            return "domestic", min(threat, stabilizer)
+        if any(term in text for term in ("cyber", "outage", "blackout", "cable", "internet")):
+            threat = max(
+                self._actor_metric(world, "oversight", "runaway_risk") / 100.0,
+                (100.0 - self._actor_metric(world, "oversight", "trace_clarity")) / 100.0,
+            )
+            stabilizer = max(
+                self._actor_metric(world, "oversight", "autonomy_balance") / 100.0,
+                self._actor_metric(world, "oversight", "intervention_legitimacy") / 100.0,
+            )
+            return "cyber", min(threat, stabilizer)
+        return None, 0.0
+
+    @staticmethod
+    def _projection_unit(world: WorldState, episode: EpisodeMetadata, agent_id: str, label: str) -> float:
+        digest = hashlib.sha256(
+            f"{episode.scenario_id}|{world.turn}|{agent_id}|{label}".encode("utf-8")
+        ).digest()
+        return int.from_bytes(digest[:8], byteorder="big") / float(2**64)
+
+    @staticmethod
+    def _build_model_bindings() -> dict[str, EntityModelBinding]:
+        return build_entity_model_bindings()
+
+    @staticmethod
+    def _build_action_log_entries(
+        session: SessionState,
+        actions: dict[str, AgentAction],
+    ) -> list[ActionLogEntry]:
+        entries: list[ActionLogEntry] = []
+        for agent_id, action in actions.items():
+            entries.append(
+                ActionLogEntry(
+                    turn=session.world.turn,
+                    actor=agent_id,
+                    action_type=action.type,
+                    target=action.target,
+                    summary=action.summary,
+                    reward_total=session.rewards.get(agent_id, RewardBreakdown()).total,
+                    tension_after=session.world.tension_level,
+                    market_stress_after=session.world.market_stress,
+                    oil_pressure_after=session.world.oil_pressure,
+                    metadata=action.metadata.copy(),
+                )
+            )
+        return entries
+
     def _actor_metric(self, world: WorldState, agent_id: str, metric: str, default: float = 50.0) -> float:
-        return world.actor_state.get(agent_id, {}).get(
+        return world.latent_state.get(agent_id, {}).get(
             metric,
             AGENT_STATE_BASELINES.get(agent_id, {}).get(metric, default),
         )
 
     def _bump_actor_metric(self, world: WorldState, agent_id: str, metric: str, delta: float) -> None:
         baseline = AGENT_STATE_BASELINES.get(agent_id, {}).get(metric, 50.0)
-        agent_state = world.actor_state.setdefault(agent_id, {})
+        agent_state = world.latent_state.setdefault(agent_id, {})
         current = agent_state.get(metric, baseline)
         agent_state[metric] = round(self._clamp_percent(current + delta), 2)
+
+    def _resync_public_actor_state(self, world: WorldState) -> None:
+        public_state: dict[str, dict[str, float]] = {}
+        for agent_id in AGENT_IDS:
+            latent_metrics = world.latent_state.get(agent_id, {})
+            synced_metrics: dict[str, float] = {}
+            for metric, latent_value in latent_metrics.items():
+                baseline = AGENT_STATE_BASELINES.get(agent_id, {}).get(metric, 50.0)
+                previous_public = world.actor_state.get(agent_id, {}).get(metric, baseline)
+                sync_factor = self._public_sync_factor(metric)
+                target_public = baseline + (latent_value - baseline) * sync_factor
+                lagged_public = previous_public + (target_public - previous_public) * 0.7
+                synced_metrics[metric] = round(self._clamp_percent(lagged_public), 2)
+            public_state[agent_id] = synced_metrics
+        world.actor_state = public_state
+
+    @staticmethod
+    def _public_sync_factor(metric: str) -> float:
+        lowered = metric.lower()
+        for token, factor in PUBLIC_STATE_SYNC_FACTORS.items():
+            if token != "default" and token in lowered:
+                return factor
+        return PUBLIC_STATE_SYNC_FACTORS["default"]
 
     def _apply_actor_state_effects(self, world: WorldState, agent_id: str, action: AgentAction) -> None:
         deltas = AGENT_STATE_ACTION_EFFECTS.get(agent_id, {}).get(action.type, {})
@@ -1471,7 +2031,7 @@ class FogOfWarDiplomacyEnv:
                 + 0.12 * (1.0 - mean_consistency)
             )
         )
-        world.actor_state.setdefault("oversight", {})["runaway_risk"] = round(runaway_risk, 2)
+        world.latent_state.setdefault("oversight", {})["runaway_risk"] = round(runaway_risk, 2)
         self._bump_actor_metric(
             world,
             "oversight",
@@ -1543,6 +2103,7 @@ class FogOfWarDiplomacyEnv:
         strategic_assets: list[dict[str, object]],
         available_data_sources: list[DataSourceContext],
         live_enabled: bool,
+        projection: ObservationProjection,
     ) -> str:
         profile = AGENT_PROFILES[agent_id]
         source_limit, asset_limit = ASSET_DECISION_SOURCE_LIMITS[profile.model_size]
@@ -1577,6 +2138,16 @@ class FogOfWarDiplomacyEnv:
             "Choose exactly one allowed action each turn and ground it in current source packets, private/public briefs, strategic state, and asset condition.",
             f"Live mode is {'enabled' if live_enabled else 'disabled'}; prefer the freshest source packets when live mode is on.",
         ]
+        if projection.enabled:
+            prompt_sections.append(
+                f"Observation reliability is partial (estimated reliability {projection.worldview_reliability:.2f}); treat fast-moving or contested reporting cautiously."
+            )
+            if projection.notes:
+                prompt_sections.append("Projection notes:\n" + "\n".join(f"- {note}" for note in projection.notes[:3]))
+            if projection.contradiction_topics:
+                prompt_sections.append(
+                    "Current contradiction topics: " + ", ".join(projection.contradiction_topics[:3]) + "."
+                )
         if top_objectives:
             prompt_sections.append(f"Priority objectives: {', '.join(top_objectives)}.")
         if top_interests:

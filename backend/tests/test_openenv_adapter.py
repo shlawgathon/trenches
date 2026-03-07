@@ -95,6 +95,24 @@ def test_trenches_openenv_environment_returns_scalar_reward_for_active_agent() -
     runtime.close()
 
 
+def test_openenv_reset_accepts_named_scenario() -> None:
+    runtime = TrenchesOpenEnvEnvironment()
+    observation = runtime.reset(
+        seed=17,
+        training_agent="gulf",
+        training_stage="stage_3_sparse",
+        max_turns=12,
+        scenario_id="shipping_crisis",
+    )
+
+    assert observation.agent_observation.strategic_state["shipping_continuity"] < 78.0
+    assert runtime.state.session is not None
+    assert runtime.state.session.episode.scenario_id == "shipping_crisis"
+    assert runtime.state.session.world.latent_state["gulf"]["shipping_continuity"] < 78.0
+    assert observation.agent_observation.projection.enabled
+    runtime.close()
+
+
 def test_openenv_autofills_missing_agents_with_shared_policy() -> None:
     runtime = TrenchesOpenEnvEnvironment()
     runtime.reset(

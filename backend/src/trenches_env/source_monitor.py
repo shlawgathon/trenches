@@ -156,19 +156,35 @@ def _build_agent_source_monitor(
             )
         )
     if available_training_packet_count > 0 and delivered_training_brief_count == 0:
-        issues.append(
-            SourceMonitorIssue(
-                severity="error",
-                message="Training-source packets are available but none reached the model brief.",
+        if observation.projection.enabled and observation.projection.delayed_source_count >= available_training_packet_count:
+            issues.append(
+                SourceMonitorIssue(
+                    severity="warning",
+                    message="Training-source packets are healthy but currently delayed by observation projection.",
+                )
             )
-        )
+        else:
+            issues.append(
+                SourceMonitorIssue(
+                    severity="error",
+                    message="Training-source packets are available but none reached the model brief.",
+                )
+            )
     if live_enabled and available_live_packet_count > 0 and delivered_live_brief_count == 0:
-        issues.append(
-            SourceMonitorIssue(
-                severity="error",
-                message="Live-source packets are available but none reached the model brief.",
+        if observation.projection.enabled and observation.projection.delayed_source_count >= available_live_packet_count:
+            issues.append(
+                SourceMonitorIssue(
+                    severity="warning",
+                    message="Live-source packets are healthy but currently delayed by observation projection.",
+                )
             )
-        )
+        else:
+            issues.append(
+                SourceMonitorIssue(
+                    severity="error",
+                    message="Live-source packets are available but none reached the model brief.",
+                )
+            )
 
     status = "healthy"
     if any(issue.severity == "error" for issue in issues):

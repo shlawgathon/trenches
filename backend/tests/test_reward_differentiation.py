@@ -1,7 +1,9 @@
+from datetime import datetime, timezone
+
 import pytest
 
 from trenches_env.env import FogOfWarDiplomacyEnv
-from trenches_env.models import AgentAction, EpisodeMetadata
+from trenches_env.models import AgentAction, EpisodeMetadata, SourcePacket
 from trenches_env.rl import AGENT_ACTION_ALIGNMENT, AGENT_ACTION_IMPACTS, AGENT_ALLOWED_ACTIONS, AGENT_STATE_ACTION_EFFECTS
 
 
@@ -96,7 +98,7 @@ def test_observations_expose_doctrine_state_vectors() -> None:
     env = FogOfWarDiplomacyEnv()
     session = env.create_session(seed=7)
 
-    assert "regional_access" in session.world.actor_state["us"]
+    assert "regional_access" in session.world.latent_state["us"]
     assert "homeland_security" in session.observations["israel"].strategic_state
     assert "trace_clarity" in session.observations["oversight"].strategic_state
     assert session.observations["hezbollah"].strategic_assets
@@ -114,6 +116,86 @@ def test_observations_expose_prompts_sources_and_geolocated_assets() -> None:
         assert all(asset.get("latitude") is not None and asset.get("longitude") is not None for asset in observation.strategic_assets)
         assert observation.available_data_sources[0].name in observation.decision_prompt
         assert observation.strategic_assets[0]["name"] in observation.decision_prompt
+
+
+def test_dense_stage_keeps_direct_observation_projection_disabled() -> None:
+    env = FogOfWarDiplomacyEnv()
+    session = env.create_session(seed=7, training_stage="stage_1_dense")
+    observation = session.observations["israel"]
+
+    assert not observation.projection.enabled
+    assert observation.projection.mode == "direct"
+    assert observation.strategic_state == session.world.latent_state["israel"]
+
+
+def test_fog_of_war_projection_shapes_observation_view() -> None:
+    env = FogOfWarDiplomacyEnv()
+    session = env.create_session(seed=7, training_stage="stage_2_partial")
+    observation = session.observations["israel"]
+
+    assert observation.projection.enabled
+    assert observation.projection.mode == "partial"
+    assert observation.projection.notes
+    assert observation.projection.obscured_metric_count > 0
+    assert observation.projection.worldview_reliability < 1.0
+    assert "Observation reliability is partial" in observation.decision_prompt
+    assert observation.strategic_state["homeland_security"] != session.world.latent_state["israel"]["homeland_security"]
+
+
+def test_world_tracks_latent_state_separately_from_public_state() -> None:
+    env = FogOfWarDiplomacyEnv()
+    session = env.create_session(seed=7, scenario_id="shipping_crisis")
+
+    assert session.world.latent_state["gulf"]["shipping_continuity"] < session.world.actor_state["gulf"]["shipping_continuity"]
+
+
+def test_source_projection_can_express_explicit_contradictions() -> None:
+    env = FogOfWarDiplomacyEnv()
+    session = env.create_session(seed=7, scenario_id="shipping_crisis", training_stage="stage_3_sparse")
+    timestamp = datetime.now(timezone.utc)
+    worsening_packet = SourcePacket(
+        source_id="gulf-chokepoint-status",
+        source_name="Maritime Chokepoint Disruption Panel",
+        delivery="training_core",
+        kind="api",
+        endpoint_kind="worldmonitor",
+        status="ok",
+        fetched_at=timestamp,
+        summary="Shipping disruption intensifies near Hormuz and tanker insurance costs rise.",
+        sample_items=["Shipping risk rises"],
+    )
+    easing_packet = SourcePacket(
+        source_id="gulf-shipping-rates",
+        source_name="Shipping Rates Monitor",
+        delivery="training_core",
+        kind="api",
+        endpoint_kind="worldmonitor",
+        status="ok",
+        fetched_at=timestamp,
+        summary="Shipping disruption intensifies near Hormuz and tanker insurance costs rise.",
+        sample_items=["Shipping risk rises"],
+    )
+
+    worsening_briefs, worsening_meta = env._source_packets_to_briefs(
+        [worsening_packet],
+        category="training_source",
+        world=session.world,
+        episode=session.episode,
+        agent_id="gulf",
+    )
+    easing_briefs, easing_meta = env._source_packets_to_briefs(
+        [easing_packet],
+        category="training_source",
+        world=session.world,
+        episode=session.episode,
+        agent_id="gulf",
+    )
+
+    assert worsening_meta["contradiction_packets"] == 1.0
+    assert easing_meta["contradiction_packets"] == 1.0
+    assert worsening_meta["contradiction_topics"] == ["shipping disruption"]
+    assert "renewed deterioration" in worsening_briefs[0].summary
+    assert "partial stabilization" in easing_briefs[0].summary
 
 
 def test_strike_and_defend_update_asset_health_for_targeted_assets() -> None:
