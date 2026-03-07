@@ -35,6 +35,20 @@ class ScenarioAssetImpact:
 
 
 @dataclass(frozen=True)
+class ScenarioLatentEvent:
+    topic: str
+    summary: str
+    source: str = "scenario"
+    severity: float = 0.5
+    visibility: str = "mixed"
+    reliability: float = 0.65
+    affected_agents: tuple[str, ...] = ()
+    public_summary: str | None = None
+    private_summary: str | None = None
+    decay_rate: float = 0.06
+
+
+@dataclass(frozen=True)
 class ScenarioDefinition:
     id: str
     name: str
@@ -47,6 +61,7 @@ class ScenarioDefinition:
     hidden_intent_overrides: dict[str, str] = field(default_factory=dict)
     metric_shifts: tuple[ScenarioMetricShift, ...] = ()
     asset_impacts: tuple[ScenarioAssetImpact, ...] = ()
+    latent_events: tuple[ScenarioLatentEvent, ...] = ()
     public_events: tuple[ScenarioSignal, ...] = ()
     benchmark_signal_turns: dict[int, tuple[ScenarioSignal, ...]] = field(default_factory=dict)
 
@@ -103,6 +118,19 @@ SCENARIOS: dict[str, ScenarioDefinition] = {
                 section_bias=("naval", "port", "maritime", "chokepoint"),
                 max_assets=1,
                 max_status="malfunctioning",
+            ),
+        ),
+        latent_events=(
+            ScenarioLatentEvent(
+                topic="shipping",
+                summary="Insurers and maritime operators privately assess that drone scouting near Hormuz is coordinated rather than isolated.",
+                severity=0.66,
+                visibility="mixed",
+                reliability=0.71,
+                affected_agents=("us", "iran", "gulf"),
+                public_summary="Private maritime risk assessments suggest the Hormuz disruption pattern may be coordinated.",
+                private_summary="Privately, operators believe the disruption pattern is coordinated and likely to persist without force protection.",
+                decay_rate=0.04,
             ),
         ),
         public_events=(
@@ -183,6 +211,19 @@ SCENARIOS: dict[str, ScenarioDefinition] = {
                 max_status="malfunctioning",
             ),
         ),
+        latent_events=(
+            ScenarioLatentEvent(
+                topic="border",
+                summary="Hidden launch-cell replenishment is sustaining the border flare-up despite public claims of containment.",
+                severity=0.7,
+                visibility="mixed",
+                reliability=0.69,
+                affected_agents=("israel", "hezbollah", "iran"),
+                public_summary="Private reporting suggests the northern flare-up is more durable than public statements imply.",
+                private_summary="Private reporting indicates replenishment activity is sustaining launch capacity despite public claims of containment.",
+                decay_rate=0.05,
+            ),
+        ),
         public_events=(
             _signal(
                 "scenario",
@@ -259,6 +300,19 @@ SCENARIOS: dict[str, ScenarioDefinition] = {
                 section_bias=("logistics", "corridor", "reserve"),
                 max_assets=1,
                 max_status="malfunctioning",
+            ),
+        ),
+        latent_events=(
+            ScenarioLatentEvent(
+                topic="domestic",
+                summary="Private financial channels indicate sanctions pressure is biting harder than public statements admit.",
+                severity=0.62,
+                visibility="mixed",
+                reliability=0.67,
+                affected_agents=("iran", "us", "gulf"),
+                public_summary="Private market reporting suggests sanctions pressure is worsening beneath official messaging.",
+                private_summary="Private channel reporting indicates domestic financial stress is compounding faster than public statements admit.",
+                decay_rate=0.05,
             ),
         ),
         public_events=(

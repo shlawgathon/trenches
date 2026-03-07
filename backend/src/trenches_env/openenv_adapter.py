@@ -317,6 +317,7 @@ class OpenEnvAdapter:
             "turn": session.world.turn,
             "agent_ids": list(AGENT_IDS),
             "world": session.world.model_dump(mode="json"),
+            "belief_state": {agent_id: state.model_dump(mode="json") for agent_id, state in session.belief_state.items()},
             "episode": session.episode.model_dump(mode="json"),
             "oversight": oversight.model_dump(mode="json"),
             "live": session.live.model_dump(mode="json"),

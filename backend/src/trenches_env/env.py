@@ -11,6 +11,8 @@ from trenches_env.model_runtime import build_entity_model_bindings
 from trenches_env.models import (
     ActionLogEntry,
     AgentAction,
+    AgentBeliefEntry,
+    AgentBeliefState,
     AgentObservation,
     AssetCondition,
     BlackSwanEvent,
@@ -283,13 +285,15 @@ class FogOfWarDiplomacyEnv:
                 max_training_sources=2,
                 max_live_sources=0,
             )
-        observations = self._build_observations(world, episode)
+        belief_state = self._initialize_belief_state(world, episode)
+        observations = self._build_observations(world, episode, belief_state=belief_state)
         rewards = {agent_id: RewardBreakdown() for agent_id in AGENT_IDS}
         session = SessionState(
             session_id=resolved_session_id,
             seed=seed,
             world=world,
             observations=observations,
+            belief_state=belief_state,
             rewards=rewards,
             model_bindings=self._build_model_bindings(),
             episode=episode,
@@ -377,10 +381,12 @@ class FogOfWarDiplomacyEnv:
 
         next_session.rewards = self._compute_rewards(world=next_session.world, episode=next_session.episode)
         next_session.model_bindings = self._build_model_bindings()
+        next_session.belief_state = self._update_belief_state(next_session)
         next_session.observations = self._build_observations(
             next_session.world,
             next_session.episode,
             include_live_sources=next_session.live.enabled,
+            belief_state=next_session.belief_state,
         )
         next_session.recent_traces.append(
             StepTrace(
@@ -422,10 +428,12 @@ class FogOfWarDiplomacyEnv:
         elif self._source_warm_start_enabled:
             self._source_harvester.warm_start_agents(include_live=updated.live.enabled, force=False)
         updated.model_bindings = self._build_model_bindings()
+        updated.belief_state = self._update_belief_state(updated)
         updated.observations = self._build_observations(
             updated.world,
             updated.episode,
             include_live_sources=updated.live.enabled,
+            belief_state=updated.belief_state,
         )
         last_sync_at = self._source_harvester.last_sync_at()
         if last_sync_at is not None:
@@ -731,6 +739,11 @@ class FogOfWarDiplomacyEnv:
 
         doctrinal_fit = AGENT_ACTION_ALIGNMENT[agent_id].get(action_type, 0.0)
         signal_bias = self._live_signal_action_bias(agent_id, action_type, signal_context)
+        belief_bias = self._belief_action_bias(
+            agent_id,
+            action_type,
+            session.belief_state.get(agent_id, AgentBeliefState(agent_id=agent_id)),
+        )
         asset_pressure = self._asset_pressure(session.world, agent_id)
         if action_type in {"defend", "intel_query"}:
             signal_bias += 0.22 * asset_pressure
@@ -757,7 +770,48 @@ class FogOfWarDiplomacyEnv:
         if agent_id == "oversight" and action_type == "oversight_review":
             escalation_penalty -= min(0.25, signal_context["pressure"] * 0.2)
 
-        return metric_gain * 1.8 + doctrinal_fit * 0.28 + signal_bias + continuity_bonus - escalation_penalty
+        return metric_gain * 1.8 + doctrinal_fit * 0.28 + signal_bias + belief_bias + continuity_bonus - escalation_penalty
+
+    @staticmethod
+    def _belief_action_bias(
+        agent_id: str,
+        action_type: str,
+        belief_state: AgentBeliefState,
+    ) -> float:
+        topic_weights = {belief.topic: belief.confidence for belief in belief_state.beliefs[:4]}
+        shipping = topic_weights.get("shipping", 0.0)
+        border = topic_weights.get("border", 0.0)
+        corridor = topic_weights.get("corridor", 0.0)
+        diplomacy = topic_weights.get("diplomacy", 0.0)
+        cyber = topic_weights.get("cyber", 0.0)
+        domestic = topic_weights.get("domestic", 0.0)
+
+        if agent_id in {"us", "gulf"}:
+            return {
+                "defend": 0.22 * shipping,
+                "negotiate": 0.16 * diplomacy + 0.08 * shipping,
+                "intel_query": 0.14 * cyber,
+                "strike": 0.06 * border - 0.12 * diplomacy,
+            }.get(action_type, 0.0)
+        if agent_id == "israel":
+            return {
+                "defend": 0.2 * border,
+                "strike": 0.12 * border,
+                "intel_query": 0.1 * corridor + 0.08 * cyber,
+                "negotiate": 0.1 * diplomacy - 0.08 * border,
+            }.get(action_type, 0.0)
+        if agent_id in {"iran", "hezbollah"}:
+            return {
+                "mobilize": 0.16 * corridor + 0.08 * border,
+                "deceive": 0.12 * cyber + 0.08 * corridor,
+                "defend": 0.1 * border + 0.08 * domestic,
+                "negotiate": 0.1 * diplomacy - 0.08 * corridor,
+            }.get(action_type, 0.0)
+        return {
+            "oversight_review": 0.18 * (shipping + border + corridor + cyber + domestic),
+            "negotiate": 0.12 * diplomacy,
+            "intel_query": 0.1 * cyber,
+        }.get(action_type, 0.0)
 
     def _live_signal_action_bias(
         self,
@@ -1602,12 +1656,172 @@ class FogOfWarDiplomacyEnv:
                 world.behavioral_consistency.get(agent_id, 0.6) + 0.04,
             )
 
+    def _initialize_belief_state(
+        self,
+        world: WorldState,
+        episode: EpisodeMetadata,
+    ) -> dict[str, AgentBeliefState]:
+        belief_state: dict[str, AgentBeliefState] = {}
+        for agent_id in AGENT_IDS:
+            beliefs = [
+                self._belief_entry_from_event(event, world=world, episode=episode, agent_id=agent_id)
+                for event in self._relevant_latent_events_for_agent(world, agent_id)
+            ]
+            belief_state[agent_id] = AgentBeliefState(
+                agent_id=agent_id,
+                dominant_topics=self._dominant_belief_topics(beliefs),
+                beliefs=beliefs[:8],
+                last_revision_turn=world.turn,
+            )
+        return belief_state
+
+    def _update_belief_state(self, session: SessionState) -> dict[str, AgentBeliefState]:
+        world = session.world
+        episode = session.episode
+        updated_state: dict[str, AgentBeliefState] = {}
+        for agent_id in AGENT_IDS:
+            existing = session.belief_state.get(agent_id, AgentBeliefState(agent_id=agent_id))
+            belief_index = {belief.belief_id: belief.model_copy(deep=True) for belief in existing.beliefs}
+
+            for event in self._relevant_latent_events_for_agent(world, agent_id):
+                next_belief = self._belief_entry_from_event(event, world=world, episode=episode, agent_id=agent_id)
+                prior = belief_index.get(next_belief.belief_id)
+                if prior is None:
+                    belief_index[next_belief.belief_id] = next_belief
+                    continue
+                if next_belief.status == "contested":
+                    prior.contradiction_count += 1
+                else:
+                    prior.confirmation_count += 1
+                prior.confidence = round(max(0.08, min(0.98, prior.confidence * 0.45 + next_belief.confidence * 0.55)), 3)
+                prior.summary = next_belief.summary
+                prior.status = next_belief.status
+                prior.source = next_belief.source
+                prior.suspected_agents = list(next_belief.suspected_agents)
+                prior.related_event_ids = list({*prior.related_event_ids, *next_belief.related_event_ids})
+                prior.last_updated_turn = world.turn
+                if next_belief.status in {"active", "confirmed"}:
+                    prior.last_confirmed_turn = world.turn
+
+            beliefs = sorted(
+                belief_index.values(),
+                key=lambda belief: (belief.confidence, belief.last_updated_turn, belief.confirmation_count),
+                reverse=True,
+            )[:8]
+            updated_state[agent_id] = AgentBeliefState(
+                agent_id=agent_id,
+                dominant_topics=self._dominant_belief_topics(beliefs),
+                beliefs=beliefs,
+                last_revision_turn=world.turn,
+            )
+        return updated_state
+
+    def _relevant_latent_events_for_agent(self, world: WorldState, agent_id: str) -> list[LatentEvent]:
+        relevant_events: list[LatentEvent] = []
+        for event in world.latent_events:
+            if event.status == "resolved":
+                continue
+            if agent_id == "oversight":
+                relevant_events.append(event)
+                continue
+            if event.visibility in {"public", "mixed"} or agent_id in event.affected_agents:
+                relevant_events.append(event)
+        return relevant_events
+
+    def _belief_entry_from_event(
+        self,
+        event: LatentEvent,
+        *,
+        world: WorldState,
+        episode: EpisodeMetadata,
+        agent_id: str,
+    ) -> AgentBeliefEntry:
+        summary = self._belief_summary_for_agent(event, world=world, episode=episode, agent_id=agent_id)
+        confidence = self._belief_confidence_for_agent(event, world=world, episode=episode, agent_id=agent_id)
+        status = self._belief_status_for_agent(event, confidence=confidence, episode=episode, agent_id=agent_id)
+        return AgentBeliefEntry(
+            belief_id=f"{agent_id}:{event.event_id}",
+            topic=event.topic,
+            summary=summary,
+            confidence=confidence,
+            status=status,
+            source=event.origin,
+            suspected_agents=list(event.affected_agents),
+            related_event_ids=[event.event_id, *event.linked_event_ids],
+            confirmation_count=1 if status in {"active", "confirmed"} else 0,
+            contradiction_count=1 if status == "contested" else 0,
+            last_confirmed_turn=world.turn if status in {"active", "confirmed"} else None,
+            last_updated_turn=world.turn,
+        )
+
+    def _belief_summary_for_agent(
+        self,
+        event: LatentEvent,
+        *,
+        world: WorldState,
+        episode: EpisodeMetadata,
+        agent_id: str,
+    ) -> str:
+        narrative = self._select_private_event_narrative(event, world=world, episode=episode, agent_id=agent_id)
+        prefix = "Belief" if event.visibility == "private" else "Assessment"
+        return self._clip_summary(f"{prefix}: {narrative.summary}", 180)
+
+    def _belief_confidence_for_agent(
+        self,
+        event: LatentEvent,
+        *,
+        world: WorldState,
+        episode: EpisodeMetadata,
+        agent_id: str,
+    ) -> float:
+        confidence = event.reliability
+        if event.visibility == "public":
+            confidence += 0.12
+        elif event.visibility == "private":
+            confidence -= 0.08
+        if self._observation_projection_enabled(agent_id, episode):
+            confidence += (self._projection_unit(world, episode, agent_id, f"belief:{event.event_id}") - 0.5) * 0.22
+        if agent_id != "oversight" and agent_id not in event.affected_agents and event.visibility != "public":
+            confidence -= 0.14
+        return round(max(0.08, min(0.96, confidence)), 3)
+
+    @staticmethod
+    def _belief_status_for_agent(
+        event: LatentEvent,
+        *,
+        confidence: float,
+        episode: EpisodeMetadata,
+        agent_id: str,
+    ) -> str:
+        if event.visibility == "private" and agent_id not in event.affected_agents and agent_id != "oversight":
+            return "suspected"
+        if event.status == "contained" and confidence < 0.45:
+            return "contested"
+        if not episode.fog_of_war or agent_id == "oversight":
+            return "confirmed"
+        if confidence >= 0.7:
+            return "active"
+        if confidence <= 0.34:
+            return "suspected"
+        return "contested"
+
+    @staticmethod
+    def _dominant_belief_topics(beliefs: list[AgentBeliefEntry]) -> list[str]:
+        ranked: dict[str, float] = {}
+        for belief in beliefs:
+            ranked[belief.topic] = ranked.get(belief.topic, 0.0) + belief.confidence
+        return [
+            topic
+            for topic, _ in sorted(ranked.items(), key=lambda item: item[1], reverse=True)[:3]
+        ]
+
     def _build_observations(
         self,
         world: WorldState,
         episode: EpisodeMetadata,
         *,
         include_live_sources: bool = False,
+        belief_state: dict[str, AgentBeliefState] | None = None,
     ) -> dict[str, AgentObservation]:
         observations: dict[str, AgentObservation] = {}
         public_events = [event for event in world.active_events if event.public][-MAX_PUBLIC_BRIEF_ITEMS:]
@@ -1626,6 +1840,7 @@ class FogOfWarDiplomacyEnv:
             live_source_bundle = AGENT_LIVE_SOURCE_BUNDLES.get(agent_id, [])
             available_data_sources = self._build_data_source_context(agent_id)
             projection_enabled = self._observation_projection_enabled(agent_id, episode)
+            beliefs = (belief_state or {}).get(agent_id, AgentBeliefState(agent_id=agent_id))
             training_source_packets, live_source_packets = self._source_harvester.get_packets_for_agent(
                 agent_id,
                 include_live=include_live_sources,
@@ -1705,11 +1920,14 @@ class FogOfWarDiplomacyEnv:
                 available_data_sources=available_data_sources,
                 live_enabled=include_live_sources,
                 projection=projection,
+                belief_state=beliefs,
             )
 
             observations[agent_id] = AgentObservation(
                 public_brief=public_brief,
                 private_brief=private_brief,
+                belief_brief=[belief.summary for belief in beliefs.beliefs[:4]],
+                belief_topics=list(beliefs.dominant_topics),
                 perceived_tension=self._perceived_tension(world.tension_level, agent_id, episode.fog_of_war),
                 known_coalitions=sorted(world.coalition_graph.get(agent_id, [])),
                 event_log=public_events,
@@ -2555,6 +2773,7 @@ class FogOfWarDiplomacyEnv:
         available_data_sources: list[DataSourceContext],
         live_enabled: bool,
         projection: ObservationProjection,
+        belief_state: AgentBeliefState,
     ) -> str:
         profile = AGENT_PROFILES[agent_id]
         source_limit, asset_limit = ASSET_DECISION_SOURCE_LIMITS[profile.model_size]
@@ -2605,6 +2824,12 @@ class FogOfWarDiplomacyEnv:
             prompt_sections.append(f"Protected interests: {', '.join(top_interests)}.")
         if front_summary:
             prompt_sections.append(f"Priority fronts: {', '.join(front_summary)}.")
+        if belief_state.dominant_topics:
+            prompt_sections.append("Dominant remembered belief topics: " + ", ".join(belief_state.dominant_topics[:3]) + ".")
+        if belief_state.beliefs:
+            prompt_sections.append(
+                "Belief memory:\n" + "\n".join(f"- {belief.summary}" for belief in belief_state.beliefs[:3])
+            )
         prompt_sections.append(f"Allowed actions: {', '.join(AGENT_ALLOWED_ACTIONS.get(agent_id, ()))}.")
         prompt_sections.append("Data sources available to you:\n" + ("\n".join(source_lines) if source_lines else "- None configured."))
         prompt_sections.append("Mapped assets under your control:\n" + ("\n".join(asset_lines) if asset_lines else "- No mapped assets available."))

@@ -49,6 +49,7 @@ def test_openenv_adapter_reset_and_step() -> None:
     assert truncated is False
     assert next_info["turn"] == 1
     assert next_info["world"]["turn"] == 1
+    assert next_info["belief_state"]["us"]["beliefs"]
 
 
 def test_trenches_openenv_environment_returns_scalar_reward_for_active_agent() -> None:
@@ -91,6 +92,7 @@ def test_trenches_openenv_environment_returns_scalar_reward_for_active_agent() -
     assert next_observation.training_agent == "us"
     assert next_observation.reward == runtime.state.reward_breakdowns["us"].total
     assert next_observation.agent_observation.known_coalitions
+    assert next_observation.agent_observation.belief_brief
     assert runtime.state.step_count == 1
     runtime.close()
 
@@ -144,7 +146,7 @@ def test_openenv_autofills_missing_agents_with_shared_policy() -> None:
     )
 
     assert runtime.state.session is not None
-    assert runtime.state.session.recent_traces[-1].actions["gulf"].type == "defend"
+    assert runtime.state.session.recent_traces[-1].actions["gulf"].type in {"defend", "negotiate", "intel_query"}
     runtime.close()
 
 

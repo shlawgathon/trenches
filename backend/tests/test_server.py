@@ -124,6 +124,7 @@ def test_server_ingests_news_and_exposes_reaction_log() -> None:
     assert payload["reaction"] is not None
     assert payload["reaction"]["signals"][0]["source"] == "wire-service"
     assert payload["reaction"]["latent_event_ids"]
+    assert payload["session"]["belief_state"]["gulf"]["beliefs"]
     assert {outcome["agent_id"] for outcome in payload["reaction"]["actor_outcomes"]} == {"us", "gulf", "oversight"}
 
     log_response = client.get(f"/sessions/{session_id}/reactions")

@@ -172,9 +172,33 @@ class EntityModelBinding(BaseModel):
     notes: list[str] = Field(default_factory=list)
 
 
+class AgentBeliefEntry(BaseModel):
+    belief_id: str
+    topic: str
+    summary: str
+    confidence: float = 0.5
+    status: Literal["suspected", "active", "contested", "confirmed", "disconfirmed"] = "suspected"
+    source: str = "latent_event"
+    suspected_agents: list[str] = Field(default_factory=list)
+    related_event_ids: list[str] = Field(default_factory=list)
+    confirmation_count: int = 0
+    contradiction_count: int = 0
+    last_confirmed_turn: int | None = None
+    last_updated_turn: int = 0
+
+
+class AgentBeliefState(BaseModel):
+    agent_id: str
+    dominant_topics: list[str] = Field(default_factory=list)
+    beliefs: list[AgentBeliefEntry] = Field(default_factory=list)
+    last_revision_turn: int = 0
+
+
 class AgentObservation(BaseModel):
     public_brief: list[IntelSnippet] = Field(default_factory=list)
     private_brief: list[IntelSnippet] = Field(default_factory=list)
+    belief_brief: list[str] = Field(default_factory=list)
+    belief_topics: list[str] = Field(default_factory=list)
     perceived_tension: float = 50.0
     known_coalitions: list[str] = Field(default_factory=list)
     event_log: list[BlackSwanEvent] = Field(default_factory=list)
@@ -291,6 +315,7 @@ class SessionState(BaseModel):
     seed: int | None = None
     world: WorldState
     observations: dict[str, AgentObservation] = Field(default_factory=dict)
+    belief_state: dict[str, AgentBeliefState] = Field(default_factory=dict)
     rewards: dict[str, RewardBreakdown] = Field(default_factory=dict)
     model_bindings: dict[str, EntityModelBinding] = Field(default_factory=dict)
     episode: EpisodeMetadata = Field(default_factory=EpisodeMetadata)

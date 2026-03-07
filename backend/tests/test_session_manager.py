@@ -228,6 +228,8 @@ def test_ingest_news_generates_structured_reaction_log() -> None:
     assert all(outcome.action.metadata["mode"] in {"heuristic_fallback", "provider_inference"} for outcome in response.reaction.actor_outcomes)
     assert response.session.reaction_log[-1].event_id == response.reaction.event_id
     assert manager.reaction_log(session.session_id)[-1].event_id == response.reaction.event_id
+    assert response.session.belief_state["gulf"].beliefs
+    assert response.session.observations["gulf"].belief_brief
 
 
 def test_provider_diagnostics_are_available_per_session() -> None:

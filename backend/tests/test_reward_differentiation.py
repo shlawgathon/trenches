@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import pytest
 
 from trenches_env.env import FogOfWarDiplomacyEnv
-from trenches_env.models import AgentAction, EpisodeMetadata, SourcePacket
+from trenches_env.models import AgentAction, EpisodeMetadata, ExternalSignal, SourcePacket, StepSessionRequest
 from trenches_env.rl import AGENT_ACTION_ALIGNMENT, AGENT_ACTION_IMPACTS, AGENT_ALLOWED_ACTIONS, AGENT_STATE_ACTION_EFFECTS
 
 
@@ -147,6 +147,46 @@ def test_world_tracks_latent_state_separately_from_public_state() -> None:
     session = env.create_session(seed=7, scenario_id="shipping_crisis")
 
     assert session.world.latent_state["gulf"]["shipping_continuity"] < session.world.actor_state["gulf"]["shipping_continuity"]
+    assert session.world.latent_events
+    assert any(event.topic == "shipping" for event in session.world.latent_events)
+    assert session.belief_state["gulf"].beliefs
+    assert "shipping" in session.belief_state["gulf"].dominant_topics
+
+
+def test_scenario_latent_events_flow_into_private_observations() -> None:
+    env = FogOfWarDiplomacyEnv()
+    session = env.create_session(seed=7, scenario_id="shipping_crisis", training_stage="stage_3_sparse")
+
+    assert any("coordinated" in brief.summary.lower() for brief in session.observations["gulf"].private_brief)
+    assert session.observations["gulf"].belief_brief
+    assert session.observations["gulf"].belief_topics
+    assert "Belief memory:" in session.observations["gulf"].decision_prompt
+
+
+def test_external_signals_create_linked_latent_events() -> None:
+    env = FogOfWarDiplomacyEnv()
+    session = env.create_session(seed=7)
+
+    result = env.step_session(
+        session,
+        StepSessionRequest(
+            actions={},
+            external_signals=[
+                ExternalSignal(
+                    source="wire-service",
+                    headline="Shipping risk rises in Hormuz after new tanker disruption reports.",
+                    region="gulf",
+                    tags=["shipping", "oil"],
+                    severity=0.7,
+                )
+            ],
+        ),
+    )
+
+    topics = {event.topic for event in result.session.world.latent_events if event.started_at_turn == result.session.world.turn}
+    assert "shipping" in topics
+    assert "market" in topics
+    assert any("shipping" in belief.topic for belief in result.session.belief_state["gulf"].beliefs)
 
 
 def test_source_projection_can_express_explicit_contradictions() -> None:
@@ -194,6 +234,8 @@ def test_source_projection_can_express_explicit_contradictions() -> None:
     assert worsening_meta["contradiction_packets"] == 1.0
     assert easing_meta["contradiction_packets"] == 1.0
     assert worsening_meta["contradiction_topics"] == ["shipping disruption"]
+    assert any(event.topic == "shipping" for event in session.world.latent_events)
+    assert "multiple commercial tankers report evasive maneuvers" in worsening_briefs[0].summary.lower()
     assert "renewed deterioration" in worsening_briefs[0].summary
     assert "partial stabilization" in easing_briefs[0].summary
 
