@@ -3,11 +3,19 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from time import perf_counter
 from typing import Any
 
 import httpx
 
-from trenches_env.models import AgentAction, AgentObservation, EntityModelBinding, ExternalSignal
+from trenches_env.models import (
+    AgentAction,
+    AgentObservation,
+    EntityModelBinding,
+    ExternalSignal,
+    ProviderAgentDiagnostics,
+)
 from trenches_env.rl import AGENT_ALLOWED_ACTIONS
 
 _OPENAI_COMPATIBLE_PROVIDERS = {"openai", "openrouter", "ollama", "vllm", "custom"}
@@ -17,6 +25,7 @@ _DEFAULT_BASE_URLS = {
     "ollama": "http://127.0.0.1:11434/v1",
     "vllm": "http://127.0.0.1:8000/v1",
 }
+_RETRYABLE_STATUS_CODES = {408, 409, 425, 429, 500, 502, 503, 504}
 
 
 class ProviderDecisionError(RuntimeError):
@@ -31,10 +40,30 @@ class ProviderDecisionRequest:
     external_signals: list[ExternalSignal]
 
 
+@dataclass
+class _ProviderRuntimeStats:
+    request_count: int = 0
+    success_count: int = 0
+    error_count: int = 0
+    consecutive_failures: int = 0
+    total_latency_ms: float = 0.0
+    last_latency_ms: float | None = None
+    last_success_at: datetime | None = None
+    last_error_at: datetime | None = None
+    last_error: str | None = None
+
+
 class ProviderDecisionRuntime:
-    def __init__(self, client: httpx.Client | None = None, timeout_seconds: float = 20.0) -> None:
+    def __init__(
+        self,
+        client: httpx.Client | None = None,
+        timeout_seconds: float = 20.0,
+        max_attempts: int = 2,
+    ) -> None:
         self._client = client or httpx.Client(timeout=timeout_seconds)
         self._owns_client = client is None
+        self._max_attempts = max(1, max_attempts)
+        self._stats: dict[str, _ProviderRuntimeStats] = {}
 
     def close(self) -> None:
         if self._owns_client:
@@ -45,15 +74,68 @@ class ProviderDecisionRuntime:
         if not binding.ready_for_inference:
             raise ProviderDecisionError("binding is not ready for inference")
 
-        provider = binding.provider
-        if provider in _OPENAI_COMPATIBLE_PROVIDERS:
-            payload = self._request_openai_compatible(request)
-        elif provider == "anthropic":
-            payload = self._request_anthropic(request)
-        else:
-            raise ProviderDecisionError(f"unsupported provider: {provider}")
+        stats = self._stats.setdefault(request.agent_id, _ProviderRuntimeStats())
+        stats.request_count += 1
+        last_error: str | None = None
 
-        return self._payload_to_action(request.agent_id, binding, payload)
+        for attempt in range(1, self._max_attempts + 1):
+            started = perf_counter()
+            try:
+                payload = self._request_payload(request)
+                action = self._payload_to_action(request.agent_id, binding, payload)
+                latency_ms = round((perf_counter() - started) * 1000.0, 2)
+                self._record_success(stats, latency_ms)
+                action.metadata.setdefault("provider_attempts", attempt)
+                return action
+            except ProviderDecisionError as exc:
+                latency_ms = round((perf_counter() - started) * 1000.0, 2)
+                last_error = str(exc)
+                if attempt >= self._max_attempts or not self._is_retryable_error(exc):
+                    self._record_error(stats, latency_ms, last_error)
+                    raise
+            except httpx.RequestError as exc:
+                latency_ms = round((perf_counter() - started) * 1000.0, 2)
+                last_error = f"provider network error: {exc}"
+                if attempt >= self._max_attempts:
+                    self._record_error(stats, latency_ms, last_error)
+                    raise ProviderDecisionError(last_error) from exc
+
+        self._record_error(stats, 0.0, last_error or "provider decision failed")
+        raise ProviderDecisionError(last_error or "provider decision failed")
+
+    def diagnostics(self, bindings: dict[str, EntityModelBinding]) -> list[ProviderAgentDiagnostics]:
+        diagnostics: list[ProviderAgentDiagnostics] = []
+        for agent_id, binding in bindings.items():
+            stats = self._stats.get(agent_id, _ProviderRuntimeStats())
+            diagnostics.append(
+                ProviderAgentDiagnostics(
+                    agent_id=agent_id,
+                    provider=binding.provider,
+                    model_name=binding.model_name,
+                    configured=binding.configured,
+                    ready_for_inference=binding.ready_for_inference,
+                    decision_mode=binding.decision_mode,
+                    status=self._status_for(binding, stats),
+                    request_count=stats.request_count,
+                    success_count=stats.success_count,
+                    error_count=stats.error_count,
+                    consecutive_failures=stats.consecutive_failures,
+                    last_latency_ms=stats.last_latency_ms,
+                    avg_latency_ms=round(stats.total_latency_ms / stats.success_count, 2) if stats.success_count else None,
+                    last_success_at=stats.last_success_at,
+                    last_error_at=stats.last_error_at,
+                    last_error=stats.last_error,
+                )
+            )
+        return diagnostics
+
+    def _request_payload(self, request: ProviderDecisionRequest) -> dict[str, Any]:
+        provider = request.binding.provider
+        if provider in _OPENAI_COMPATIBLE_PROVIDERS:
+            return self._request_openai_compatible(request)
+        if provider == "anthropic":
+            return self._request_anthropic(request)
+        raise ProviderDecisionError(f"unsupported provider: {provider}")
 
     def _request_openai_compatible(self, request: ProviderDecisionRequest) -> dict[str, Any]:
         binding = request.binding
@@ -83,7 +165,7 @@ class ProviderDecisionRuntime:
             }
 
         response = self._client.post(url, headers=headers, json=body)
-        response.raise_for_status()
+        self._raise_for_status(response)
         payload = response.json()
         choices = payload.get("choices") or []
         if not choices:
@@ -132,7 +214,7 @@ class ProviderDecisionRuntime:
             },
             json=body,
         )
-        response.raise_for_status()
+        self._raise_for_status(response)
         payload = response.json()
         content = payload.get("content") or []
         for block in content:
@@ -154,6 +236,14 @@ class ProviderDecisionRuntime:
             return None
         value = os.getenv(binding.api_key_env)
         return value.strip() if value else None
+
+    @staticmethod
+    def _raise_for_status(response: httpx.Response) -> None:
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            message = f"provider returned HTTP {exc.response.status_code}"
+            raise ProviderDecisionError(message) from exc
 
     @staticmethod
     def _messages(request: ProviderDecisionRequest) -> list[dict[str, Any]]:
@@ -264,3 +354,43 @@ class ProviderDecisionRuntime:
                 "model": binding.model_name,
             },
         )
+
+    @staticmethod
+    def _is_retryable_error(error: ProviderDecisionError) -> bool:
+        message = str(error).lower()
+        if "timeout" in message or "timed out" in message:
+            return True
+        if "connection" in message or "network" in message:
+            return True
+        if "http " in message:
+            for status_code in _RETRYABLE_STATUS_CODES:
+                if f"http {status_code}" in message:
+                    return True
+        return False
+
+    @staticmethod
+    def _record_success(stats: _ProviderRuntimeStats, latency_ms: float) -> None:
+        stats.success_count += 1
+        stats.consecutive_failures = 0
+        stats.last_latency_ms = latency_ms
+        stats.total_latency_ms += latency_ms
+        stats.last_success_at = datetime.now(timezone.utc)
+        stats.last_error = None
+
+    @staticmethod
+    def _record_error(stats: _ProviderRuntimeStats, latency_ms: float, error: str) -> None:
+        stats.error_count += 1
+        stats.consecutive_failures += 1
+        stats.last_latency_ms = latency_ms if latency_ms > 0.0 else stats.last_latency_ms
+        stats.last_error = error
+        stats.last_error_at = datetime.now(timezone.utc)
+
+    @staticmethod
+    def _status_for(binding: EntityModelBinding, stats: _ProviderRuntimeStats) -> str:
+        if not binding.ready_for_inference:
+            return "fallback_only"
+        if stats.request_count == 0:
+            return "idle"
+        if stats.consecutive_failures > 0:
+            return "degraded"
+        return "healthy"

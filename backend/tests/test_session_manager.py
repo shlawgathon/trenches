@@ -2,7 +2,14 @@ import time
 from datetime import datetime, timedelta, timezone
 
 from trenches_env.env import FogOfWarDiplomacyEnv
-from trenches_env.models import AgentAction, BenchmarkRunRequest, LiveControlRequest, StepSessionRequest
+from trenches_env.models import (
+    AgentAction,
+    BenchmarkRunRequest,
+    ExternalSignal,
+    IngestNewsRequest,
+    LiveControlRequest,
+    StepSessionRequest,
+)
 from trenches_env.session_manager import SessionManager
 from trenches_env.source_bundles import AGENT_LIVE_SOURCE_BUNDLES
 from trenches_env.source_ingestion import SourceHarvester
@@ -189,6 +196,50 @@ def test_background_runner_advances_live_sessions_without_dashboard_polling() ->
 
     assert current.world.turn >= 1
     assert current.live.last_auto_step_at is not None
+    assert current.reaction_log
+
+
+def test_ingest_news_generates_structured_reaction_log() -> None:
+    manager = SessionManager()
+    session = manager.create_session(seed=7)
+
+    response = manager.ingest_news(
+        session.session_id,
+        IngestNewsRequest(
+            signals=[
+                ExternalSignal(
+                    source="wire-service",
+                    headline="Shipping risk rises in Hormuz after reported drone intercept.",
+                    region="gulf",
+                    tags=["shipping", "attack"],
+                    severity=0.76,
+                )
+            ],
+            agent_ids=["us", "gulf", "oversight"],
+        ),
+    )
+
+    assert response.session.world.turn == 1
+    assert response.reaction is not None
+    assert response.reaction.turn == 1
+    assert response.reaction.signals[0].source == "wire-service"
+    assert response.reaction.latent_event_ids
+    assert {outcome.agent_id for outcome in response.reaction.actor_outcomes} == {"us", "gulf", "oversight"}
+    assert all(outcome.action.metadata["mode"] in {"heuristic_fallback", "provider_inference"} for outcome in response.reaction.actor_outcomes)
+    assert response.session.reaction_log[-1].event_id == response.reaction.event_id
+    assert manager.reaction_log(session.session_id)[-1].event_id == response.reaction.event_id
+
+
+def test_provider_diagnostics_are_available_per_session() -> None:
+    manager = SessionManager()
+    session = manager.create_session(seed=7)
+
+    diagnostics = manager.provider_diagnostics(session.session_id)
+    us_diagnostics = next(entry for entry in diagnostics.agents if entry.agent_id == "us")
+
+    assert us_diagnostics.agent_id == "us"
+    assert us_diagnostics.status in {"idle", "fallback_only"}
+    assert us_diagnostics.request_count == 0
 
 
 def test_session_manager_lists_scenarios_and_runs_benchmarks() -> None:

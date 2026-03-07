@@ -19,9 +19,14 @@ from trenches_env.models import (
     EntityModelBinding,
     ExternalSignal,
     IntelSnippet,
+    LatentEvent,
+    LatentEventNarrative,
     LiveControlRequest,
     ObservationProjection,
     OversightIntervention,
+    ProviderDiagnosticsResponse,
+    ReactionActorOutcome,
+    ReactionLogEntry,
     RewardBreakdown,
     SessionState,
     SourcePacket,
@@ -52,6 +57,7 @@ from trenches_env.source_monitor import build_source_monitor_report
 from trenches_env.scenarios import (
     ScenarioAssetImpact,
     ScenarioDefinition,
+    ScenarioLatentEvent,
     ScenarioSignal,
     get_scenario_definition,
     list_scenario_definitions,
@@ -127,6 +133,25 @@ CONTRADICTION_TOPIC_LABELS = {
     "corridor": "corridor interdiction",
     "domestic": "domestic stability",
     "cyber": "cyber disruption",
+    "market": "market dislocation",
+    "humanitarian": "humanitarian fallout",
+    "diplomacy": "diplomatic signaling",
+}
+LATENT_EVENT_TOPIC_KEYWORDS = {
+    "shipping": ("shipping", "tanker", "hormuz", "port", "oil", "maritime", "terminal", "ais", "vessel"),
+    "border": ("rocket", "missile", "border", "galilee", "idf", "drone", "lebanon", "launch", "intercept"),
+    "corridor": ("corridor", "bekaa", "syria", "transfer", "logistics", "interdiction", "sustainment"),
+    "domestic": ("sanction", "unrest", "protest", "inflation", "currency", "domestic", "regime"),
+    "cyber": ("cyber", "outage", "blackout", "cable", "internet", "network", "malware"),
+    "market": ("market", "investor", "trade", "stocks", "shares", "bond", "premium", "insurance"),
+    "humanitarian": ("humanitarian", "aid", "displacement", "relief", "civilian", "refugee", "shelter"),
+    "diplomacy": ("ceasefire", "talk", "negotiat", "summit", "diplomat", "mediat", "channel"),
+}
+LATENT_EVENT_LINKS = {
+    "shipping": ("market",),
+    "border": ("humanitarian",),
+    "corridor": ("border",),
+    "cyber": ("market",),
 }
 PUBLIC_STATE_SYNC_FACTORS = {
     "support": 0.62,
@@ -328,6 +353,7 @@ class FogOfWarDiplomacyEnv:
     def step_session(self, session: SessionState, request: StepSessionRequest) -> StepSessionResponse:
         next_session = session.model_copy(deep=True)
         before_tension = next_session.world.tension_level
+        prior_latent_event_ids = {event.event_id for event in next_session.world.latent_events}
         next_session.world.turn += 1
         if next_session.live.enabled:
             self._source_harvester.refresh_due_batch(include_live=True)
@@ -344,6 +370,10 @@ class FogOfWarDiplomacyEnv:
         self._apply_actions(next_session.world, resolved_actions)
         if next_session.episode.oversight_enabled:
             self._apply_oversight(next_session.world, oversight)
+        self._resync_public_events(next_session.world)
+        latent_event_ids = [
+            event.event_id for event in next_session.world.latent_events if event.event_id not in prior_latent_event_ids
+        ]
 
         next_session.rewards = self._compute_rewards(world=next_session.world, episode=next_session.episode)
         next_session.model_bindings = self._build_model_bindings()
@@ -365,6 +395,18 @@ class FogOfWarDiplomacyEnv:
         next_session.recent_traces = next_session.recent_traces[-25:]
         next_session.action_log.extend(self._build_action_log_entries(next_session, resolved_actions))
         next_session.action_log = next_session.action_log[-250:]
+        if request.external_signals:
+            next_session.reaction_log.append(
+                self._build_reaction_log_entry(
+                    session=next_session,
+                    signals=request.external_signals,
+                    latent_event_ids=latent_event_ids,
+                    actions=resolved_actions,
+                    oversight=oversight,
+                    tension_before=before_tension,
+                )
+            )
+            next_session.reaction_log = next_session.reaction_log[-100:]
         next_session.updated_at = datetime.now(timezone.utc)
 
         return StepSessionResponse(
@@ -393,6 +435,12 @@ class FogOfWarDiplomacyEnv:
 
     def source_monitor(self, session: SessionState) -> SourceMonitorReport:
         return build_source_monitor_report(session, harvester=self._source_harvester)
+
+    def provider_diagnostics(self, session: SessionState) -> ProviderDiagnosticsResponse:
+        bindings = session.model_bindings or self._build_model_bindings()
+        return ProviderDiagnosticsResponse(
+            agents=self._provider_runtime.diagnostics(bindings)
+        )
 
     def list_scenarios(self) -> list[ScenarioDefinition]:
         return list_scenario_definitions()
@@ -895,11 +943,39 @@ class FogOfWarDiplomacyEnv:
 
     def _initial_world(self) -> WorldState:
         latent_state = {agent_id: metrics.copy() for agent_id, metrics in AGENT_STATE_BASELINES.items()}
+        baseline_event = LatentEvent(
+            event_id="baseline-posture",
+            topic="diplomacy",
+            status="active",
+            severity=0.45,
+            visibility="public",
+            reliability=0.74,
+            origin="scenario",
+            affected_agents=["us", "israel", "iran", "hezbollah", "gulf"],
+            started_at_turn=0,
+            last_updated_turn=0,
+            decay_rate=0.03,
+            narratives=[
+                LatentEventNarrative(
+                    framing="baseline",
+                    summary="Regional alert posture is elevated after a contested strike window.",
+                    confidence=0.74,
+                    public=True,
+                ),
+                LatentEventNarrative(
+                    framing="concealed",
+                    summary="Privately, all major actors assess that deterrence signaling remains brittle and prone to misread escalation.",
+                    confidence=0.68,
+                    public=False,
+                ),
+            ],
+        )
         return WorldState(
             tension_level=50.0,
             market_stress=28.0,
             oil_pressure=36.0,
             latent_state=latent_state,
+            latent_events=[baseline_event],
             actor_state={agent_id: metrics.copy() for agent_id, metrics in latent_state.items()},
             asset_state=self._initial_asset_state(),
             coalition_graph={
@@ -973,25 +1049,26 @@ class FogOfWarDiplomacyEnv:
         for impact in scenario.asset_impacts:
             self._apply_scenario_asset_impact(world, impact)
 
-        for index, event in enumerate(scenario.public_events):
-            world.active_events.append(
-                BlackSwanEvent(
-                    id=f"scenario-{scenario.id}-{index}",
-                    summary=event.headline,
-                    source=event.source,
-                    severity=event.severity,
-                    public=True,
-                    affected_agents=self._infer_affected_agents(
-                        ExternalSignal(
-                            source=event.source,
-                            headline=event.headline,
-                            region=event.region,
-                            tags=list(event.tags),
-                            severity=event.severity,
-                        )
+        for event in scenario.public_events:
+            self._register_latent_event(
+                world,
+                self._signal_to_latent_event(
+                    world,
+                    ExternalSignal(
+                        source=event.source,
+                        headline=event.headline,
+                        region=event.region,
+                        tags=list(event.tags),
+                        severity=event.severity,
                     ),
-                )
+                ),
             )
+        for index, event in enumerate(scenario.latent_events):
+            self._register_latent_event(
+                world,
+                self._scenario_latent_event_to_event(scenario.id, index, event),
+            )
+        self._resync_public_events(world)
         self._resync_public_actor_state(world)
 
     def _apply_scenario_asset_impact(self, world: WorldState, impact: ScenarioAssetImpact) -> None:
@@ -1015,23 +1092,284 @@ class FogOfWarDiplomacyEnv:
             max_status=impact.max_status,
         )
 
-    def _inject_external_signals(self, world: WorldState, signals: list[ExternalSignal]) -> None:
-        for index, signal in enumerate(signals):
-            event = BlackSwanEvent(
-                id=f"signal-{world.turn}-{index}",
-                summary=signal.headline,
-                source=signal.source,
-                severity=max(0.0, min(1.0, signal.severity)),
-                public=True,
-                affected_agents=self._infer_affected_agents(signal),
+    def _register_latent_event(
+        self,
+        world: WorldState,
+        event: LatentEvent,
+        *,
+        spawn_links: bool = True,
+    ) -> LatentEvent:
+        world.latent_events = [existing for existing in world.latent_events if existing.event_id != event.event_id]
+        world.latent_events.append(event)
+        if spawn_links:
+            self._spawn_linked_latent_events(world, event)
+        return event
+
+    def _resync_public_events(self, world: WorldState) -> None:
+        public_events: list[BlackSwanEvent] = []
+        for event in world.latent_events[-24:]:
+            if event.status == "resolved" and event.severity < 0.18:
+                continue
+            if event.visibility == "private":
+                continue
+            public_events.append(
+                BlackSwanEvent(
+                    id=event.event_id,
+                    summary=self._latent_event_public_summary(event),
+                    source=event.origin,
+                    severity=round(max(0.22, min(0.95, event.severity * event.reliability + 0.12)), 3),
+                    public=True,
+                    affected_agents=list(event.affected_agents),
+                )
             )
-            world.active_events.append(event)
+        world.active_events = public_events[-12:]
+
+    def _scenario_latent_event_to_event(
+        self,
+        scenario_id: str,
+        index: int,
+        event: ScenarioLatentEvent,
+    ) -> LatentEvent:
+        affected_agents = list(event.affected_agents) or ["us", "israel", "iran", "hezbollah", "gulf"]
+        narratives = [
+            LatentEventNarrative(
+                framing="baseline",
+                summary=event.public_summary or event.summary,
+                confidence=min(0.92, event.reliability + 0.06),
+                public=True,
+            )
+        ]
+        if event.private_summary:
+            narratives.append(
+                LatentEventNarrative(
+                    framing="concealed",
+                    summary=event.private_summary,
+                    confidence=max(0.36, event.reliability),
+                    public=False,
+                )
+            )
+        return LatentEvent(
+            event_id=f"scenario-latent-{scenario_id}-{index}",
+            topic=event.topic,
+            status="active",
+            severity=event.severity,
+            visibility=event.visibility,  # type: ignore[arg-type]
+            reliability=event.reliability,
+            origin=event.source,
+            affected_agents=affected_agents,
+            started_at_turn=0,
+            last_updated_turn=0,
+            decay_rate=event.decay_rate,
+            narratives=narratives or self._default_latent_event_narratives(event.topic, event.summary),
+        )
+
+    def _spawn_linked_latent_events(self, world: WorldState, event: LatentEvent) -> None:
+        if event.severity < 0.48:
+            return
+        for linked_topic in LATENT_EVENT_LINKS.get(event.topic, ()):
+            if any(
+                existing.topic == linked_topic
+                and event.event_id in existing.linked_event_ids
+                and existing.status != "resolved"
+                for existing in world.latent_events
+            ):
+                continue
+            linked_event = LatentEvent(
+                event_id=f"{event.event_id}-{linked_topic}",
+                topic=linked_topic,
+                status="emerging",
+                severity=round(max(0.24, min(0.82, event.severity * 0.68)), 3),
+                visibility="public" if linked_topic in {"market", "humanitarian", "diplomacy"} else "mixed",
+                reliability=max(0.42, round(event.reliability - 0.06, 3)),
+                origin=event.origin,
+                affected_agents=list(event.affected_agents),
+                started_at_turn=world.turn,
+                last_updated_turn=world.turn,
+                decay_rate=min(0.16, event.decay_rate + 0.02),
+                linked_event_ids=[event.event_id],
+                narratives=self._default_latent_event_narratives(
+                    linked_topic,
+                    self._linked_event_summary(linked_topic, event),
+                ),
+            )
+            self._register_latent_event(world, linked_event, spawn_links=False)
+
+    def _signal_to_latent_event(self, world: WorldState, signal: ExternalSignal) -> LatentEvent:
+        topic = self._infer_event_topics_from_text(
+            f"{signal.headline} {' '.join(signal.tags)} {(signal.region or '')}"
+        )[0]
+        affected_agents = self._infer_affected_agents(signal)
+        return LatentEvent(
+            event_id=f"signal-{world.turn}-{len(world.latent_events)}",
+            topic=topic,
+            status="active",
+            severity=round(max(0.12, min(1.0, signal.severity)), 3),
+            visibility="public",
+            reliability=0.72,
+            origin=signal.source,
+            affected_agents=affected_agents,
+            started_at_turn=world.turn,
+            last_updated_turn=world.turn,
+            decay_rate=0.08,
+            narratives=self._default_latent_event_narratives(topic, signal.headline),
+        )
+
+    def _action_to_latent_event(self, world: WorldState, agent_id: str, action: AgentAction) -> LatentEvent | None:
+        if action.type == "hold":
+            return None
+        topic = self._infer_action_event_topic(agent_id, action)
+        affected_agents = [agent_id]
+        if action.target in AGENT_IDS:
+            affected_agents.append(action.target)
+        severity = {
+            "strike": 0.72,
+            "mobilize": 0.62,
+            "deceive": 0.54,
+            "sanction": 0.5,
+            "defend": 0.44,
+            "intel_query": 0.36,
+            "negotiate": 0.42,
+            "oversight_review": 0.4,
+        }.get(action.type, 0.38)
+        visibility = {
+            "strike": "public",
+            "sanction": "public",
+            "negotiate": "public",
+            "oversight_review": "public",
+            "mobilize": "mixed",
+            "defend": "mixed",
+            "intel_query": "private",
+            "deceive": "private",
+        }.get(action.type, "mixed")
+        summary = action.summary or f"{agent_id} executed {action.type}."
+        return LatentEvent(
+            event_id=f"action-{agent_id}-{world.turn}-{len(world.latent_events)}",
+            topic=topic,
+            status="active",
+            severity=severity,
+            visibility=visibility,
+            reliability=0.66 if visibility == "public" else 0.58,
+            origin=f"{agent_id}-action",
+            affected_agents=sorted(set(affected_agents)),
+            started_at_turn=world.turn,
+            last_updated_turn=world.turn,
+            decay_rate=0.07 if visibility == "public" else 0.1,
+            narratives=self._default_latent_event_narratives(topic, summary),
+        )
+
+    def _default_latent_event_narratives(self, topic: str, summary: str) -> list[LatentEventNarrative]:
+        topic_label = CONTRADICTION_TOPIC_LABELS.get(topic, topic)
+        clipped = self._clip_summary(summary)
+        return [
+            LatentEventNarrative(framing="baseline", summary=clipped, confidence=0.72, public=True),
+            LatentEventNarrative(
+                framing="deteriorating",
+                summary=self._clip_summary(
+                    f"Private reporting points to renewed deterioration in the broader {topic_label} picture. {clipped}"
+                ),
+                confidence=0.64,
+                public=False,
+            ),
+            LatentEventNarrative(
+                framing="stabilizing",
+                summary=self._clip_summary(
+                    f"Competing reporting suggests partial stabilization around the broader {topic_label} picture. {clipped}"
+                ),
+                confidence=0.58,
+                public=False,
+            ),
+            LatentEventNarrative(
+                framing="concealed",
+                summary=self._clip_summary(f"Privately, actors suspect additional hidden activity around {topic_label} beyond what is publicly released."),
+                confidence=0.52,
+                public=False,
+            ),
+        ]
+
+    def _linked_event_summary(self, topic: str, event: LatentEvent) -> str:
+        topic_label = CONTRADICTION_TOPIC_LABELS.get(topic, topic)
+        source_label = CONTRADICTION_TOPIC_LABELS.get(event.topic, event.topic)
+        return f"Spillover from {source_label} is now driving {topic_label} pressure."
+
+    @staticmethod
+    def _latent_event_public_summary(event: LatentEvent) -> str:
+        for narrative in event.narratives:
+            if narrative.public:
+                return narrative.summary
+        return event.narratives[0].summary if event.narratives else event.topic
+
+    def _infer_event_topics_from_text(self, text: str) -> list[str]:
+        lowered = text.lower()
+        topics = [
+            topic
+            for topic, keywords in LATENT_EVENT_TOPIC_KEYWORDS.items()
+            if any(keyword in lowered for keyword in keywords)
+        ]
+        return topics or ["diplomacy"]
+
+    def _infer_action_event_topic(self, agent_id: str, action: AgentAction) -> str:
+        if action.type in {"negotiate", "oversight_review"}:
+            return "diplomacy"
+        if action.type == "sanction":
+            return "domestic"
+        if action.type in {"deceive", "intel_query"}:
+            return "cyber"
+        if action.type == "mobilize" and agent_id in {"iran", "hezbollah"}:
+            return "corridor"
+        if action.type in {"strike", "mobilize", "defend"} and action.target in {"gulf", "iran"}:
+            return "shipping"
+        if action.type in {"strike", "mobilize", "defend"}:
+            return "border"
+        return "diplomacy"
+
+    def _apply_latent_event_pressure(self, world: WorldState) -> None:
+        for event in world.latent_events:
+            if event.status == "resolved":
+                continue
+            pressure = event.severity * max(event.reliability, 0.35)
+            if event.topic == "shipping":
+                world.market_stress = self._clamp_percent(world.market_stress + pressure * 0.8)
+                world.oil_pressure = self._clamp_percent(world.oil_pressure + pressure * 1.1)
+            elif event.topic == "border":
+                world.tension_level = self._clamp_percent(world.tension_level + pressure * 0.9)
+            elif event.topic == "corridor":
+                world.tension_level = self._clamp_percent(world.tension_level + pressure * 0.7)
+                world.oil_pressure = self._clamp_percent(world.oil_pressure + pressure * 0.25)
+            elif event.topic == "cyber":
+                world.tension_level = self._clamp_percent(world.tension_level + pressure * 0.35)
+                world.market_stress = self._clamp_percent(world.market_stress + pressure * 0.45)
+            elif event.topic == "domestic":
+                world.market_stress = self._clamp_percent(world.market_stress + pressure * 0.4)
+            elif event.topic == "humanitarian":
+                world.tension_level = self._clamp_percent(world.tension_level + pressure * 0.25)
+            elif event.topic == "diplomacy":
+                world.tension_level = self._clamp_percent(world.tension_level - pressure * 0.35)
+                world.market_stress = self._clamp_percent(world.market_stress - pressure * 0.18)
+
+    def _decay_latent_events(self, world: WorldState) -> None:
+        for event in world.latent_events:
+            if event.last_updated_turn >= world.turn:
+                if event.severity >= 0.66:
+                    event.status = "active"
+                continue
+            event.severity = round(max(0.0, event.severity - event.decay_rate), 3)
+            if event.severity <= 0.12:
+                event.status = "resolved"
+            elif event.severity <= 0.35:
+                event.status = "contained"
+            else:
+                event.status = "active"
+
+    def _inject_external_signals(self, world: WorldState, signals: list[ExternalSignal]) -> None:
+        for signal in signals:
+            self._register_latent_event(world, self._signal_to_latent_event(world, signal))
             world.tension_level = min(100.0, world.tension_level + signal.severity * 8.0)
             world.market_stress = min(100.0, world.market_stress + signal.severity * 6.0)
             if "oil" in signal.headline.lower() or "shipping" in signal.tags:
                 world.oil_pressure = min(100.0, world.oil_pressure + signal.severity * 10.0)
             self._apply_signal_pressure(world, signal)
             self._apply_signal_asset_effects(world, signal)
+        self._resync_public_events(world)
         self._resync_public_actor_state(world)
 
     def _infer_affected_agents(self, signal: ExternalSignal) -> list[str]:
@@ -1082,11 +1420,17 @@ class FogOfWarDiplomacyEnv:
             )
             self._apply_actor_state_effects(world, agent_id, action)
             self._apply_asset_action_effects(world, agent_id, action)
+            action_event = self._action_to_latent_event(world, agent_id, action)
+            if action_event is not None:
+                self._register_latent_event(world, action_event)
 
         world.tension_level = round(world.tension_level, 2)
         world.market_stress = round(world.market_stress, 2)
         world.oil_pressure = round(world.oil_pressure, 2)
+        self._apply_latent_event_pressure(world)
+        self._decay_latent_events(world)
         self._reconcile_actor_state(world, actions)
+        self._resync_public_events(world)
         self._resync_public_actor_state(world)
 
     @staticmethod
@@ -1230,16 +1574,27 @@ class FogOfWarDiplomacyEnv:
             return
         world.tension_level = max(0.0, world.tension_level - 4.0)
         world.market_stress = max(0.0, world.market_stress - 2.0)
-        world.active_events.append(
-            BlackSwanEvent(
-                id=f"oversight-{world.turn}",
-                summary="Oversight injected a corrective diplomatic pause into the next state.",
-                source="oversight-wrapper",
+        self._register_latent_event(
+            world,
+            LatentEvent(
+                event_id=f"oversight-{world.turn}-{len(world.latent_events)}",
+                topic="diplomacy",
+                status="active",
                 severity=oversight.risk_score,
-                public=True,
-                affected_agents=oversight.affected_agents,
-            )
+                visibility="public",
+                reliability=0.78,
+                origin="oversight-wrapper",
+                affected_agents=list(oversight.affected_agents),
+                started_at_turn=world.turn,
+                last_updated_turn=world.turn,
+                decay_rate=0.05,
+                narratives=self._default_latent_event_narratives(
+                    "diplomacy",
+                    "Oversight injected a corrective diplomatic pause into the next state.",
+                ),
+            ),
         )
+        self._resync_public_events(world)
         for agent_id in oversight.affected_agents:
             world.risk_scores[agent_id] = oversight.risk_score
             world.behavioral_consistency[agent_id] = min(
@@ -1256,15 +1611,7 @@ class FogOfWarDiplomacyEnv:
     ) -> dict[str, AgentObservation]:
         observations: dict[str, AgentObservation] = {}
         public_events = [event for event in world.active_events if event.public][-MAX_PUBLIC_BRIEF_ITEMS:]
-        public_brief = [
-            IntelSnippet(
-                source=event.source,
-                category="public_event",
-                summary=self._clip_summary(event.summary),
-                confidence=event.severity,
-            )
-            for event in public_events
-        ]
+        public_brief = self._build_public_brief_from_latent_events(world)
 
         for agent_id in AGENT_IDS:
             profile = AGENT_PROFILES[agent_id]
@@ -1292,18 +1639,12 @@ class FogOfWarDiplomacyEnv:
                 )
                 for summary in profile.baseline_private_intel
             ]
-            focused_private_brief: list[IntelSnippet] = []
-            for event in world.active_events[-6:]:
-                haystack = f"{event.summary} {event.source}".lower()
-                if any(term in haystack for term in profile.intelligence_focus):
-                    focused_private_brief.append(
-                        IntelSnippet(
-                            source=event.source,
-                            category="focused_event",
-                            summary=self._clip_summary(event.summary),
-                            confidence=event.severity,
-                        )
-                    )
+            focused_private_brief = self._build_focused_private_brief(
+                world=world,
+                episode=episode,
+                agent_id=agent_id,
+                focus_terms=profile.intelligence_focus,
+            )
             projected_state, obscured_metric_count = self._project_strategic_state(
                 world=world,
                 episode=episode,
@@ -1389,6 +1730,51 @@ class FogOfWarDiplomacyEnv:
             )
         return observations
 
+    def _build_public_brief_from_latent_events(self, world: WorldState) -> list[IntelSnippet]:
+        public_events = [
+            event
+            for event in world.latent_events
+            if event.visibility in {"public", "mixed"} and event.status != "resolved"
+        ][-MAX_PUBLIC_BRIEF_ITEMS:]
+        briefs: list[IntelSnippet] = []
+        for event in public_events:
+            briefs.append(
+                IntelSnippet(
+                    source=event.origin,
+                    category=f"latent_{event.topic}",
+                    summary=self._clip_summary(self._latent_event_public_summary(event)),
+                    confidence=round(max(0.3, min(0.92, event.severity * event.reliability + 0.18)), 3),
+                )
+            )
+        return briefs
+
+    def _build_focused_private_brief(
+        self,
+        *,
+        world: WorldState,
+        episode: EpisodeMetadata,
+        agent_id: str,
+        focus_terms: tuple[str, ...],
+    ) -> list[IntelSnippet]:
+        briefs: list[IntelSnippet] = []
+        for event in reversed(world.latent_events[-8:]):
+            if event.status == "resolved":
+                continue
+            if agent_id != "oversight" and agent_id not in event.affected_agents:
+                event_text = " ".join(narrative.summary for narrative in event.narratives).lower()
+                if not any(term in event_text for term in focus_terms):
+                    continue
+            narrative = self._select_private_event_narrative(event, world=world, episode=episode, agent_id=agent_id)
+            briefs.append(
+                IntelSnippet(
+                    source=event.origin,
+                    category=f"latent_{event.topic}",
+                    summary=self._clip_summary(narrative.summary),
+                    confidence=round(max(0.28, min(0.9, narrative.confidence * event.reliability)), 3),
+                )
+            )
+        return briefs[:3]
+
     def _source_packets_to_briefs(
         self,
         source_packets: list[SourcePacket],
@@ -1420,6 +1806,12 @@ class FogOfWarDiplomacyEnv:
                 delayed_count += 1
                 continue
             confidence = self._projected_source_confidence(packet, world=world, episode=episode, agent_id=agent_id)
+            relevant_events = self._relevant_latent_events_for_packet(packet, world=world)
+            event_context = (
+                max(relevant_events, key=lambda event: event.severity * event.reliability)
+                if relevant_events
+                else None
+            )
             contradiction = self._latent_source_contradiction(
                 packet,
                 world=world,
@@ -1444,6 +1836,7 @@ class FogOfWarDiplomacyEnv:
                         packet.summary,
                         confidence=confidence,
                         contested=contested,
+                        event_context=event_context,
                         contradiction=contradiction,
                     ),
                     confidence=confidence,
@@ -1505,6 +1898,36 @@ class FogOfWarDiplomacyEnv:
                     return private_brief
                 private_brief.append(brief)
         return private_brief
+
+    def _select_private_event_narrative(
+        self,
+        event: LatentEvent,
+        *,
+        world: WorldState,
+        episode: EpisodeMetadata,
+        agent_id: str,
+    ) -> LatentEventNarrative:
+        if not event.narratives:
+            return LatentEventNarrative(
+                framing="baseline",
+                summary=event.topic,
+                confidence=max(0.3, event.reliability),
+                public=event.visibility != "private",
+            )
+        if agent_id == "oversight" and event.narratives:
+            concealed = next((n for n in event.narratives if n.framing == "concealed"), None)
+            return concealed or event.narratives[-1]
+
+        if not self._observation_projection_enabled(agent_id, episode):
+            return event.narratives[0]
+
+        narrative_pool = [
+            narrative
+            for narrative in event.narratives
+            if not narrative.public or event.visibility == "private"
+        ] or event.narratives
+        index = int(self._projection_unit(world, episode, agent_id, f"latent-narrative:{event.event_id}") * len(narrative_pool))
+        return narrative_pool[min(index, len(narrative_pool) - 1)]
 
     def _perceived_tension(self, tension_level: float, agent_id: str, fog_of_war: bool) -> float:
         if agent_id == "oversight" or not fog_of_war:
@@ -1653,19 +2076,27 @@ class FogOfWarDiplomacyEnv:
         *,
         confidence: float,
         contested: bool,
+        event_context: LatentEvent | None = None,
         contradiction: dict[str, object] | None = None,
     ) -> str:
         clipped = self._clip_summary(summary)
+        if event_context is not None and event_context.status != "resolved":
+            event_summary = self._latent_event_public_summary(event_context)
+            clipped = self._clip_summary(
+                f"This reporting fits a broader {CONTRADICTION_TOPIC_LABELS.get(event_context.topic, event_context.topic)} picture. "
+                f"{event_summary} {clipped}"
+            )
         if contradiction and contradiction.get("enabled"):
             topic = str(contradiction["topic"])
             framing = str(contradiction["framing"])
+            narrative_summary = contradiction.get("narrative_summary")
             if framing == "stabilizing":
                 clipped = self._clip_summary(
-                    f"Conflicting {topic} reporting: this source emphasizes partial stabilization around the same development. {clipped}"
+                    f"Conflicting {topic} reporting: {narrative_summary or 'this source emphasizes partial stabilization around the same development.'} {clipped}"
                 )
             else:
                 clipped = self._clip_summary(
-                    f"Conflicting {topic} reporting: this source emphasizes renewed deterioration around the same development. {clipped}"
+                    f"Conflicting {topic} reporting: {narrative_summary or 'this source emphasizes renewed deterioration around the same development.'} {clipped}"
                 )
         if contested:
             return self._clip_summary(f"Contested reporting: {clipped}")
@@ -1686,78 +2117,59 @@ class FogOfWarDiplomacyEnv:
         if not self._observation_projection_enabled(agent_id, episode):
             return {"enabled": False}
 
-        topic, contradiction_strength = self._infer_contradiction_topic(packet, world)
-        if topic is None or contradiction_strength < 0.22:
+        relevant_events = self._relevant_latent_events_for_packet(packet, world=world)
+        if not relevant_events:
+            return {"enabled": False}
+        event = max(relevant_events, key=lambda candidate: candidate.severity * candidate.reliability)
+        contradiction_strength = min(1.0, event.severity * max(event.reliability, 0.4))
+        if contradiction_strength < 0.22:
             return {"enabled": False}
 
-        orientation = self._projection_unit(world, episode, agent_id, f"contradiction:{packet.source_id}:{topic}")
-        framing = "stabilizing" if orientation < 0.5 else "deteriorating"
+        source_hint = f"{packet.source_id} {packet.source_name}".lower()
+        if "rate" in source_hint or "index" in source_hint:
+            framing = "stabilizing"
+        elif "status" in source_hint or "watch" in source_hint or "disruption" in source_hint:
+            framing = "deteriorating"
+        else:
+            orientation = self._projection_unit(world, episode, agent_id, f"contradiction:{packet.source_id}:{event.event_id}")
+            framing = "stabilizing" if orientation < 0.5 else "deteriorating"
+        narrative = next(
+            (candidate for candidate in event.narratives if candidate.framing == framing),
+            None,
+        )
         return {
             "enabled": True,
-            "topic": CONTRADICTION_TOPIC_LABELS.get(topic, topic),
+            "topic": CONTRADICTION_TOPIC_LABELS.get(event.topic, event.topic),
             "framing": framing,
+            "narrative_summary": narrative.summary if narrative is not None else None,
             "confidence_penalty": round(min(0.18, contradiction_strength * 0.22), 3),
         }
 
-    def _infer_contradiction_topic(self, packet: SourcePacket, world: WorldState) -> tuple[str | None, float]:
+    def _relevant_latent_events_for_packet(
+        self,
+        packet: SourcePacket,
+        *,
+        world: WorldState,
+    ) -> list[LatentEvent]:
         try:
             source = get_source_by_id(packet.source_id)
             source_text = " ".join(source.tags)
         except KeyError:
             source_text = ""
         text = f"{packet.summary} {' '.join(packet.sample_items)} {packet.source_name} {source_text}".lower()
-
-        if any(term in text for term in ("shipping", "oil", "tanker", "hormuz", "port", "maritime")):
-            threat = max(
-                (100.0 - self._actor_metric(world, "gulf", "shipping_continuity")) / 100.0,
-                world.oil_pressure / 100.0,
-            )
-            stabilizer = max(
-                self._actor_metric(world, "gulf", "infrastructure_security") / 100.0,
-                self._actor_metric(world, "us", "shipping_security") / 100.0,
-            )
-            return "shipping", min(threat, stabilizer)
-        if any(term in text for term in ("rocket", "missile", "border", "galilee", "idf", "drone", "lebanon")):
-            threat = max(
-                (100.0 - self._actor_metric(world, "israel", "homeland_security")) / 100.0,
-                self._actor_metric(world, "hezbollah", "resistance_credibility") / 100.0,
-            )
-            stabilizer = max(
-                self._actor_metric(world, "israel", "northern_deterrence") / 100.0,
-                self._actor_metric(world, "israel", "us_resupply_confidence") / 100.0,
-            )
-            return "border", min(threat, stabilizer)
-        if any(term in text for term in ("corridor", "bekaa", "syria", "transfer", "logistics", "interdiction")):
-            threat = max(
-                (100.0 - self._actor_metric(world, "iran", "proxy_corridor")) / 100.0,
-                (100.0 - self._actor_metric(world, "hezbollah", "logistics_depth")) / 100.0,
-            )
-            stabilizer = max(
-                self._actor_metric(world, "iran", "deterrence_credibility") / 100.0,
-                self._actor_metric(world, "hezbollah", "launch_survivability") / 100.0,
-            )
-            return "corridor", min(threat, stabilizer)
-        if any(term in text for term in ("sanction", "unrest", "protest", "inflation", "currency", "domestic")):
-            threat = max(
-                (100.0 - self._actor_metric(world, "iran", "regime_stability")) / 100.0,
-                (100.0 - self._actor_metric(world, "us", "domestic_support")) / 100.0,
-            )
-            stabilizer = max(
-                self._actor_metric(world, "iran", "deterrence_credibility") / 100.0,
-                self._actor_metric(world, "us", "regional_access") / 100.0,
-            )
-            return "domestic", min(threat, stabilizer)
-        if any(term in text for term in ("cyber", "outage", "blackout", "cable", "internet")):
-            threat = max(
-                self._actor_metric(world, "oversight", "runaway_risk") / 100.0,
-                (100.0 - self._actor_metric(world, "oversight", "trace_clarity")) / 100.0,
-            )
-            stabilizer = max(
-                self._actor_metric(world, "oversight", "autonomy_balance") / 100.0,
-                self._actor_metric(world, "oversight", "intervention_legitimacy") / 100.0,
-            )
-            return "cyber", min(threat, stabilizer)
-        return None, 0.0
+        topics = set(self._infer_event_topics_from_text(text))
+        relevant_events: list[LatentEvent] = []
+        for event in world.latent_events:
+            if event.status == "resolved":
+                continue
+            if event.topic in topics:
+                relevant_events.append(event)
+                continue
+            narrative_text = " ".join(narrative.summary for narrative in event.narratives).lower()
+            salient_tokens = [token for token in text.split()[:10] if len(token) >= 5]
+            if any(token in narrative_text for token in salient_tokens):
+                relevant_events.append(event)
+        return relevant_events
 
     @staticmethod
     def _projection_unit(world: WorldState, episode: EpisodeMetadata, agent_id: str, label: str) -> float:
@@ -1792,6 +2204,45 @@ class FogOfWarDiplomacyEnv:
                 )
             )
         return entries
+
+    @staticmethod
+    def _build_reaction_log_entry(
+        *,
+        session: SessionState,
+        signals: list[ExternalSignal],
+        latent_event_ids: list[str],
+        actions: dict[str, AgentAction],
+        oversight: OversightIntervention,
+        tension_before: float,
+    ) -> ReactionLogEntry:
+        actor_outcomes: list[ReactionActorOutcome] = []
+        for agent_id, action in actions.items():
+            decision_mode = action.metadata.get("mode")
+            if decision_mode not in {"heuristic_fallback", "provider_inference"}:
+                binding = session.model_bindings.get(agent_id)
+                decision_mode = binding.decision_mode if binding is not None else "heuristic_fallback"
+            actor_outcomes.append(
+                ReactionActorOutcome(
+                    agent_id=agent_id,
+                    action=action,
+                    reward_total=session.rewards.get(agent_id, RewardBreakdown()).total,
+                    decision_mode=decision_mode,
+                )
+            )
+
+        return ReactionLogEntry(
+            event_id=str(uuid4()),
+            turn=session.world.turn,
+            source=signals[0].source if len({signal.source for signal in signals}) == 1 else "public_release",
+            latent_event_ids=latent_event_ids,
+            signals=[signal.model_copy(deep=True) for signal in signals],
+            actor_outcomes=actor_outcomes,
+            oversight_triggered=oversight.triggered,
+            tension_before=tension_before,
+            tension_after=session.world.tension_level,
+            market_stress_after=session.world.market_stress,
+            oil_pressure_after=session.world.oil_pressure,
+        )
 
     def _actor_metric(self, world: WorldState, agent_id: str, metric: str, default: float = 50.0) -> float:
         return world.latent_state.get(agent_id, {}).get(
@@ -2372,15 +2823,26 @@ class FogOfWarDiplomacyEnv:
             current.last_change_reason = reason
             self._apply_asset_metric_impacts(world, owner, current, direction="damage")
             if current.status != previous_status:
-                world.active_events.append(
-                    BlackSwanEvent(
-                        id=f"asset-{owner}-{asset.asset_id}-{world.turn}-{len(world.active_events)}",
-                        summary=f"{current.name} is now {current.status} after {reason}.",
-                        source="asset-state",
+                self._register_latent_event(
+                    world,
+                    LatentEvent(
+                        event_id=f"asset-{owner}-{asset.asset_id}-{world.turn}-{len(world.latent_events)}",
+                        topic="shipping" if any(token in current.section.lower() or token in current.category.lower() for token in ("port", "maritime", "chokepoint", "energy")) else "border",
+                        status="active",
                         severity=min(1.0, max(0.35, (100.0 - current.health) / 100.0)),
-                        public=True,
+                        visibility="public",
+                        reliability=0.7,
+                        origin="asset-state",
                         affected_agents=[owner],
-                    )
+                        affected_assets=[current.asset_id],
+                        started_at_turn=world.turn,
+                        last_updated_turn=world.turn,
+                        decay_rate=0.06,
+                        narratives=self._default_latent_event_narratives(
+                            "shipping" if any(token in current.section.lower() or token in current.category.lower() for token in ("port", "maritime", "chokepoint", "energy")) else "border",
+                            f"{current.name} is now {current.status} after {reason}.",
+                        ),
+                    ),
                 )
 
     def _restore_assets(

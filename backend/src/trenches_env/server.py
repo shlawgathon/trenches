@@ -14,7 +14,11 @@ from trenches_env.models import (
     BenchmarkRunRequest,
     BenchmarkRunResponse,
     CreateSessionRequest,
+    IngestNewsRequest,
+    IngestNewsResponse,
     LiveControlRequest,
+    ProviderDiagnosticsResponse,
+    ReactionLogEntry,
     ResetEnvRequest,
     ResetEnvResponse,
     ResetSessionRequest,
@@ -182,6 +186,29 @@ def create_app(session_manager: SessionManager | None = None) -> FastAPI:
             return manager.source_monitor(session_id=session_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=f"Unknown session: {session_id}") from exc
+
+    @app.get("/sessions/{session_id}/reactions", response_model=list[ReactionLogEntry])
+    async def reaction_log(session_id: str) -> list[ReactionLogEntry]:
+        try:
+            return manager.reaction_log(session_id=session_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=f"Unknown session: {session_id}") from exc
+
+    @app.get("/sessions/{session_id}/providers/diagnostics", response_model=ProviderDiagnosticsResponse)
+    async def provider_diagnostics(session_id: str) -> ProviderDiagnosticsResponse:
+        try:
+            return manager.provider_diagnostics(session_id=session_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=f"Unknown session: {session_id}") from exc
+
+    @app.post("/sessions/{session_id}/news", response_model=IngestNewsResponse)
+    async def ingest_news(session_id: str, request: IngestNewsRequest) -> IngestNewsResponse:
+        try:
+            return manager.ingest_news(session_id=session_id, request=request)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=f"Unknown session: {session_id}") from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.post("/sessions/{session_id}/live", response_model=SessionState)
     async def set_live_mode(session_id: str, request: LiveControlRequest) -> SessionState:

@@ -130,3 +130,122 @@ def test_invalid_provider_output_falls_back_to_heuristic_policy(monkeypatch) -> 
     assert actions["us"].type in {"defend", "negotiate", "intel_query", "hold", "mobilize", "sanction", "strike", "deceive"}
     assert actions["us"].metadata["mode"] == "heuristic_fallback"
     assert "provider_error" in actions["us"].metadata
+
+
+def test_provider_runtime_retries_transient_failure_and_records_diagnostics(monkeypatch) -> None:
+    monkeypatch.setenv("TRENCHES_MODEL_PROVIDER_US", "openai")
+    monkeypatch.setenv("TRENCHES_MODEL_NAME_US", "gpt-4.1")
+    monkeypatch.setenv("TRENCHES_MODEL_API_KEY_ENV_US", "OPENAI_API_KEY")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+
+    attempts = {"count": 0}
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        attempts["count"] += 1
+        if attempts["count"] == 1:
+            return httpx.Response(503, json={"error": "upstream overloaded"})
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "tool_calls": [
+                                {
+                                    "function": {
+                                        "name": "emit_action",
+                                        "arguments": json.dumps(
+                                            {
+                                                "type": "defend",
+                                                "target": "us",
+                                                "summary": "Defend shipping lanes after transient provider recovery.",
+                                            }
+                                        ),
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+        )
+
+    runtime = ProviderDecisionRuntime(client=httpx.Client(transport=httpx.MockTransport(handler)), max_attempts=2)
+    env = FogOfWarDiplomacyEnv(
+        source_harvester=SourceHarvester(auto_start=False),
+        provider_runtime=runtime,
+    )
+    session = env.create_session(seed=7)
+
+    actions = env.resolve_policy_actions(
+        session,
+        [
+            ExternalSignal(
+                source="test-feed",
+                headline="Shipping risk rises near Hormuz.",
+                region="gulf",
+                tags=["shipping", "oil"],
+                severity=0.4,
+            )
+        ],
+        agent_ids=["us"],
+    )
+
+    diagnostics = runtime.diagnostics(session.model_bindings)
+    us_diagnostics = next(entry for entry in diagnostics if entry.agent_id == "us")
+
+    assert attempts["count"] == 2
+    assert actions["us"].type == "defend"
+    assert actions["us"].metadata["provider_attempts"] == 2
+    assert us_diagnostics.status == "healthy"
+    assert us_diagnostics.request_count == 1
+    assert us_diagnostics.success_count == 1
+    assert us_diagnostics.error_count == 0
+    assert us_diagnostics.consecutive_failures == 0
+    assert us_diagnostics.last_success_at is not None
+    assert us_diagnostics.last_error is None
+
+
+def test_provider_runtime_diagnostics_capture_terminal_failure(monkeypatch) -> None:
+    monkeypatch.setenv("TRENCHES_MODEL_PROVIDER_US", "openai")
+    monkeypatch.setenv("TRENCHES_MODEL_NAME_US", "gpt-4.1")
+    monkeypatch.setenv("TRENCHES_MODEL_API_KEY_ENV_US", "OPENAI_API_KEY")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, json={"error": "upstream overloaded"})
+
+    runtime = ProviderDecisionRuntime(client=httpx.Client(transport=httpx.MockTransport(handler)), max_attempts=2)
+    env = FogOfWarDiplomacyEnv(
+        source_harvester=SourceHarvester(auto_start=False),
+        provider_runtime=runtime,
+    )
+    session = env.create_session(seed=7)
+
+    actions = env.resolve_policy_actions(
+        session,
+        [
+            ExternalSignal(
+                source="test-feed",
+                headline="Shipping risk rises near Hormuz.",
+                region="gulf",
+                tags=["shipping", "oil"],
+                severity=0.4,
+            )
+        ],
+        agent_ids=["us"],
+    )
+
+    diagnostics = runtime.diagnostics(session.model_bindings)
+    us_diagnostics = next(entry for entry in diagnostics if entry.agent_id == "us")
+
+    assert actions["us"].metadata["mode"] == "heuristic_fallback"
+    assert "provider returned HTTP 503" in actions["us"].metadata["provider_error"]
+    assert us_diagnostics.status == "degraded"
+    assert us_diagnostics.request_count == 1
+    assert us_diagnostics.success_count == 0
+    assert us_diagnostics.error_count == 1
+    assert us_diagnostics.consecutive_failures == 1
+    assert us_diagnostics.last_error is not None
+    assert "provider returned HTTP 503" in us_diagnostics.last_error
+    assert us_diagnostics.last_error_at is not None

@@ -9,7 +9,11 @@ from trenches_env.env import FogOfWarDiplomacyEnv
 from trenches_env.models import (
     BenchmarkRunRequest,
     BenchmarkRunResponse,
+    IngestNewsRequest,
+    IngestNewsResponse,
     LiveControlRequest,
+    ProviderDiagnosticsResponse,
+    ReactionLogEntry,
     ScenarioSummary,
     SessionState,
     SourceMonitorReport,
@@ -114,6 +118,30 @@ class SessionManager:
             self._sessions[session_id] = result.session
             return result
 
+    def ingest_news(self, session_id: str, request: IngestNewsRequest) -> IngestNewsResponse:
+        with self._lock:
+            if not request.signals:
+                raise ValueError("At least one external signal is required.")
+            current = self._require_session(session_id)
+            refreshed = self.env.refresh_session_sources(current)
+            actions = self.env.resolve_policy_actions(
+                refreshed,
+                request.signals,
+                agent_ids=request.agent_ids or None,
+            )
+            result = self.env.step_session(
+                refreshed,
+                StepSessionRequest(actions=actions, external_signals=request.signals),
+            )
+            self._sessions[session_id] = result.session
+            reaction: ReactionLogEntry | None = result.session.reaction_log[-1] if result.session.reaction_log else None
+            return IngestNewsResponse(
+                session=result.session,
+                oversight=result.oversight,
+                reaction=reaction,
+                done=result.done,
+            )
+
     def refresh_session_sources(self, session_id: str, force: bool = False) -> SessionState:
         with self._lock:
             current = self._require_session(session_id)
@@ -127,6 +155,18 @@ class SessionManager:
             refreshed = self.env.refresh_session_sources(current)
             self._sessions[session_id] = refreshed
             return self.env.source_monitor(refreshed)
+
+    def reaction_log(self, session_id: str) -> list[ReactionLogEntry]:
+        with self._lock:
+            current = self._require_session(session_id)
+            return [entry.model_copy(deep=True) for entry in current.reaction_log]
+
+    def provider_diagnostics(self, session_id: str) -> ProviderDiagnosticsResponse:
+        with self._lock:
+            current = self._require_session(session_id)
+            refreshed = self.env.refresh_session_sources(current)
+            self._sessions[session_id] = refreshed
+            return self.env.provider_diagnostics(refreshed)
 
     def list_scenarios(self) -> list[ScenarioSummary]:
         return [

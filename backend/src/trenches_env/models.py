@@ -23,7 +23,7 @@ SourcePacketStatus = Literal["pending", "ok", "error"]
 SourceMonitorStatus = Literal["healthy", "degraded", "blocked"]
 SourceMonitorIssueSeverity = Literal["warning", "error"]
 AssetConditionStatus = Literal["operational", "degraded", "malfunctioning", "destroyed"]
-DecisionMode = Literal["heuristic_fallback", "provider_ready"]
+DecisionMode = Literal["heuristic_fallback", "provider_ready", "provider_inference"]
 ModelProviderName = Literal["none", "openai", "anthropic", "openrouter", "ollama", "vllm", "custom"]
 
 
@@ -93,6 +93,30 @@ class BlackSwanEvent(BaseModel):
     severity: float = 0.5
     public: bool = True
     affected_agents: list[str] = Field(default_factory=list)
+
+
+class LatentEventNarrative(BaseModel):
+    framing: Literal["baseline", "stabilizing", "deteriorating", "concealed"] = "baseline"
+    summary: str
+    confidence: float = 0.5
+    public: bool = True
+
+
+class LatentEvent(BaseModel):
+    event_id: str
+    topic: str
+    status: Literal["emerging", "active", "contained", "resolved"] = "emerging"
+    severity: float = 0.5
+    visibility: Literal["public", "mixed", "private"] = "mixed"
+    reliability: float = 0.6
+    origin: str
+    affected_agents: list[str] = Field(default_factory=list)
+    affected_assets: list[str] = Field(default_factory=list)
+    started_at_turn: int = 0
+    last_updated_turn: int = 0
+    decay_rate: float = 0.08
+    linked_event_ids: list[str] = Field(default_factory=list)
+    narratives: list[LatentEventNarrative] = Field(default_factory=list)
 
 
 class AgentAction(BaseModel):
@@ -176,6 +200,7 @@ class WorldState(BaseModel):
     market_stress: float = 30.0
     oil_pressure: float = 40.0
     latent_state: dict[str, dict[str, float]] = Field(default_factory=dict)
+    latent_events: list[LatentEvent] = Field(default_factory=list)
     actor_state: dict[str, dict[str, float]] = Field(default_factory=dict)
     asset_state: dict[str, dict[str, AssetCondition]] = Field(default_factory=dict)
     coalition_graph: dict[str, list[str]] = Field(default_factory=dict)
@@ -239,6 +264,28 @@ class ActionLogEntry(BaseModel):
     created_at: datetime = Field(default_factory=utc_now)
 
 
+class ReactionActorOutcome(BaseModel):
+    agent_id: str
+    action: AgentAction
+    reward_total: float = 0.0
+    decision_mode: DecisionMode = "heuristic_fallback"
+
+
+class ReactionLogEntry(BaseModel):
+    event_id: str
+    turn: int
+    source: str = "public_release"
+    latent_event_ids: list[str] = Field(default_factory=list)
+    signals: list[ExternalSignal] = Field(default_factory=list)
+    actor_outcomes: list[ReactionActorOutcome] = Field(default_factory=list)
+    oversight_triggered: bool = False
+    tension_before: float = 0.0
+    tension_after: float = 0.0
+    market_stress_after: float = 0.0
+    oil_pressure_after: float = 0.0
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class SessionState(BaseModel):
     session_id: str
     seed: int | None = None
@@ -249,6 +296,7 @@ class SessionState(BaseModel):
     episode: EpisodeMetadata = Field(default_factory=EpisodeMetadata)
     recent_traces: list[StepTrace] = Field(default_factory=list)
     action_log: list[ActionLogEntry] = Field(default_factory=list)
+    reaction_log: list[ReactionLogEntry] = Field(default_factory=list)
     live: LiveSessionConfig = Field(default_factory=LiveSessionConfig)
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
@@ -332,6 +380,42 @@ class StepSessionResponse(BaseModel):
     session: SessionState
     oversight: OversightIntervention
     done: bool = False
+
+
+class IngestNewsRequest(BaseModel):
+    signals: list[ExternalSignal] = Field(default_factory=list)
+    agent_ids: list[str] = Field(default_factory=list)
+
+
+class IngestNewsResponse(BaseModel):
+    session: SessionState
+    oversight: OversightIntervention
+    reaction: ReactionLogEntry | None = None
+    done: bool = False
+
+
+class ProviderAgentDiagnostics(BaseModel):
+    agent_id: str
+    provider: ModelProviderName = "none"
+    model_name: str = ""
+    configured: bool = False
+    ready_for_inference: bool = False
+    decision_mode: DecisionMode = "heuristic_fallback"
+    status: Literal["idle", "healthy", "degraded", "fallback_only"] = "idle"
+    request_count: int = 0
+    success_count: int = 0
+    error_count: int = 0
+    consecutive_failures: int = 0
+    last_latency_ms: float | None = None
+    avg_latency_ms: float | None = None
+    last_success_at: datetime | None = None
+    last_error_at: datetime | None = None
+    last_error: str | None = None
+
+
+class ProviderDiagnosticsResponse(BaseModel):
+    generated_at: datetime = Field(default_factory=utc_now)
+    agents: list[ProviderAgentDiagnostics] = Field(default_factory=list)
 
 
 class ResetEnvRequest(BaseModel):

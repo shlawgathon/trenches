@@ -1,97 +1,46 @@
 # Backend Summary
 
-This file is the handoff document for anyone continuing the frontend against the current backend.
+This is the backend handoff for the frontend team.
 
-## What The Backend Is
+## Plain-English State Model
 
-The backend is a FastAPI service that exposes two related interfaces:
-
-1. A session-oriented HTTP API for the dashboard and app frontend.
-2. An OpenEnv-compatible environment boundary for training/runtime integration.
-
-The frontend should treat the session API as the main source of truth for application state.
-
-## Important Plain-English State
-
-Before, the world state was too direct.
-
-Now there are three separate layers:
+There are four different layers of state:
 
 1. `world.latent_state`
-   This is the underlying backend truth used for rewards and internal simulation logic.
+   Backend truth. Rewards and simulation logic use this.
 
-2. `world.actor_state`
-   This is the lagged/public summary of the world.
+2. `world.latent_events`
+   Canonical hidden event chain. News, actions, asset damage, and oversight now create or update these events.
 
-3. `observations[agent_id]`
-   This is what each entity actually sees. It can be partial, delayed, contested, and contradictory.
+3. `world.actor_state`
+   Lagged/public summary of the world.
 
-That means the frontend should not assume that:
+4. `observations[agent_id]`
+   What each entity actually sees. This can be partial, delayed, contradictory, and low-confidence.
 
-- `observations[agent].strategic_state`
-  equals
-- `world.actor_state[agent]`
-  or
-- `world.latent_state[agent]`
+The frontend should not treat those layers as interchangeable.
 
-That mismatch is intentional.
+## Real Model Behavior
 
-## Real Vs Fallback Behavior
+Each entity has a `model_bindings[agent_id]` object.
 
-The backend does not fake provider readiness.
+That tells you:
 
-Each entity now has a `model_bindings[agent_id]` object in session state and in `/capabilities`.
+- which provider is configured
+- which model is configured
+- whether the binding is ready for inference
+- which tools/actions the entity is allowed to use
+- whether the entity is currently on real provider execution or heuristic fallback
 
-If a provider is not configured, the backend explicitly reports:
+Current behavior:
 
-- `decision_mode = "heuristic_fallback"`
-- `configured = false`
-
-If a provider is configured, the backend reports:
-
-- provider name
-- model name
-- base URL
-- expected API key env var name
-- whether tool calls / structured output are expected
-
-This is a real plug-in point for later provider execution. It is not yet full provider-driven action generation.
-
-Update:
-
-There is now a real provider execution path in the backend.
-
-If an entity has a configured binding, `resolve_policy_actions(...)` will attempt a real provider call first.
-If that provider call fails, is misconfigured, or returns an illegal action, the env falls back explicitly to
-heuristic policy selection and records the fallback in action metadata.
-
-Provider runtime file:
-
-- [backend/src/trenches_env/provider_runtime.py](/Users/alazarmanakelew/IdeaProjects/trenches/backend/src/trenches_env/provider_runtime.py)
-
-Current provider support:
-
-- OpenAI-compatible chat completions:
-  - `openai`
-  - `openrouter`
-  - `ollama`
-  - `vllm`
-  - `custom`
-- Anthropic messages API
-
-Current execution behavior:
-
-- preferred path: real provider inference
-- fallback path: heuristic policy
-
-Action metadata will show whether the action came from:
-
-- `provider_inference`
-- or `heuristic_fallback`
+- if a provider binding is ready, the backend tries real provider inference first
+- if that fails or returns an invalid action, the backend falls back explicitly to heuristic policy
+- action metadata records whether the action came from `provider_inference` or `heuristic_fallback`
 
 ## Main Endpoints
 
-Base server file:
+Server file:
 
 - [backend/src/trenches_env/server.py](/Users/alazarmanakelew/IdeaProjects/trenches/backend/src/trenches_env/server.py)
 
@@ -102,37 +51,25 @@ Base server file:
 
 - `GET /capabilities`
   Returns:
+  - session/OpenEnv capability flags
   - CORS settings
-  - whether session API is available
-  - whether legacy tuple OpenEnv API is available
-  - whether native `/openenv` is mounted
   - per-entity `model_bindings`
 
-Frontend use:
-Call this once at app startup to decide which runtime features to surface.
+Use this once at app startup.
 
 ### Session Lifecycle
 
 - `POST /sessions`
-  Create a new session.
-
-Request body:
-- `seed?: number`
-- `training_stage?: "stage_1_dense" | "stage_2_partial" | "stage_3_sparse"`
-- `max_turns?: number`
-- `scenario_id?: string`
-
-Response:
-- full `SessionState`
+  Creates a session.
 
 - `POST /sessions/{session_id}/reset`
-  Reset an existing session with the same request shape as create.
+  Resets an existing session.
 
 - `GET /sessions/{session_id}`
-  Get the latest session state.
+  Returns the latest `SessionState`.
 
 - `POST /sessions/{session_id}/step`
-  Advance one turn.
+  Advances one turn.
 
 Request body:
 - `actions: Record<agentId, AgentAction>`
@@ -144,21 +81,68 @@ Response:
   - `oversight`
   - `done`
 
+### Live News And Reaction Timeline
+
+- `POST /sessions/{session_id}/news`
+  Injects public/news signals, lets the backend resolve entity reactions, steps the world, and returns the structured reaction entry for that news event.
+
+Request body:
+- `signals: ExternalSignal[]`
+- `agent_ids?: string[]`
+
+Notes:
+- if `agent_ids` is omitted, all entities react
+- if `agent_ids` is provided, only those entities are auto-resolved for that news event
+- this still goes through the same env step path, so it stays aligned with OpenEnv behavior
+
+Response:
+- `IngestNewsResponse`
+  - `session`
+  - `oversight`
+  - `reaction`
+  - `done`
+
+- `GET /sessions/{session_id}/reactions`
+  Returns the rolling `reaction_log`.
+
+Use these two endpoints for:
+
+- incoming-news timeline
+- “who reacted to what” UI
+- live world-monitoring panels
+
+### Provider Diagnostics
+
+- `GET /sessions/{session_id}/providers/diagnostics`
+  Returns per-entity provider runtime health and recent inference telemetry.
+
+Important fields per entity:
+
+- `status`
+- `request_count`
+- `success_count`
+- `error_count`
+- `consecutive_failures`
+- `last_latency_ms`
+- `avg_latency_ms`
+- `last_success_at`
+- `last_error_at`
+- `last_error`
+
+Use this for:
+
+- provider health badges
+- fallback warnings
+- “model is unhealthy” operator panels
+- debugging why an entity is on heuristic fallback
+
 ### Live Source Controls
 
 - `POST /sessions/{session_id}/live`
-  Enable or disable live mode.
-
-Request body:
-- `enabled: boolean`
-- `auto_step: boolean`
-- `poll_interval_ms: number`
-
-Response:
-- full `SessionState`
+  Enables or disables live mode.
 
 - `POST /sessions/{session_id}/sources/refresh`
-  Force source refresh and rebuild observations.
+  Forces source refresh and rebuilds observations.
 
 - `GET /sessions/{session_id}/sources/monitor`
   Returns source-health and delivery status per entity.
@@ -166,44 +150,36 @@ Response:
 ### Scenarios And Benchmarks
 
 - `GET /scenarios`
-  Returns available seeded scenarios.
+  Returns seeded scenarios.
 
 - `POST /benchmarks/run`
-  Runs benchmark scenarios and returns aggregate scorecards.
+  Runs scenario benchmarks and returns scorecards.
 
-Request body:
-- `scenario_ids?: string[]`
-- `seed?: number`
-- `training_stage?: TrainingStage`
-- `steps_per_scenario?: number`
+### OpenEnv
 
-### Legacy OpenEnv Tuple API
+Legacy tuple-style endpoints:
 
 - `POST /reset`
 - `POST /step`
 - `GET /state`
 
-These exist for older clients. New frontend work should prefer `/sessions/...`.
-
-### Native OpenEnv API
-
 If `openenv-core` is installed, native OpenEnv is mounted at:
 
 - `/openenv`
 
-OpenEnv adapter file:
+OpenEnv file:
 
 - [backend/src/trenches_env/openenv_adapter.py](/Users/alazarmanakelew/IdeaProjects/trenches/backend/src/trenches_env/openenv_adapter.py)
 
-## Core Response Objects
+## Main Schemas
 
-Main schema file:
+Schema file:
 
 - [backend/src/trenches_env/models.py](/Users/alazarmanakelew/IdeaProjects/trenches/backend/src/trenches_env/models.py)
 
 ### SessionState
 
-This is the main object the frontend should render.
+Main top-level object for the frontend.
 
 Important fields:
 
@@ -212,65 +188,53 @@ Important fields:
 - `observations`
 - `rewards`
 - `model_bindings`
-- `episode`
 - `recent_traces`
 - `action_log`
+- `reaction_log`
 - `live`
-- `created_at`
-- `updated_at`
+- `episode`
 
 ### WorldState
 
 Important fields:
 
-- `turn`
-- `tension_level`
-- `market_stress`
-- `oil_pressure`
 - `latent_state`
+- `latent_events`
 - `actor_state`
+- `active_events`
 - `asset_state`
 - `coalition_graph`
-- `active_events`
-- `hidden_intents`
-- `behavioral_consistency`
 - `risk_scores`
 - `last_actions`
 
-Frontend note:
+Important distinction:
 
-- `latent_state` is backend truth, useful for privileged/operator or admin/debug surfaces.
-- `actor_state` is the public/lagged summary.
-- normal entity-facing UI should rely most heavily on `observations`.
+- `latent_events` are canonical hidden events
+- `active_events` are the public-facing projection of those latent events
 
 ### AgentObservation
 
-Per entity, this is the frontend-friendly model-facing view.
+Main entity-facing view.
 
 Important fields:
 
-- `public_brief`
-- `private_brief`
-- `perceived_tension`
-- `known_coalitions`
-- `event_log`
 - `decision_prompt`
 - `available_actions`
 - `available_data_sources`
 - `strategic_state`
 - `strategic_assets`
 - `asset_alerts`
+- `source_packets`
 - `training_source_packets`
 - `live_source_packets`
 - `projection`
 
 ### ObservationProjection
 
-This explains how “clean” or “messy” the current observation is.
+This explains how messy the entity’s current view is.
 
 Important fields:
 
-- `enabled`
 - `mode`
 - `worldview_reliability`
 - `delayed_source_count`
@@ -280,20 +244,18 @@ Important fields:
 - `obscured_metric_count`
 - `notes`
 
-Frontend use:
+Frontend rule:
 
-Render this clearly. It explains why the entity may be making a decision under uncertainty.
+Show this clearly. Do not present entity observations as perfect truth.
 
 ### EntityModelBinding
 
-Per entity provider/runtime config.
+Per-entity provider/runtime config.
 
 Important fields:
 
 - `provider`
 - `model_name`
-- `base_url`
-- `api_key_env`
 - `configured`
 - `ready_for_inference`
 - `decision_mode`
@@ -303,50 +265,32 @@ Important fields:
 - `observation_tools`
 - `notes`
 
-Frontend use:
+### ProviderAgentDiagnostics
 
-Use this for:
-
-- backend readiness badges
-- entity model/provider cards
-- “heuristic fallback” warnings
-- tool availability displays
-
-### RewardBreakdown
-
-Per entity reward object.
+Per-entity runtime telemetry for provider-backed execution.
 
 Important fields:
 
-- `coalition_stability`
-- `escalation_penalty`
-- `market_gain`
-- `behavioral_consistency`
-- `goal_terms`
-- `total`
-
-Frontend use:
-
-Show both `total` and `goal_terms`.
-The goal terms are the entity-specific explanation of why reward moved.
-
-### StepTrace
-
-Rolling recent turn history.
-
-Important fields:
-
-- `turn`
-- `tension_before`
-- `tension_after`
-- `actions`
-- `rewards`
-- `oversight`
-- `created_at`
+- `agent_id`
+- `provider`
+- `model_name`
+- `configured`
+- `ready_for_inference`
+- `decision_mode`
+- `status`
+- `request_count`
+- `success_count`
+- `error_count`
+- `consecutive_failures`
+- `last_latency_ms`
+- `avg_latency_ms`
+- `last_success_at`
+- `last_error_at`
+- `last_error`
 
 ### ActionLogEntry
 
-Human-readable per-action record.
+Per-action activity feed row.
 
 Important fields:
 
@@ -356,208 +300,161 @@ Important fields:
 - `summary`
 - `target`
 - `reward_total`
+- `metadata`
+
+Use this for the entity activity log.
+
+### ReactionLogEntry
+
+Structured “public release -> entity reaction” object.
+
+Important fields:
+
+- `event_id`
+- `turn`
+- `source`
+- `latent_event_ids`
+- `signals`
+- `actor_outcomes`
+- `oversight_triggered`
+- `tension_before`
 - `tension_after`
 - `market_stress_after`
 - `oil_pressure_after`
-- `metadata`
-- `created_at`
 
-Frontend use:
+This is the easiest object for a live news feed.
 
-This is the easiest object for a nation activity feed / timeline.
+### Latent Events
 
-## How Sources Work Now
+The backend now treats event flow as first-class, not just metric movement.
 
-Raw packets are still collected as real source packets.
+Main schema:
 
-Then the env turns those into model-facing briefs with:
+- `LatentEvent`
 
-- confidence shaping
-- possible delay
-- possible contested framing
-- possible contradiction framing
+Key fields:
 
-This means two sources can now disagree about the same latent development.
+- `event_id`
+- `topic`
+- `status`
+- `severity`
+- `visibility`
+- `reliability`
+- `origin`
+- `affected_agents`
+- `affected_assets`
+- `started_at_turn`
+- `last_updated_turn`
+- `decay_rate`
+- `linked_event_ids`
+- `narratives`
 
-Example:
+What this means:
 
-- one source says a shipping disruption is getting worse
-- another source says the same situation is partially stabilizing
+- scenarios can seed hidden events
+- incoming news creates or updates hidden events
+- entity actions create hidden events
+- linked spillover events can be spawned
+- public event feeds are projected from latent events
+- source contradictions now key off latent events, not only metric heuristics
 
-That is intentional and now part of the observation layer.
+### ReactionActorOutcome
 
-## What The Frontend Should Build Against
+One entity’s response to one news event.
 
-The frontend should primarily use:
+Important fields:
 
-1. `/capabilities`
-2. `/scenarios`
-3. `/sessions`
-4. `/sessions/{id}`
-5. `/sessions/{id}/step`
-6. `/sessions/{id}/live`
-7. `/sessions/{id}/sources/monitor`
+- `agent_id`
+- `action`
+- `reward_total`
+- `decision_mode`
 
-Recommended UI panels:
+## What Is Good To Go
 
-1. Global session header
-   Show turn, tension, market stress, oil pressure, live mode.
-
-2. Entity cards
-   Show:
-   - entity observation state
-   - reward total
-   - provider binding
-   - action tools
-   - source-health summary
-
-3. Action timeline
-   Use `action_log`.
-
-4. Recent step trace
-   Use `recent_traces`.
-
-5. Source health view
-   Use `/sources/monitor`.
-
-6. Observation uncertainty view
-   Use `observation.projection`.
-
-7. Scenario picker / benchmark runner
-   Use `/scenarios` and `/benchmarks/run`.
-
-## What Is Already Good To Go
-
-These backend pieces are already strong enough for frontend continuation:
+Backend pieces that are ready for frontend integration:
 
 - session lifecycle
 - live source monitoring
-- per-entity observations
+- latent truth vs public state split
+- latent event engine and event-driven public projection
+- contradiction-aware observation projection
 - per-entity rewards
 - per-entity action logging
+- structured reaction logging for public/news events
 - seeded scenarios
 - benchmark runs
-- latent state vs public state split
-- provider binding surface
-- provider-backed action execution path
-- contradiction-aware source projection
-- OpenEnv compatibility
+- provider bindings
+- real provider execution with explicit fallback
+- provider runtime diagnostics
+- OpenEnv-compatible environment flow
 
-## What Is Not Finished Yet
+## What Is Still Left
 
-These are the main remaining backend gaps:
+### Backend
 
-1. Provider-driven decision execution
-   This now exists for configured entities, but still needs production hardening:
-   - retry/backoff
-   - rate-limit handling
-   - richer telemetry
-   - better invalid-output recovery
-   - optional streaming / reasoning capture
+1. Persist replay history.
+   `recent_traces`, `action_log`, `reaction_log`, and latent event evolution are still rolling in-memory state, not durable history.
 
-2. Full replay diff persistence
-   `recent_traces` and `action_log` are rolling windows, not full historical audit storage.
+2. Deepen the latent event graph.
+   The event engine now exists, but it can still be improved with stronger causal chains, event merging, event resolution rules, and richer cross-front propagation.
 
-3. Rich contradiction modeling
-   Contradictions are now explicit, but still rule-based rather than coming from a deeper latent event graph.
+3. Add event-delta summaries.
+   A compact backend-generated turn delta would make replay/debug views much easier to build.
 
-4. Frontend-specific projection UX
-   The backend emits the data, but the frontend still needs to present it clearly.
+4. Keep hardening provider execution.
+   Retries and diagnostics now exist. The next step is richer classification for rate limits, timeout classes, and provider-specific retry traces.
 
-## Next Backend Work
+5. Add a durable event archive or export path.
+   There is still no persistent event timeline outside in-memory session state.
 
-1. Add actual provider execution for configured entities.
-   This is now implemented. The next step is to harden it for production and expose better diagnostics in the UI.
+### Frontend
 
-2. Define a strict action-output contract for provider-driven entities.
-   The current contract already resolves to:
-   - one allowed action
-   - optional target
-   - rationale summary
-   The next step is to stabilize it further and optionally version it.
+1. Build the app shell around:
+   - `/capabilities`
+   - `/scenarios`
+   - `/sessions`
+   - `/sessions/{id}`
+   - `/sessions/{id}/step`
+   - `/sessions/{id}/news`
+   - `/sessions/{id}/reactions`
+   - `/sessions/{id}/providers/diagnostics`
+   - `/sessions/{id}/live`
+   - `/sessions/{id}/sources/monitor`
 
-3. Persist richer replay state.
-   Add:
-   - input signals per turn
-   - pre-override actions
-   - richer world deltas
-   - longer or persisted trace history
-
-4. Deepen contradiction generation from latent event state.
-   Right now it is deterministic and useful, but still a first-pass system.
-
-## Next Frontend Work
-
-1. Build the session shell around `/sessions` and `/sessions/{id}`.
-
-2. Add a clear entity monitoring panel.
-   Each entity card should show:
-   - current projected strategic state
+2. Add entity cards that show:
+   - projected state
    - reward total
-   - current provider binding
-   - action tools
-   - current action log row
-   - projection reliability / contradiction topics
+   - provider readiness
+   - provider health/latency
+   - latest action
+   - uncertainty/projection info
 
-3. Add a source-health page or drawer.
+3. Add a live news/reaction timeline.
+   Use `/sessions/{id}/news` for ingestion and `reaction_log` or `/sessions/{id}/reactions` for history.
+
+4. Add latent event visibility to operator surfaces.
+   Show:
+   - key latent event topics
+   - event severity
+   - event visibility
+   - linked spillovers
+
+5. Add a source-health panel.
    Use `/sessions/{id}/sources/monitor`.
 
-4. Add a turn replay sidebar.
-   Use `recent_traces` and `action_log`.
+6. Add replay panels.
+   Use `recent_traces`, `action_log`, `reaction_log`, and `world.latent_events`.
 
-5. Add scenario and benchmark controls.
-   Let the operator:
-   - create a scenario session
-   - run a benchmark
-   - inspect per-entity scorecards
+7. Make uncertainty visible.
+   Show reliability, contradiction topics, delayed sources, and contested-source counts.
 
-6. Add obvious visual treatment for uncertainty.
-   Do not show entity observations as if they are perfect truth.
-   Surface:
-   - reliability
-   - contested packet count
-   - contradiction topics
-   - delayed source count
+## Rule Of Thumb For Frontend
 
-7. Add provider readiness badges.
-   Show:
-   - configured / not configured
-   - provider name
-   - heuristic fallback vs provider-ready
+If the UI means:
 
-## Recommended Frontend Rule Of Thumb
-
-If the view is “what the entity believes,” use:
-
-- `session.observations[agent_id]`
-
-If the view is “what the operator/debugger sees,” use:
-
-- `session.world`
-
-If the view is “what the backend is prepared to execute,” use:
-
-- `session.model_bindings`
-
-If the view is “what just happened,” use:
-
-- `session.action_log`
-- `session.recent_traces`
-
-
-
-Next backend work
-
-- Harden provider execution: retries, rate-limit handling, timeout strategy, richer failure telemetry.
-- Persist richer replay data beyond rolling recent_traces and action_log.
-- Deepen contradiction modeling so it comes from a stronger latent event graph instead of only rule-based topic contradiction.
-- Add a backend endpoint for provider diagnostics per entity if you want a cleaner frontend status panel than /capabilities.
-
-Next frontend work
-
-- Build the main app around /capabilities, /scenarios, /sessions, /sessions/{id}, /sessions/{id}/step, /sessions/{id}/live, and /sessions/{id}/sources/monitor.
-- Show provider readiness per entity: provider name, model name, provider_inference vs heuristic_fallback, and available tools.
-- Add an uncertainty panel per entity using observation.projection.
-- Add a timeline/activity view from action_log and a turn replay view from recent_traces.
-- Add a source-health panel using the monitor endpoint.
-- Make the UI clearly distinguish operator truth (world) from entity belief (observations[agent]).
+- “what the entity believes” -> use `session.observations[agent_id]`
+- “what the operator/debugger sees” -> use `session.world`
+- “what hidden developments are driving the sim” -> use `session.world.latent_events`
+- “what the backend can execute” -> use `session.model_bindings`
+- “what just happened on a turn” -> use `session.action_log` and `session.recent_traces`
+- “what public news triggered reactions” -> use `session.reaction_log`
