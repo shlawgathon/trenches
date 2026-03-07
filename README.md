@@ -1,3 +1,12 @@
+---
+title: Trenches
+emoji: 🌍
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+---
+
 # trench
 A OpenEnv environment that trains agents to handle complex, adversarial multi-actor global crisis 
 

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 
 import "./globals.css";
 import "../src/styles.css";
@@ -16,9 +17,25 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const publicEnv = {
+    apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || "http://localhost:8000",
+    vercelApiBase: process.env.NEXT_PUBLIC_VERCEL_API_BASE || "/api",
+    enableSourceLogic: process.env.NEXT_PUBLIC_ENABLE_SOURCE_LOGIC || "false",
+    mapboxToken: process.env.NEXT_PUBLIC_MAPBOX_TOKEN || process.env.MAPBOX_TOKEN || "",
+  };
+
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <Script
+          id="trenches-runtime-env"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `window.__trenchesEnv = ${JSON.stringify(publicEnv)};`,
+          }}
+        />
+        {children}
+      </body>
     </html>
   );
 }

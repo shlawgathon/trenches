@@ -7,6 +7,7 @@ import mapboxgl, {
 } from "mapbox-gl";
 
 import { CommandGlobe } from "./CommandGlobe";
+import { getMapboxToken } from "../lib/env";
 import type { MapSelection, ViewerMapEntity, ViewerMapFeature, ViewerMapLink, ViewerMapState } from "../lib/viewer-map";
 
 type CommandMapProps = {
@@ -78,7 +79,7 @@ export function CommandMap({
   const [mapError, setMapError] = useState<string | null>(null);
   const mapId = useId().replace(/:/g, "");
   const sourceId = `trenches-command-map-source-${mapId}`;
-  const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+  const token = getMapboxToken();
   const hasToken = typeof token === "string" && token.trim().length > 0;
 
   const entityLookup = useMemo(
