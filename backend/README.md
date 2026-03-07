@@ -18,11 +18,6 @@ CORS is configurable so frontend migrations do not require backend code changes:
 
 If no CORS env vars are set, the backend allows local development origins on `localhost` / `127.0.0.1` for any port.
 
-Host and port are also runtime-configurable for container platforms:
-
-- `HOST=0.0.0.0`
-- `PORT=8000`
-
 Relevant OpenEnv pieces in this package:
 
 - `trenches_env.openenv_adapter.TrenchesOpenEnvEnvironment`

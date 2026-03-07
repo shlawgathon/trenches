@@ -1588,8 +1588,6 @@ class FogOfWarDiplomacyEnv:
         prompt_sections.append("Mapped assets under your control:\n" + ("\n".join(asset_lines) if asset_lines else "- No mapped assets available."))
         if damaged_lines:
             prompt_sections.append("Assets currently degraded or malfunctioning:\n" + "\n".join(damaged_lines))
-        prompt_sections.append("Your usable tools are the allowed actions above plus the listed data sources. Do not invent capabilities outside them.")
-        prompt_sections.append("Targeted strike, sanction, and deception choices can damage target-owned assets, shift the target's strategic metrics, and change both your reward and the target's reward on later turns.")
         prompt_sections.append("Use defense or repair-minded choices when critical assets are damaged; use strike, sanction, or deception only when the reward tradeoff is justified by your doctrine and the observed threat.")
         return "\n".join(prompt_sections)
 
