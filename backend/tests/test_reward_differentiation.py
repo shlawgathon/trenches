@@ -114,6 +114,8 @@ def test_observations_expose_prompts_sources_and_geolocated_assets() -> None:
         assert all(asset.get("latitude") is not None and asset.get("longitude") is not None for asset in observation.strategic_assets)
         assert observation.available_data_sources[0].name in observation.decision_prompt
         assert observation.strategic_assets[0]["name"] in observation.decision_prompt
+        assert "Do not invent capabilities outside them." in observation.decision_prompt
+        assert "damage target-owned assets" in observation.decision_prompt
 
 
 def test_strike_and_defend_update_asset_health_for_targeted_assets() -> None:
