@@ -1,5 +1,3 @@
-import "./monitoring.css";
-
 import type { MonitoringPanelSharedProps } from "./monitoring-types";
 import { formatTimeLabel, getFocusedAgent, resolveAgentTone, summarizeSourceHealth } from "./monitoring-utils";
 

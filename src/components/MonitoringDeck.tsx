@@ -1,5 +1,3 @@
-import "./monitoring.css";
-
 import { ModelStatusPanel } from "./ModelStatusPanel";
 import { RecentActionsPanel } from "./RecentActionsPanel";
 import { RewardSummaryPanel } from "./RewardSummaryPanel";

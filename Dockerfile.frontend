@@ -1,14 +1,14 @@
-FROM node:20-alpine
+FROM oven/bun:1.2.22-alpine
 
 WORKDIR /app
 
-COPY package.json ./
-RUN npm install
+COPY package.json bun.lock* ./
+RUN bun install --frozen-lockfile
 
-COPY tsconfig.json vite.config.ts vercel.json index.html ./
+COPY next.config.ts postcss.config.mjs tsconfig.json next-env.d.ts ./
+COPY app ./app
 COPY src ./src
-COPY api ./api
 
-EXPOSE 5173
+EXPOSE 3000
 
-CMD ["npm", "run", "dev"]
+CMD ["bun", "run", "dev"]

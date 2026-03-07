@@ -16,8 +16,8 @@ function toBoolean(value: string | boolean | undefined, fallback: boolean): bool
 
 export function getRuntimeEnv(): RuntimeEnv {
   return {
-    apiBaseUrl: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000",
-    vercelApiBase: import.meta.env.VITE_VERCEL_API_BASE || "/api",
-    enableSourceLogic: toBoolean(import.meta.env.VITE_ENABLE_SOURCE_LOGIC, false),
+    apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000",
+    vercelApiBase: process.env.NEXT_PUBLIC_VERCEL_API_BASE || "/api",
+    enableSourceLogic: toBoolean(process.env.NEXT_PUBLIC_ENABLE_SOURCE_LOGIC, false),
   };
 }

@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, type CSSProperties } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from "react";
 import mapboxgl, {
   type GeoJSONSource,
   type LngLatBoundsLike,
@@ -6,10 +6,8 @@ import mapboxgl, {
   type MapMouseEvent,
 } from "mapbox-gl";
 
+import { CommandGlobe } from "./CommandGlobe";
 import type { MapSelection, ViewerMapEntity, ViewerMapFeature, ViewerMapLink, ViewerMapState } from "../lib/viewer-map";
-
-import "mapbox-gl/dist/mapbox-gl.css";
-import "./command-map.css";
 
 type CommandMapProps = {
   entities: ViewerMapEntity[];
@@ -76,9 +74,11 @@ export function CommandMap({
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
+  const [interactiveReady, setInteractiveReady] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
   const mapId = useId().replace(/:/g, "");
   const sourceId = `trenches-command-map-source-${mapId}`;
-  const token = import.meta.env.VITE_MAPBOX_TOKEN;
+  const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
   const hasToken = typeof token === "string" && token.trim().length > 0;
 
   const entityLookup = useMemo(
@@ -207,15 +207,23 @@ export function CommandMap({
       return;
     }
 
+    setInteractiveReady(false);
+    setMapError(null);
     mapboxgl.accessToken = token;
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: MAP_STYLE,
-      center: DEFAULT_CENTER,
-      zoom: DEFAULT_ZOOM,
-      attributionControl: false,
-      projection: "globe",
-    });
+    let map: mapboxgl.Map;
+    try {
+      map = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        style: MAP_STYLE,
+        center: DEFAULT_CENTER,
+        zoom: DEFAULT_ZOOM,
+        attributionControl: false,
+        projection: "globe",
+      });
+    } catch (error) {
+      setMapError(error instanceof Error ? error.message : "Failed to initialize WebGL.");
+      return;
+    }
 
     mapRef.current = map;
     popupRef.current = new mapboxgl.Popup({
@@ -239,6 +247,7 @@ export function CommandMap({
     });
 
     map.on("load", () => {
+      setInteractiveReady(true);
       if (!map.getSource(sourceId)) {
         map.addSource(sourceId, {
           type: "geojson",
@@ -317,9 +326,16 @@ export function CommandMap({
       fitMapToSelection(map, focusFeatures, focusLinks);
     });
 
+    map.on("error", (event) => {
+      const nextError = event.error;
+      setMapError(nextError instanceof Error ? nextError.message : "Map rendering error.");
+    });
+
     return () => {
       popupRef.current?.remove();
       popupRef.current = null;
+      setInteractiveReady(false);
+      setMapError(null);
       map.remove();
       mapRef.current = null;
     };
@@ -364,14 +380,14 @@ export function CommandMap({
 
       <div className="command-map__viewport">
         <div className="command-map__surface">
-          {hasToken ? (
+          {hasToken && !mapError ? (
             <div ref={mapContainerRef} className="command-map__canvas" aria-label="Operational asset map" />
-          ) : (
+          ) : !hasToken ? (
             <div className="command-map__fallback" role="status" aria-live="polite">
               <div className="command-map__fallback-badge">Mapbox token missing</div>
               <h3>Spatial viewer is ready, but the tile layer is offline.</h3>
               <p>
-                Set <code>VITE_MAPBOX_TOKEN</code> to render the theater map. Entity footprints, coalition links, and
+                Set <code>NEXT_PUBLIC_MAPBOX_TOKEN</code> to render the theater map. Entity footprints, coalition links, and
                 viewer controls remain available.
               </p>
               <div className="command-map__fallback-grid">
@@ -385,7 +401,20 @@ export function CommandMap({
                 </div>
               </div>
             </div>
+          ) : (
+            <CommandGlobe
+              entities={entities}
+              features={focusFeatures}
+              links={focusLinks}
+              selectedEntity={selectedEntity}
+              onSelectEntity={onSelectEntity}
+            />
           )}
+          {hasToken && mapError ? (
+            <div className="command-map__render-badge">WebGL unavailable, globe fallback active</div>
+          ) : hasToken && !interactiveReady ? (
+            <div className="command-map__render-badge">Initializing interactive globe</div>
+          ) : null}
 
           <div className="command-map__overlay command-map__overlay--top">
             <div className="command-map__viewer-chip">Operator intelligence wall</div>

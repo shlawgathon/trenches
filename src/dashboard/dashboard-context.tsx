@@ -1,14 +1,20 @@
 "use client";
 
-import { startTransition, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  startTransition,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
-import { bootstrapPlatform } from "./app/bootstrap";
-import { CommandMap } from "./components/CommandMap";
-import { MonitoringDeck, type MonitoringAgentSnapshot } from "./components/MonitoringDeck";
-import { SourceDeliveryAuditPanel } from "./components/SourceDeliveryAuditPanel";
-import { buildViewerMapState, type MapSelection } from "./lib/viewer-map";
-import type { PlatformRuntime } from "./lib/platform";
-import type { AgentAction, AgentObservation, SessionState, SourceMonitorReport } from "./lib/types";
+import { bootstrapPlatform } from "../app/bootstrap";
+import { type MonitoringAgentSnapshot } from "../components/MonitoringDeck";
+import { buildViewerMapState, type MapSelection } from "../lib/viewer-map";
+import type { PlatformRuntime } from "../lib/platform";
+import type { AgentAction, AgentObservation, SessionState } from "../lib/types";
 
 const AGENT_ORDER = ["us", "israel", "iran", "hezbollah", "gulf", "oversight"] as const;
 const AGENT_MODEL_META: Record<
@@ -75,30 +81,44 @@ function toConfidence(value: number | undefined) {
   return Math.max(0, Math.min(1, (value + 1) / 2));
 }
 
-function formatTimestamp(value: string | null | undefined) {
-  if (!value) {
-    return "waiting";
-  }
-  const timestamp = new Date(value);
-  if (Number.isNaN(timestamp.getTime())) {
-    return "waiting";
-  }
-  return timestamp.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-}
+type DashboardContextValue = {
+  runtime: PlatformRuntime | null;
+  session: SessionState | null;
+  error: string | null;
+  busy: boolean;
+  summary: Array<{ label: string; value: string }> | null;
+  selectedMapEntity: MapSelection;
+  selectedMonitoringAgent: string | null;
+  commandMapEntities: ReturnType<typeof buildViewerMapState>["entities"];
+  commandMapFeatures: ReturnType<typeof buildViewerMapState>["features"];
+  commandMapLinks: ReturnType<typeof buildViewerMapState>["links"];
+  commandMapWorldSummary: {
+    turn: number;
+    tension: number;
+    marketStress: number;
+    oilPressure: number;
+    liveMode: boolean;
+    activeEventCount?: number;
+    lastUpdatedLabel?: string;
+  };
+  monitoringAgents: MonitoringAgentSnapshot[];
+  isInitializingSession: boolean;
+  isBackendUnavailable: boolean;
+  setSelectedMapEntity: (entityId: MapSelection) => void;
+  createFreshSession: () => Promise<void>;
+  toggleLive: (enabled: boolean) => Promise<void>;
+  stepSession: () => Promise<void>;
+  refreshSources: () => Promise<void>;
+};
 
-export default function App() {
+const DashboardContext = createContext<DashboardContextValue | null>(null);
+
+export function DashboardProvider({ children }: { children: ReactNode }) {
   const [runtime, setRuntime] = useState<PlatformRuntime | null>(null);
   const [session, setSession] = useState<SessionState | null>(null);
   const [selectedMapEntity, setSelectedMapEntity] = useState<MapSelection>("all");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [sourceMonitor, setSourceMonitor] = useState<SourceMonitorReport | null>(null);
-  const [sourceMonitorBusy, setSourceMonitorBusy] = useState(false);
-  const [sourceMonitorError, setSourceMonitorError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -134,96 +154,6 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!runtime || !session) {
-      startTransition(() => {
-        setSourceMonitor(null);
-        setSourceMonitorError(null);
-        setSourceMonitorBusy(false);
-      });
-      return;
-    }
-
-    const sessionClient = runtime.sessionClient;
-    const sessionId = session.session_id;
-    let cancelled = false;
-
-    async function loadSourceMonitor() {
-      setSourceMonitorBusy(true);
-      try {
-        const report = await sessionClient.getSourceMonitor(sessionId);
-        if (!cancelled) {
-          startTransition(() => {
-            setSourceMonitor(report);
-            setSourceMonitorError(null);
-          });
-        }
-      } catch (nextError) {
-        if (!cancelled) {
-          startTransition(() => {
-            setSourceMonitor(null);
-            setSourceMonitorError(
-              nextError instanceof Error ? nextError.message : "Failed to load source-delivery audit.",
-            );
-          });
-        }
-      } finally {
-        if (!cancelled) {
-          setSourceMonitorBusy(false);
-        }
-      }
-    }
-
-    void loadSourceMonitor();
-    return () => {
-      cancelled = true;
-    };
-  }, [runtime, session?.session_id, session?.updated_at]);
-
-  useEffect(() => {
-    if (!runtime || !session?.live.enabled || !session.live.auto_step) {
-      return;
-    }
-
-    const sessionClient = runtime.sessionClient;
-    const sessionId = session.session_id;
-    const pollIntervalMs = Math.max(2_500, Math.min(session.live.poll_interval_ms, 5_000));
-    let cancelled = false;
-    let timeoutId: number | null = null;
-
-    async function pollSession() {
-      try {
-        const nextSession = await sessionClient.getSession(sessionId);
-        if (!cancelled) {
-          startTransition(() => {
-            setSession(nextSession);
-            setError(null);
-          });
-        }
-      } catch (nextError) {
-        if (!cancelled) {
-          startTransition(() => {
-            setError(nextError instanceof Error ? nextError.message : "Live session polling failed.");
-          });
-        }
-      } finally {
-        if (!cancelled) {
-          timeoutId = window.setTimeout(() => {
-            void pollSession();
-          }, pollIntervalMs);
-        }
-      }
-    }
-
-    void pollSession();
-    return () => {
-      cancelled = true;
-      if (timeoutId !== null) {
-        window.clearTimeout(timeoutId);
-      }
-    };
-  }, [runtime, session?.session_id, session?.live.enabled, session?.live.auto_step, session?.live.poll_interval_ms]);
-
   const summary = useMemo(() => {
     if (!session) {
       return null;
@@ -234,8 +164,6 @@ export default function App() {
       { label: "Market Stress", value: session.world.market_stress.toFixed(1) },
       { label: "Oil Pressure", value: session.world.oil_pressure.toFixed(1) },
       { label: "Live", value: session.live.enabled ? "On" : "Off" },
-      { label: "Auto React", value: session.live.auto_step ? "Armed" : "Off" },
-      { label: "Last React", value: formatTimestamp(session.live.last_auto_step_at) },
       { label: "Backend", value: runtime?.backendStatus ?? "unknown" },
     ];
   }, [runtime?.backendStatus, session]);
@@ -259,7 +187,20 @@ export default function App() {
 
   const commandMapWorldSummary = useMemo(() => {
     if (!viewerMapState || !session) {
-      return null;
+      return {
+        turn: 0,
+        tension: 0,
+        marketStress: 0,
+        oilPressure: 0,
+        liveMode: false,
+        activeEventCount: 0,
+        lastUpdatedLabel: runtime
+          ? new Date(runtime.bootedAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "Awaiting sync",
+      };
     }
     return {
       ...viewerMapState.worldSummary,
@@ -269,25 +210,7 @@ export default function App() {
         minute: "2-digit",
       }),
     };
-  }, [session, viewerMapState]);
-
-  const placeholderMapWorldSummary = useMemo(
-    () => ({
-      turn: session?.world.turn ?? 0,
-      tension: session?.world.tension_level ?? 0,
-      marketStress: session?.world.market_stress ?? 0,
-      oilPressure: session?.world.oil_pressure ?? 0,
-      liveMode: session?.live.enabled ?? false,
-      activeEventCount: session?.world.active_events.length ?? 0,
-      lastUpdatedLabel: runtime
-        ? new Date(runtime.bootedAt).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        : "Awaiting sync",
-    }),
-    [runtime, session],
-  );
+  }, [runtime, session, viewerMapState]);
 
   const monitoringAgents = useMemo<MonitoringAgentSnapshot[]>(() => {
     if (!session) {
@@ -414,8 +337,8 @@ export default function App() {
     try {
       const nextSession = await runtime.sessionClient.setLiveMode(session.session_id, {
         enabled,
-        auto_step: enabled,
-        poll_interval_ms: 6000,
+        auto_step: false,
+        poll_interval_ms: 15000,
       });
       setSession(nextSession);
     } catch (nextError) {
@@ -470,130 +393,53 @@ export default function App() {
     }
   }
 
-  return (
-    <div className="shell">
-      <header className="hero">
-        <div>
-          <p className="eyebrow">Trenches Monitoring Deck</p>
-          <h1>Fog-of-War Live Session Dashboard</h1>
-          <p className="lede">
-            Monitor all six agents, inspect what each model sees, and control whether the live post-training session is
-            running.
-          </p>
-        </div>
-        <div className="status-card">
-          <span>Runtime Booted</span>
-          <strong>{runtime?.bootedAt ?? "pending"}</strong>
-          <span>Source Validation</span>
-          <strong>{runtime ? `${runtime.sourceValidation.duplicateKeys.length} duplicate keys` : "pending"}</strong>
-        </div>
-      </header>
-
-      <CommandMap
-        entities={commandMapEntities}
-        features={commandMapFeatures}
-        links={commandMapLinks}
-        selectedEntity={selectedMapEntity}
-        onSelectEntity={(entityId) => setSelectedMapEntity(entityId as MapSelection)}
-        worldSummary={commandMapWorldSummary ?? placeholderMapWorldSummary}
-      />
-
-      <section className="control-strip">
-        <button onClick={createFreshSession} disabled={busy}>
-          New Session
-        </button>
-        <button onClick={() => toggleLive(true)} disabled={busy || !session}>
-          Start Live RL Session
-        </button>
-        <button onClick={() => toggleLive(false)} disabled={busy || !session}>
-          Stop Live RL Session
-        </button>
-        <button onClick={refreshSources} disabled={busy || !session}>
-          Refresh Sources
-        </button>
-        <button onClick={stepSession} disabled={busy || !session || !!session?.live.auto_step}>
-          Advance Scenario Turn
-        </button>
-      </section>
-
-      {error ? <section className="banner error">{error}</section> : null}
-      {isInitializingSession ? <section className="banner">Bootstrapping live backend session and intelligence overlays.</section> : null}
-      {isBackendUnavailable ? (
-        <section className="banner">
-          Backend is unreachable on <code>http://localhost:8000</code>. The map remains available, but live session data
-          and model telemetry will stay offline until the API responds.
-        </section>
-      ) : null}
-      {!session && !isInitializingSession && !isBackendUnavailable ? (
-        <section className="banner">No backend session yet. Create one or start the backend.</section>
-      ) : null}
-
-      {summary ? (
-        <section className="summary-grid">
-          {summary.map((item) => (
-            <article key={item.label} className="metric">
-              <span>{item.label}</span>
-              <strong>{item.value}</strong>
-            </article>
-          ))}
-        </section>
-      ) : null}
-
-      {session && runtime ? (
-        <>
-          <MonitoringDeck
-            agents={monitoringAgents}
-            selectedAgentId={selectedMonitoringAgent}
-            onSelectAgent={(agentId) => setSelectedMapEntity(agentId as MapSelection)}
-            title="Model Supervision Deck"
-            eyebrow="Training and Inference Oversight"
-            headline="Black-box monitoring surface for reward pressure, source integrity, recent actions, and actor posture across the full regional simulation."
-            summary="This layer is for the human operator only. It sits beside the map and explains how each doctrine-specific model is reading the environment and being rewarded."
-            statusChip={session.live.enabled ? "Live post-training session" : "Scenario replay session"}
-          />
-
-          <SourceDeliveryAuditPanel
-            report={sourceMonitor}
-            selectedAgentId={selectedMonitoringAgent}
-            loading={sourceMonitorBusy}
-            error={sourceMonitorError}
-          />
-
-          <section className="panel-grid">
-            <article className="panel panel-wide">
-              <div className="panel-header">
-                <h2>World State Trace</h2>
-                <span>{session.live.enabled ? "Live intelligence sync armed" : "Scenario-only state"}</span>
-              </div>
-              <div className="world-stats">
-                <div>
-                  <label>Coalition Graph</label>
-                  <pre>{JSON.stringify(session.world.coalition_graph, null, 2)}</pre>
-                </div>
-                <div>
-                  <label>Recent Traces</label>
-                  <pre>{JSON.stringify(session.recent_traces.slice(-5), null, 2)}</pre>
-                </div>
-              </div>
-            </article>
-
-            <article className="panel">
-              <div className="panel-header">
-                <h2>Source Plan Matrix</h2>
-                <span>Non-shared source stacks</span>
-              </div>
-              <div className="list-block">
-                {AGENT_ORDER.map((agentId) => (
-                  <div key={agentId} className="list-row">
-                    <strong>{agentId}</strong>
-                    <span>{runtime.liveSourcePlans[agentId]?.length ?? 0} sources</span>
-                  </div>
-                ))}
-              </div>
-            </article>
-          </section>
-        </>
-      ) : null}
-    </div>
+  const value = useMemo<DashboardContextValue>(
+    () => ({
+      runtime,
+      session,
+      error,
+      busy,
+      summary,
+      selectedMapEntity,
+      selectedMonitoringAgent,
+      commandMapEntities,
+      commandMapFeatures,
+      commandMapLinks,
+      commandMapWorldSummary,
+      monitoringAgents,
+      isInitializingSession,
+      isBackendUnavailable,
+      setSelectedMapEntity,
+      createFreshSession,
+      toggleLive,
+      stepSession,
+      refreshSources,
+    }),
+    [
+      runtime,
+      session,
+      error,
+      busy,
+      summary,
+      selectedMapEntity,
+      selectedMonitoringAgent,
+      commandMapEntities,
+      commandMapFeatures,
+      commandMapLinks,
+      commandMapWorldSummary,
+      monitoringAgents,
+      isInitializingSession,
+      isBackendUnavailable,
+    ],
   );
+
+  return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;
+}
+
+export function useDashboard() {
+  const context = useContext(DashboardContext);
+  if (!context) {
+    throw new Error("useDashboard must be used within a DashboardProvider.");
+  }
+  return context;
 }
