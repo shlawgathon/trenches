@@ -115,7 +115,7 @@ class OversightIntervention(BaseModel):
     risk_score: float = 0.0
     reason: str = ""
     affected_agents: list[str] = Field(default_factory=list)
-    action_override: dict[str, str] = Field(default_factory=dict)
+    action_override: dict[str, AgentAction] = Field(default_factory=dict)
 
 
 class AgentObservation(BaseModel):

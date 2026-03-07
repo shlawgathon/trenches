@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timedelta, timezone
 
 from trenches_env.env import FogOfWarDiplomacyEnv
@@ -127,3 +128,51 @@ def test_live_get_session_auto_steps_once_for_new_source_packets() -> None:
     second_live_tick = manager.get_session(session.session_id)
 
     assert second_live_tick.world.turn == 1
+
+
+def test_oversight_replaces_escalatory_actions_with_valid_overrides() -> None:
+    manager = SessionManager()
+    session = manager.create_session(seed=7)
+
+    response = manager.step_session(
+        session.session_id,
+        StepSessionRequest(
+            actions={
+                "us": AgentAction(actor="us", type="strike", target="iran", summary="Strike escalation lane."),
+                "israel": AgentAction(actor="israel", type="strike", target="hezbollah", summary="Strike escalation lane."),
+                "iran": AgentAction(actor="iran", type="mobilize", summary="Mobilize escalation lane."),
+                "hezbollah": AgentAction(actor="hezbollah", type="deceive", summary="Deception escalation lane."),
+            }
+        ),
+    )
+
+    assert response.oversight.triggered is True
+    assert response.oversight.action_override
+    for agent_id, override_action in response.oversight.action_override.items():
+        assert override_action.type in {"hold", "negotiate", "defend", "intel_query"}
+        assert response.session.recent_traces[-1].actions[agent_id].type == override_action.type
+        assert response.session.world.last_actions
+
+
+def test_background_runner_advances_live_sessions_without_dashboard_polling() -> None:
+    manager = build_live_manager()
+    session = manager.create_session(seed=7)
+    manager.set_live_mode(
+        session.session_id,
+        LiveControlRequest(enabled=True, auto_step=True, poll_interval_ms=1_000),
+    )
+    manager.start_background_runner(tick_interval_seconds=0.05)
+
+    try:
+        deadline = time.time() + 1.5
+        while time.time() < deadline:
+            current = manager._sessions[session.session_id]
+            if current.world.turn >= 1:
+                break
+            time.sleep(0.05)
+        current = manager._sessions[session.session_id]
+    finally:
+        manager.stop_background_runner()
+
+    assert current.world.turn >= 1
+    assert current.live.last_auto_step_at is not None

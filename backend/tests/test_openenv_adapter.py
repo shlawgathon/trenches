@@ -95,6 +95,41 @@ def test_trenches_openenv_environment_returns_scalar_reward_for_active_agent() -
     runtime.close()
 
 
+def test_openenv_autofills_missing_agents_with_shared_policy() -> None:
+    runtime = TrenchesOpenEnvEnvironment()
+    runtime.reset(
+        seed=11,
+        training_agent="us",
+        training_stage="stage_3_sparse",
+        max_turns=12,
+        include_joint_observations=True,
+    )
+
+    runtime.step(
+        TrenchesOpenEnvAction(
+            action=AgentAction(
+                actor="us",
+                type="negotiate",
+                target="gulf",
+                summary="Offer deconfliction and shipping guarantees.",
+            ),
+            external_signals=[
+                ExternalSignal(
+                    source="training-sim",
+                    headline="Shipping risk rises near Hormuz.",
+                    region="gulf",
+                    tags=["shipping", "oil"],
+                    severity=0.3,
+                )
+            ],
+        )
+    )
+
+    assert runtime.state.session is not None
+    assert runtime.state.session.recent_traces[-1].actions["gulf"].type == "defend"
+    runtime.close()
+
+
 def test_trenches_openenv_environment_rejects_unknown_training_agent() -> None:
     runtime = TrenchesOpenEnvEnvironment()
 

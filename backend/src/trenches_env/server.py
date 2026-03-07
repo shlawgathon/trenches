@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import os
 from typing import Any
 
 import uvicorn
@@ -30,6 +31,46 @@ from trenches_env.openenv_adapter import (
 from trenches_env.session_manager import SessionManager
 from trenches_env.source_ingestion import SourceHarvester
 
+DEFAULT_LOCAL_DEV_CORS_ORIGIN_REGEX = r"https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+
+
+def _parse_csv_env(raw_value: str | None) -> list[str]:
+    if not raw_value:
+        return []
+    return [item.strip() for item in raw_value.split(",") if item.strip()]
+
+
+def _resolve_cors_settings() -> dict[str, Any]:
+    allow_origins = _parse_csv_env(os.getenv("TRENCHES_CORS_ALLOW_ORIGINS"))
+    allow_origin_regex = os.getenv("TRENCHES_CORS_ALLOW_ORIGIN_REGEX")
+
+    if "*" in allow_origins:
+        return {
+            "allow_origins": ["*"],
+            "allow_origin_regex": None,
+            # Browsers reject wildcard origins when credentials are enabled.
+            "allow_credentials": False,
+            "allow_methods": ["*"],
+            "allow_headers": ["*"],
+        }
+
+    if not allow_origins and not allow_origin_regex:
+        allow_origin_regex = DEFAULT_LOCAL_DEV_CORS_ORIGIN_REGEX
+
+    allow_credentials = os.getenv("TRENCHES_CORS_ALLOW_CREDENTIALS", "true").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
+    return {
+        "allow_origins": allow_origins,
+        "allow_origin_regex": allow_origin_regex,
+        "allow_credentials": allow_credentials,
+        "allow_methods": ["*"],
+        "allow_headers": ["*"],
+    }
+
 
 def create_app(session_manager: SessionManager | None = None) -> FastAPI:
     manager = session_manager or SessionManager(
@@ -41,21 +82,13 @@ def create_app(session_manager: SessionManager | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         try:
+            manager.start_background_runner()
             yield
         finally:
-            manager.env.shutdown()
+            manager.shutdown()
 
     app = FastAPI(title="Trenches OpenEnv Backend", version="0.1.0", lifespan=lifespan)
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-        ],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    app.add_middleware(CORSMiddleware, **_resolve_cors_settings())
     runtime = OpenEnvAdapter(session_manager=manager)
     openenv_app = create_openenv_fastapi_app(
         lambda: TrenchesOpenEnvEnvironment(
@@ -73,11 +106,17 @@ def create_app(session_manager: SessionManager | None = None) -> FastAPI:
 
     @app.get("/capabilities")
     async def capabilities() -> dict[str, Any]:
+        cors_settings = _resolve_cors_settings()
         return {
             "session_api": True,
             "legacy_openenv_tuple_api": True,
             "native_openenv_api": OPENENV_CORE_AVAILABLE,
             "native_openenv_base_path": "/openenv" if OPENENV_CORE_AVAILABLE else None,
+            "cors": {
+                "allow_origins": cors_settings["allow_origins"],
+                "allow_origin_regex": cors_settings["allow_origin_regex"],
+                "allow_credentials": cors_settings["allow_credentials"],
+            },
         }
 
     @app.post("/sessions", response_model=SessionState)

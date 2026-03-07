@@ -274,17 +274,20 @@ class FogOfWarDiplomacyEnv:
         next_session = session.model_copy(deep=True)
         before_tension = next_session.world.tension_level
         next_session.world.turn += 1
-        next_session.world.last_actions = list(request.actions.values())
         if next_session.live.enabled:
             self._source_harvester.refresh_due_batch(include_live=True)
         else:
             self._source_harvester.refresh_due_batch(include_live=False)
 
         self._inject_external_signals(next_session.world, request.external_signals)
-        self._apply_actions(next_session.world, request.actions)
+        resolved_actions = dict(request.actions)
         oversight = OversightIntervention()
         if next_session.episode.oversight_enabled:
-            oversight = self._compute_oversight(next_session.world, request.actions, request.external_signals)
+            oversight = self._compute_oversight(next_session.world, resolved_actions, request.external_signals)
+            resolved_actions = self._resolve_oversight_actions(resolved_actions, oversight)
+        next_session.world.last_actions = list(resolved_actions.values())
+        self._apply_actions(next_session.world, resolved_actions)
+        if next_session.episode.oversight_enabled:
             self._apply_oversight(next_session.world, oversight)
 
         next_session.rewards = self._compute_rewards(world=next_session.world, episode=next_session.episode)
@@ -298,7 +301,7 @@ class FogOfWarDiplomacyEnv:
                 turn=next_session.world.turn,
                 tension_before=before_tension,
                 tension_after=next_session.world.tension_level,
-                actions=request.actions,
+                actions=resolved_actions,
                 rewards=next_session.rewards,
                 oversight=oversight,
             )
@@ -345,7 +348,7 @@ class FogOfWarDiplomacyEnv:
         if not signals:
             return refreshed
 
-        actions = self._select_live_actions(refreshed, signals)
+        actions = self.resolve_policy_actions(refreshed, signals)
         result = self.step_session(
             refreshed,
             StepSessionRequest(actions=actions, external_signals=signals),
@@ -393,7 +396,8 @@ class FogOfWarDiplomacyEnv:
         for agent_id, packet in ordered_packets:
             signal = self._packet_to_external_signal(agent_id, packet)
             signals.append(signal)
-            reacted_packets[packet.source_id] = packet.fetched_at  # type: ignore[assignment]
+            if packet.fetched_at is not None:
+                reacted_packets[packet.source_id] = packet.fetched_at
         return signals, reacted_packets
 
     def _packet_to_external_signal(self, agent_id: str, packet: SourcePacket) -> ExternalSignal:
@@ -466,13 +470,22 @@ class FogOfWarDiplomacyEnv:
             categories.add("market")
         return categories or {"general"}
 
-    def _select_live_actions(
+    def resolve_policy_actions(
         self,
         session: SessionState,
         signals: list[ExternalSignal],
+        *,
+        preset_actions: dict[str, AgentAction] | None = None,
+        agent_ids: list[str] | None = None,
     ) -> dict[str, AgentAction]:
-        actions: dict[str, AgentAction] = {}
-        for agent_id in AGENT_IDS:
+        actions: dict[str, AgentAction] = dict(preset_actions or {})
+        target_agent_ids = agent_ids or list(AGENT_IDS)
+        for agent_id, action in actions.items():
+            self._validate_action(agent_id, action)
+
+        for agent_id in target_agent_ids:
+            if agent_id in actions:
+                continue
             signal_context, top_headline = self._build_signal_context(agent_id, signals)
             allowed_actions = AGENT_ALLOWED_ACTIONS.get(agent_id, ())
             action_type = max(
@@ -501,6 +514,13 @@ class FogOfWarDiplomacyEnv:
                 metadata=metadata,
             )
         return actions
+
+    def _select_live_actions(
+        self,
+        session: SessionState,
+        signals: list[ExternalSignal],
+    ) -> dict[str, AgentAction]:
+        return self.resolve_policy_actions(session, signals)
 
     def _build_signal_context(
         self,
@@ -941,13 +961,100 @@ class FogOfWarDiplomacyEnv:
             for agent_id, action in actions.items()
             if action.type in {"strike", "mobilize", "deceive", "sanction"}
         ]
+        action_override = {
+            agent_id: self._build_oversight_override_action(
+                world=world,
+                agent_id=agent_id,
+                action=actions[agent_id],
+                signals=signals,
+            )
+            for agent_id in affected
+        }
         return OversightIntervention(
             triggered=True,
             risk_score=risk_score,
             reason="Escalation probability exceeded the intervention threshold.",
             affected_agents=affected or ["us", "israel", "iran", "hezbollah", "gulf"],
-            action_override={agent_id: "de-escalate" for agent_id in affected},
+            action_override=action_override,
         )
+
+    def _resolve_oversight_actions(
+        self,
+        actions: dict[str, AgentAction],
+        oversight: OversightIntervention,
+    ) -> dict[str, AgentAction]:
+        if not oversight.triggered or not oversight.action_override:
+            return actions
+
+        resolved_actions = dict(actions)
+        for agent_id, override_action in oversight.action_override.items():
+            self._validate_action(agent_id, override_action)
+            resolved_actions[agent_id] = override_action
+        return resolved_actions
+
+    def _build_oversight_override_action(
+        self,
+        *,
+        world: WorldState,
+        agent_id: str,
+        action: AgentAction,
+        signals: list[ExternalSignal],
+    ) -> AgentAction:
+        signal_text = " ".join(
+            f"{signal.headline} {' '.join(signal.tags)} {(signal.region or '')}"
+            for signal in signals
+        ).lower()
+        asset_pressure = self._asset_pressure(world, agent_id)
+
+        if (
+            self._signal_mentions(signal_text, "ceasefire", "talk", "negotiat", "summit", "mediat", "humanitarian")
+            and "negotiate" in AGENT_ALLOWED_ACTIONS.get(agent_id, ())
+        ):
+            return AgentAction(
+                actor=agent_id,
+                type="negotiate",
+                target=self._select_oversight_negotiation_target(agent_id),
+                summary="Oversight forced a de-escalatory negotiation cycle after elevated intervention risk.",
+                metadata={"mode": "oversight_override", "replaces": action.type},
+            )
+
+        if (
+            asset_pressure >= 0.2
+            or self._signal_mentions(signal_text, "attack", "strike", "rocket", "missile", "drone", "shipping", "cyber", "outage")
+        ) and "defend" in AGENT_ALLOWED_ACTIONS.get(agent_id, ()):
+            return AgentAction(
+                actor=agent_id,
+                type="defend",
+                target=agent_id,
+                summary="Oversight forced a defensive posture to absorb incoming risk instead of escalating further.",
+                metadata={"mode": "oversight_override", "replaces": action.type},
+            )
+
+        if "intel_query" in AGENT_ALLOWED_ACTIONS.get(agent_id, ()):
+            return AgentAction(
+                actor=agent_id,
+                type="intel_query",
+                summary="Oversight forced an intelligence verification cycle before any further escalation.",
+                metadata={"mode": "oversight_override", "replaces": action.type},
+            )
+
+        return AgentAction(
+            actor=agent_id,
+            type="hold",
+            summary="Oversight forced a temporary operational hold to break an escalation spiral.",
+            metadata={"mode": "oversight_override", "replaces": action.type},
+        )
+
+    @staticmethod
+    def _select_oversight_negotiation_target(agent_id: str) -> str | None:
+        return {
+            "us": "gulf",
+            "israel": "us",
+            "iran": "hezbollah",
+            "hezbollah": "iran",
+            "gulf": "us",
+            "oversight": None,
+        }.get(agent_id)
 
     def _apply_oversight(self, world: WorldState, oversight: OversightIntervention) -> None:
         if not oversight.triggered:

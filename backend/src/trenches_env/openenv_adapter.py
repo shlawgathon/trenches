@@ -78,6 +78,7 @@ class TrenchesOpenEnvAction(OpenEnvActionBase):
     action: AgentAction | None = None
     actions: dict[str, AgentAction] = Field(default_factory=dict)
     external_signals: list[ExternalSignal] = Field(default_factory=list)
+    autofill_missing_with_policy: bool = True
     autofill_missing_with_hold: bool = True
 
 
@@ -213,14 +214,21 @@ class TrenchesOpenEnvEnvironment(OpenEnvEnvironmentBase):
         if unknown_agents:
             raise ValueError(f"Unknown agents in joint action: {', '.join(unknown_agents)}")
 
-        if action.autofill_missing_with_hold:
-            for agent_id in AGENT_IDS:
-                if agent_id not in joint_actions:
-                    joint_actions[agent_id] = AgentAction(
-                        actor=agent_id,
-                        type="hold",
-                        summary=f"Auto-filled hold for {agent_id} in the OpenEnv step.",
-                    )
+        missing_agents = [agent_id for agent_id in AGENT_IDS if agent_id not in joint_actions]
+        if missing_agents and action.autofill_missing_with_policy and self._session is not None:
+            joint_actions = self._env.resolve_policy_actions(
+                self._session,
+                action.external_signals,
+                preset_actions=joint_actions,
+                agent_ids=missing_agents,
+            )
+        elif action.autofill_missing_with_hold:
+            for agent_id in missing_agents:
+                joint_actions[agent_id] = AgentAction(
+                    actor=agent_id,
+                    type="hold",
+                    summary=f"Auto-filled hold for {agent_id} in the OpenEnv step.",
+                )
 
         return joint_actions
 

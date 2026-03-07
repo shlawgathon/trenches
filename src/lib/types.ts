@@ -67,7 +67,7 @@ export type OversightIntervention = {
   risk_score: number;
   reason: string;
   affected_agents: string[];
-  action_override: Record<string, string>;
+  action_override: Record<string, AgentAction>;
 };
 
 export type AgentObservation = {
