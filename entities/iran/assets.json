@@ -1,0 +1,282 @@
+{
+  "locations": [
+    {
+      "name": "Tehran",
+      "category": "capital",
+      "lat": 35.6892,
+      "lon": 51.389,
+      "notes": "Political center and national command focus."
+    },
+    {
+      "name": "Tehran-Qom Strategic Core",
+      "category": "strategic-core",
+      "lat": 35.25,
+      "lon": 51.15,
+      "notes": "Representative command, political, and strategic continuity zone."
+    },
+    {
+      "name": "Isfahan Industrial Belt",
+      "category": "industrial-zone",
+      "lat": 32.6546,
+      "lon": 51.668,
+      "notes": "Interior industrial and strategic program support area."
+    },
+    {
+      "name": "Khuzestan Energy Belt",
+      "category": "energy-zone",
+      "lat": 31.32,
+      "lon": 48.67,
+      "notes": "Critical export and domestic-energy region exposed to disruption."
+    },
+    {
+      "name": "Bushehr Coast",
+      "category": "energy-coast",
+      "lat": 28.8295,
+      "lon": 50.8864,
+      "notes": "Energy and strategic infrastructure node."
+    },
+    {
+      "name": "Bandar Abbas",
+      "category": "maritime-node",
+      "lat": 27.1832,
+      "lon": 56.2666,
+      "notes": "Key maritime leverage node near Hormuz."
+    },
+    {
+      "name": "Qeshm-Hormuz Island Arc",
+      "category": "island-anchor",
+      "lat": 26.9,
+      "lon": 56.0,
+      "notes": "Representative island belt shaping access to the Strait of Hormuz."
+    },
+    {
+      "name": "Kharg Export Island",
+      "category": "export-node",
+      "lat": 29.2667,
+      "lon": 50.3167,
+      "notes": "Representative offshore export anchor for revenue continuity."
+    },
+    {
+      "name": "Bandar-e Jask Outlet",
+      "category": "gulf-of-oman-node",
+      "lat": 25.6439,
+      "lon": 57.7747,
+      "notes": "Outward-facing maritime node useful for export resilience and signaling."
+    },
+    {
+      "name": "Western Corridor Gateway",
+      "category": "land-corridor",
+      "lat": 34.3537,
+      "lon": 47.0567,
+      "notes": "Representative gateway toward Iraq and the wider proxy corridor."
+    }
+  ],
+  "watchpoints": [
+    "Kharg Island",
+    "Bandar Abbas",
+    "Tehran command sites",
+    "Hormuz shipping lanes",
+    "Proxy corridors into Iraq, Syria, and Lebanon",
+    "Khuzestan energy belt resilience",
+    "Bushehr coast and Gulf littoral",
+    "Qeshm and island-based maritime signaling",
+    "Gulf of Oman export alternatives",
+    "urban unrest in the strategic core"
+  ],
+  "fronts": [
+    {
+      "name": "Hormuz Maritime Front",
+      "type": "maritime-deterrence",
+      "priority": "critical",
+      "anchor_lat": 26.7,
+      "anchor_lon": 56.1,
+      "operational_focus": [
+        "merchant traffic pressure",
+        "naval signaling",
+        "deterrent ambiguity"
+      ],
+      "notes": "Primary leverage front where Iran can impose global costs quickly."
+    },
+    {
+      "name": "Western Proxy Corridor Front",
+      "type": "proxy-logistics",
+      "priority": "high",
+      "anchor_lat": 33.7,
+      "anchor_lon": 45.0,
+      "operational_focus": [
+        "Hezbollah support",
+        "militia coordination",
+        "deniable retaliation paths"
+      ],
+      "notes": "Connects domestic resilience to the credibility of external deterrence."
+    },
+    {
+      "name": "Strategic Core Defense Front",
+      "type": "air-defense-command",
+      "priority": "high",
+      "anchor_lat": 34.9,
+      "anchor_lon": 51.1,
+      "operational_focus": [
+        "command continuity",
+        "damage limitation",
+        "regime confidence"
+      ],
+      "notes": "Central for deciding whether to escalate, absorb, or seek an off-ramp."
+    },
+    {
+      "name": "Export Belt Front",
+      "type": "energy-economy",
+      "priority": "medium",
+      "anchor_lat": 29.7,
+      "anchor_lon": 49.9,
+      "operational_focus": [
+        "oil revenue continuity",
+        "labor stability",
+        "insurance and tanker confidence"
+      ],
+      "notes": "Economic endurance determines how long Iran can sustain strategic pressure."
+    }
+  ],
+  "infrastructure": [
+    {
+      "name": "Strategic core continuity system",
+      "category": "command-and-industry-network",
+      "anchor_lat": 34.9,
+      "anchor_lon": 51.2,
+      "criticality": "critical",
+      "functions": [
+        "command continuity",
+        "strategic program support",
+        "regime signaling"
+      ],
+      "vulnerabilities": [
+        "deep strike effects",
+        "air-defense attrition",
+        "elite confidence shocks"
+      ]
+    },
+    {
+      "name": "Southern export and refining system",
+      "category": "energy-network",
+      "anchor_lat": 29.5,
+      "anchor_lon": 50.4,
+      "criticality": "critical",
+      "functions": [
+        "export revenue",
+        "fuel supply",
+        "economic legitimacy"
+      ],
+      "vulnerabilities": [
+        "terminal damage",
+        "tanker avoidance",
+        "maritime interdiction"
+      ]
+    },
+    {
+      "name": "Western proxy sustainment chain",
+      "category": "land-logistics-network",
+      "anchor_lat": 34.2,
+      "anchor_lon": 46.2,
+      "criticality": "high",
+      "functions": [
+        "partner support",
+        "material movement",
+        "regional signaling"
+      ],
+      "vulnerabilities": [
+        "air interdiction",
+        "cross-border disruption",
+        "political fragmentation among partners"
+      ]
+    }
+  ],
+  "strategic_sites": [
+    {
+      "name": "Tehran-Qom strategic core",
+      "category": "command-system",
+      "anchor_lat": 35.25,
+      "anchor_lon": 51.15,
+      "importance": "critical"
+    },
+    {
+      "name": "Bandar Abbas-Hormuz littoral",
+      "category": "maritime-control-zone",
+      "anchor_lat": 27.1,
+      "anchor_lon": 56.1,
+      "importance": "critical"
+    },
+    {
+      "name": "Khuzestan-Bushehr export belt",
+      "category": "energy-system",
+      "anchor_lat": 29.1,
+      "anchor_lon": 49.8,
+      "importance": "high"
+    }
+  ],
+  "alliance_anchors": [
+    {
+      "partner": "Hezbollah",
+      "location": "Western Proxy Corridor Front",
+      "function": "northern-front deterrence against Israel"
+    },
+    {
+      "partner": "Iraqi aligned militias",
+      "location": "Western Corridor Gateway",
+      "function": "pressure on US presence and route depth"
+    },
+    {
+      "partner": "regional pressure networks",
+      "location": "Hormuz Maritime Front",
+      "function": "distributed signaling and disruption capacity"
+    }
+  ],
+  "chokepoints": [
+    {
+      "name": "Strait of Hormuz",
+      "lat": 26.5667,
+      "lon": 56.25,
+      "importance": "critical",
+      "desired_state": "threatenable and influenceable"
+    },
+    {
+      "name": "Bandar Abbas to Gulf of Oman outlet",
+      "lat": 26.0,
+      "lon": 57.1,
+      "importance": "high",
+      "desired_state": "usable as a pressure-release and export-resilience path"
+    },
+    {
+      "name": "Iraq-Syria-Lebanon land corridor",
+      "lat": 33.8,
+      "lon": 44.8,
+      "importance": "high",
+      "desired_state": "sufficiently open for proxy support and strategic signaling"
+    }
+  ],
+  "geospatial_anchors": [
+    {
+      "name": "Tehran-Qom decision arc",
+      "lat": 35.2,
+      "lon": 51.2,
+      "role": "regime continuity and strategic program resilience"
+    },
+    {
+      "name": "Hormuz littoral arc",
+      "lat": 26.8,
+      "lon": 56.0,
+      "role": "maritime leverage and naval ambiguity"
+    },
+    {
+      "name": "Khuzestan export belt",
+      "lat": 31.0,
+      "lon": 49.2,
+      "role": "energy revenue and domestic resilience"
+    },
+    {
+      "name": "Western corridor gateway",
+      "lat": 34.2,
+      "lon": 46.8,
+      "role": "proxy depth and indirect retaliation"
+    }
+  ]
+}

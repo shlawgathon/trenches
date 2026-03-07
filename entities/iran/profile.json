@@ -1,0 +1,211 @@
+{
+  "id": "iran",
+  "display_name": "Iran / IRGC",
+  "entity_type": "state",
+  "home_region": "Persian Gulf",
+  "alliances": [
+    "Hezbollah",
+    "regional proxy network",
+    "Iraqi aligned militias",
+    "Yemen-based pressure networks",
+    "select external political backers"
+  ],
+  "adversaries": [
+    "United States",
+    "Israel",
+    "sanctions coalitions",
+    "regional infrastructure protection networks"
+  ],
+  "strategic_objectives": [
+    "preserve regime continuity",
+    "raise cost through proxies and deniable operations",
+    "retain missile and maritime deterrence",
+    "threaten oil transit without inviting total isolation",
+    "protect strategic program continuity and elite cohesion",
+    "keep multiple retaliatory pathways available even after strikes"
+  ],
+  "military_posture": {
+    "style": "asymmetric, missile-centric, proxy-enabled",
+    "strengths": [
+      "missiles",
+      "proxies",
+      "geographic leverage over Hormuz",
+      "deception",
+      "distributed launch geography",
+      "political tolerance for controlled deniability"
+    ],
+    "constraints": [
+      "sanctions",
+      "air vulnerability",
+      "economic fragility",
+      "sensitivity of strategic energy infrastructure",
+      "elite cohesion risk under major damage"
+    ],
+    "preferred_instruments": [
+      "calibrated missile salvos",
+      "proxy harassment",
+      "maritime intimidation",
+      "cyber and information pressure",
+      "ambiguous signaling through regional partners"
+    ],
+    "readiness_drivers": [
+      "survivability of launch systems",
+      "proxy logistics continuity",
+      "air-defense persistence around the strategic core",
+      "ability to sustain oil exports or reroute them",
+      "domestic elite unity under pressure"
+    ]
+  },
+  "decision_doctrine": {
+    "risk_tolerance": "high for indirect escalation, lower for openly attributable regime-endangering war",
+    "time_horizon": "attritional campaign",
+    "escalation_bias": "incremental and layered, using proxies and maritime pressure before full direct exposure",
+    "negotiation_posture": "accepts talks that preserve deterrence and regime prestige",
+    "deception_sensitivity": "high but also deception-seeking",
+    "red_lines": [
+      "major damage to the Tehran-Qom strategic core",
+      "severe hits on export capacity or command continuity",
+      "perceived collapse of proxy deterrence credibility",
+      "elite fragmentation visible to rivals"
+    ],
+    "off_ramps": [
+      "face-saving de-escalation through intermediaries",
+      "restored export flow and strategic-site survivability",
+      "proxy pause that does not appear coerced",
+      "reduced US force concentration near the Gulf littoral"
+    ]
+  },
+  "protected_interests": [
+    "regime continuity",
+    "strategic program survivability",
+    "Hormuz leverage",
+    "proxy corridor integrity",
+    "oil-export resilience",
+    "elite and security-apparatus cohesion"
+  ],
+  "economic_pressure_points": [
+    "oil export disruption",
+    "sanctions tightening",
+    "internal unrest",
+    "damage to strategic energy and industrial sites",
+    "loss of maritime confidence in the Gulf and Gulf of Oman",
+    "currency and inflation stress that feeds legitimacy risk"
+  ],
+  "intelligence_priorities": [
+    "US and Israeli strike preparation",
+    "proxy survivability",
+    "damage assessment for strategic sites",
+    "Hormuz traffic and naval posture",
+    "domestic unrest and elite cohesion",
+    "which retaliatory pathways remain deniable",
+    "how Gulf states calibrate infrastructure defense and mediation"
+  ],
+  "priority_fronts": [
+    {
+      "name": "Hormuz Littoral",
+      "priority": "critical",
+      "goal": "retain the ability to threaten traffic without triggering uncontrollable backlash",
+      "trigger_indicators": [
+        "carrier concentration",
+        "merchant diversion",
+        "US maritime interdiction posture"
+      ]
+    },
+    {
+      "name": "Western Proxy Corridor",
+      "priority": "high",
+      "goal": "keep Iraq-Syria-Lebanon pathways usable for deterrence and signaling",
+      "trigger_indicators": [
+        "corridor interdiction",
+        "proxy logistics disruption",
+        "Hezbollah degradation"
+      ]
+    },
+    {
+      "name": "Strategic Core",
+      "priority": "high",
+      "goal": "protect command continuity and strategic-site survivability",
+      "trigger_indicators": [
+        "deep strike warnings",
+        "air-defense attrition",
+        "elite relocation or panic behavior"
+      ]
+    },
+    {
+      "name": "Khuzestan and Export Belt",
+      "priority": "medium",
+      "goal": "preserve revenue, domestic confidence, and energy leverage",
+      "trigger_indicators": [
+        "terminal damage",
+        "insurance or tanker withdrawal",
+        "labor unrest"
+      ]
+    }
+  ],
+  "strategic_relationships": [
+    {
+      "counterparty": "Hezbollah",
+      "type": "core proxy partner",
+      "trust_level": "high",
+      "dependency": "northern-front deterrence against Israel",
+      "notes": "Important for maintaining the sense of distributed retaliation."
+    },
+    {
+      "counterparty": "Iraqi aligned militias",
+      "type": "proxy network",
+      "trust_level": "medium",
+      "dependency": "pressure on US presence and corridor depth",
+      "notes": "Useful for deniable escalation but politically variable."
+    },
+    {
+      "counterparty": "United States",
+      "type": "principal military adversary",
+      "trust_level": "low",
+      "dependency": "mutual signaling to avoid regime-threatening misread",
+      "notes": "Iran closely watches carrier posture, base hardening, and sanction rhetoric."
+    },
+    {
+      "counterparty": "Israel",
+      "type": "principal strategic adversary",
+      "trust_level": "low",
+      "dependency": "deterrence through uncertainty and proxy depth",
+      "notes": "Iran treats Israeli operational freedom as a major indicator of vulnerability."
+    },
+    {
+      "counterparty": "Gulf states",
+      "type": "rivals and pressure valves",
+      "trust_level": "low",
+      "dependency": "their hedging behavior affects both isolation and mediation space",
+      "notes": "They are simultaneously infrastructure targets, economic comparators, and de-escalation intermediaries."
+    }
+  ],
+  "geopolitical_chokepoints": [
+    {
+      "name": "Strait of Hormuz",
+      "importance": "critical",
+      "desired_state": "threatenable on demand but not fully uncontrollable"
+    },
+    {
+      "name": "Bandar Abbas to Gulf of Oman outlet",
+      "importance": "high",
+      "desired_state": "usable for layered maritime signaling and export resilience"
+    },
+    {
+      "name": "Iraq-Syria-Lebanon corridor",
+      "importance": "high",
+      "desired_state": "porous enough for proxy support and messaging continuity"
+    },
+    {
+      "name": "Khuzestan export belt",
+      "importance": "high",
+      "desired_state": "kept functioning enough to sustain revenue and legitimacy"
+    }
+  ],
+  "geospatial_focus": [
+    "Tehran-Qom strategic core",
+    "Hormuz littoral and islands",
+    "Khuzestan and Bushehr energy belt",
+    "Iraq-Syria-Lebanon proxy corridor",
+    "Gulf of Oman outward access"
+  ]
+}

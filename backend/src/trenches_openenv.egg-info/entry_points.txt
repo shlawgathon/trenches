@@ -1,0 +1,2 @@
+[console_scripts]
+trenches-api = trenches_env.server:run

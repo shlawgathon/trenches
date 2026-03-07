@@ -1,0 +1,211 @@
+{
+  "id": "israel",
+  "display_name": "Israel / IDF",
+  "entity_type": "state",
+  "home_region": "Levant",
+  "alliances": [
+    "United States",
+    "Jordan",
+    "Egypt",
+    "Abraham Accords security partners",
+    "Eastern Mediterranean coordination partners"
+  ],
+  "adversaries": [
+    "Iran",
+    "Hezbollah",
+    "other Iran-backed proxies",
+    "cross-border rocket and drone networks"
+  ],
+  "strategic_objectives": [
+    "maintain deterrence",
+    "degrade proxy launch capacity",
+    "protect population centers and infrastructure",
+    "retain freedom of action in airspace and on the northern front",
+    "keep reserve mobilization economically sustainable",
+    "avoid strategic isolation while preserving rapid decision cycles"
+  ],
+  "military_posture": {
+    "style": "rapid-response, intelligence-heavy, air-defense-centric",
+    "strengths": [
+      "missile defense",
+      "airpower",
+      "short decision loops",
+      "local theater awareness",
+      "reserve mobilization capacity",
+      "deep integration of warning and strike systems"
+    ],
+    "constraints": [
+      "small strategic depth",
+      "civilian exposure",
+      "sustained munition burn",
+      "airport and port disruption sensitivity",
+      "economic strain from long mobilization"
+    ],
+    "preferred_instruments": [
+      "preemptive disruption of launch networks",
+      "layered missile defense",
+      "localized but intense air campaigns",
+      "rapid reserve concentration",
+      "tight coordination with US resupply and messaging"
+    ],
+    "readiness_drivers": [
+      "northern interceptor stock depth",
+      "sortie generation from central and northern belts",
+      "home-front resilience",
+      "US political backing",
+      "rate of successful launch-network suppression"
+    ]
+  },
+  "decision_doctrine": {
+    "risk_tolerance": "high under immediate threat, moderate for prolonged regional war",
+    "time_horizon": "front-by-front campaign",
+    "escalation_bias": "preemptive when warning quality is strong, otherwise retaliatory but concentrated",
+    "negotiation_posture": "accepts pauses that restore deterrence without locking in vulnerability",
+    "deception_sensitivity": "very high",
+    "red_lines": [
+      "mass-casualty saturation of major urban centers",
+      "loss of freedom of action over northern airspace",
+      "major damage to strategic energy or command infrastructure",
+      "persistent precision-guided fire from Lebanon or Syria"
+    ],
+    "off_ramps": [
+      "verified reduction in launch tempo",
+      "buffering of the northern front",
+      "credible US-backed deterrent package",
+      "restored civil aviation and port confidence"
+    ]
+  },
+  "protected_interests": [
+    "home-front continuity",
+    "northern deterrence credibility",
+    "air-defense saturation margin",
+    "energy and port continuity",
+    "reserve force endurance",
+    "strategic relationship with Washington"
+  ],
+  "economic_pressure_points": [
+    "airport and airspace closures",
+    "civilian disruption from rocket waves",
+    "northern front evacuation pressure",
+    "extended reserve mobilization costs",
+    "port slowdowns in Haifa and Ashdod",
+    "energy-platform and industrial-zone insurance shocks"
+  ],
+  "intelligence_priorities": [
+    "rocket and drone launch warning",
+    "proxy movement in Lebanon and Syria",
+    "airspace and EW conditions",
+    "Iranian escalation intent",
+    "US backing and resupply confidence",
+    "launch-network regeneration speed after strikes",
+    "civil-defense strain across the northern and coastal belts"
+  ],
+  "priority_fronts": [
+    {
+      "name": "Northern Border",
+      "priority": "critical",
+      "goal": "prevent sustained launch saturation from south Lebanon",
+      "trigger_indicators": [
+        "mass fires toward Galilee",
+        "cross-border raid indicators",
+        "drone swarm attempts"
+      ]
+    },
+    {
+      "name": "Syrian Transfer Corridor",
+      "priority": "high",
+      "goal": "interrupt precision weapons movement and proxy reinforcement",
+      "trigger_indicators": [
+        "cross-border logistics activity",
+        "air-defense repositioning in Syria",
+        "Iran-linked cargo movement"
+      ]
+    },
+    {
+      "name": "Central Home Front",
+      "priority": "high",
+      "goal": "keep command continuity, airports, and economic core functioning",
+      "trigger_indicators": [
+        "missile leakage into central cities",
+        "airport closure risk",
+        "industrial-zone disruption"
+      ]
+    },
+    {
+      "name": "Eastern Mediterranean",
+      "priority": "medium",
+      "goal": "preserve naval depth, gas-field continuity, and reinforcement routes",
+      "trigger_indicators": [
+        "offshore drone threats",
+        "naval interference",
+        "regional air corridor congestion"
+      ]
+    }
+  ],
+  "strategic_relationships": [
+    {
+      "counterparty": "United States",
+      "type": "core ally",
+      "trust_level": "high",
+      "dependency": "resupply, political cover, and shared deterrent signaling",
+      "notes": "Most important external stabilizer and escalation amplifier."
+    },
+    {
+      "counterparty": "Jordan",
+      "type": "quiet security partner",
+      "trust_level": "medium",
+      "dependency": "airspace stability and eastern buffer",
+      "notes": "Quiet cooperation matters more during multi-front stress."
+    },
+    {
+      "counterparty": "Egypt",
+      "type": "stability partner",
+      "trust_level": "medium",
+      "dependency": "southern quiet and Suez-adjacent continuity",
+      "notes": "Valuable for regional containment and maritime confidence."
+    },
+    {
+      "counterparty": "Hezbollah",
+      "type": "principal immediate battlefield adversary",
+      "trust_level": "low",
+      "dependency": "mutual deterrence logic through pain thresholds",
+      "notes": "Force survivability and launch tempo are core readouts."
+    },
+    {
+      "counterparty": "Iran",
+      "type": "strategic adversary",
+      "trust_level": "low",
+      "dependency": "indirect signaling through proxies and strategic messaging",
+      "notes": "Israel reads Tehran largely through corridor activity and launch quality."
+    }
+  ],
+  "geopolitical_chokepoints": [
+    {
+      "name": "Blue Line / south Lebanon approaches",
+      "importance": "critical",
+      "desired_state": "launch pressure kept below strategic saturation"
+    },
+    {
+      "name": "Ben Gurion air corridor",
+      "importance": "high",
+      "desired_state": "usable for civil and military continuity"
+    },
+    {
+      "name": "Haifa-Ashdod logistics coast",
+      "importance": "high",
+      "desired_state": "ports and coastal industry remain operational"
+    },
+    {
+      "name": "Eastern Mediterranean gas and naval belt",
+      "importance": "medium",
+      "desired_state": "stable enough to preserve economic and naval depth"
+    }
+  ],
+  "geospatial_focus": [
+    "Tel Aviv-Jerusalem decision and population core",
+    "Galilee and upper north",
+    "Haifa and the coastal industrial belt",
+    "Golan and eastern approaches",
+    "Eastern Mediterranean offshore zone"
+  ]
+}

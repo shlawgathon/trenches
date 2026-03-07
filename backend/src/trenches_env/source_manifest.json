@@ -1,0 +1,2323 @@
+{
+  "generatedAt": "2026-03-07T02:35:01.325Z",
+  "sourceCount": 120,
+  "sources": [
+    {
+      "id": "us-reuters-us",
+      "agentId": "us",
+      "delivery": "training_core",
+      "name": "Reuters US",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://news.google.com/rss/search?q=site:reuters.com+US&hl=en-US&gl=US&ceid=US:en"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "us",
+        "wire",
+        "domestic"
+      ],
+      "rationale": "Wire-grade US political and federal reporting for fast state reaction and domestic fallout."
+    },
+    {
+      "id": "us-politico",
+      "agentId": "us",
+      "delivery": "training_core",
+      "name": "Politico",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://rss.politico.com/politics-news.xml"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "us",
+        "politics",
+        "coalitions"
+      ],
+      "rationale": "Captures executive maneuvering, Hill dynamics, and coalition signaling."
+    },
+    {
+      "id": "us-wsj",
+      "agentId": "us",
+      "delivery": "training_core",
+      "name": "Wall Street Journal",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://feeds.content.dowjones.io/public/rss/RSSUSnews"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "us",
+        "markets",
+        "elite-policy"
+      ],
+      "rationale": "Business and policy-elite framing relevant to backlash, oil, and market stress."
+    },
+    {
+      "id": "us-white-house",
+      "agentId": "us",
+      "delivery": "training_core",
+      "name": "White House",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://news.google.com/rss/search?q=site:whitehouse.gov&hl=en-US&gl=US&ceid=US:en"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "us",
+        "official",
+        "executive"
+      ],
+      "rationale": "Official executive posture and public messaging."
+    },
+    {
+      "id": "us-state-dept",
+      "agentId": "us",
+      "delivery": "training_core",
+      "name": "State Dept",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://news.google.com/rss/search?q=site:state.gov+OR+%22State+Department%22&hl=en-US&gl=US&ceid=US:en"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "us",
+        "official",
+        "diplomacy"
+      ],
+      "rationale": "Diplomatic posture, sanctions posture, and alliance language."
+    },
+    {
+      "id": "us-usni-news",
+      "agentId": "us",
+      "delivery": "training_core",
+      "name": "USNI News",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://news.usni.org/feed"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "us",
+        "naval",
+        "centcom"
+      ],
+      "rationale": "Naval deployments and fleet posture relevant to US deterrence and force signaling."
+    },
+    {
+      "id": "us-polymarket",
+      "agentId": "us",
+      "delivery": "training_core",
+      "name": "Polymarket Geopolitical Markets",
+      "kind": "structured",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "prediction/v1/list-prediction-markets",
+        "selector": "geopolitics"
+      },
+      "auth": "relay",
+      "allowlistStatus": "external",
+      "tags": [
+        "us",
+        "prediction",
+        "public-expectations"
+      ],
+      "rationale": "Crowd-implied escalation and political-risk signal."
+    },
+    {
+      "id": "us-fox-live",
+      "agentId": "us",
+      "delivery": "live_demo",
+      "name": "Fox News Live",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@FoxNews"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "us",
+        "live",
+        "media"
+      ],
+      "rationale": "Domestic reaction and media pulse during live sessions."
+    },
+    {
+      "id": "us-washington-webcam",
+      "agentId": "us",
+      "delivery": "live_demo",
+      "name": "Washington DC Webcam",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@AxisCommunications"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "us",
+        "live",
+        "webcam"
+      ],
+      "rationale": "Ambient visual context from the US capital during demos."
+    },
+    {
+      "id": "us-npr-news",
+      "agentId": "us",
+      "delivery": "training_core",
+      "name": "NPR News",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://feeds.npr.org/1001/rss.xml"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "us",
+        "public-media",
+        "domestic"
+      ],
+      "rationale": "Broad US domestic pulse that captures public-facing political and social fallout."
+    },
+    {
+      "id": "us-pentagon",
+      "agentId": "us",
+      "delivery": "training_core",
+      "name": "Pentagon",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://news.google.com/rss/search?q=site:defense.gov+OR+Pentagon&hl=en-US&gl=US&ceid=US:en"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "us",
+        "official",
+        "defense"
+      ],
+      "rationale": "Official defense posture, deployments, and deterrence messaging."
+    },
+    {
+      "id": "us-treasury",
+      "agentId": "us",
+      "delivery": "training_core",
+      "name": "Treasury",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://news.google.com/rss/search?q=site:treasury.gov+OR+%22Treasury+Department%22&hl=en-US&gl=US&ceid=US:en"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "us",
+        "official",
+        "sanctions"
+      ],
+      "rationale": "Tracks sanctions posture, financial coercion, and macro-stability messaging."
+    },
+    {
+      "id": "us-federal-reserve",
+      "agentId": "us",
+      "delivery": "training_core",
+      "name": "Federal Reserve",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://www.federalreserve.gov/feeds/press_all.xml"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "us",
+        "official",
+        "rates"
+      ],
+      "rationale": "Monetary-policy signaling and emergency liquidity posture."
+    },
+    {
+      "id": "us-sec",
+      "agentId": "us",
+      "delivery": "training_core",
+      "name": "SEC",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://www.sec.gov/news/pressreleases.rss"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "us",
+        "official",
+        "markets"
+      ],
+      "rationale": "Market-integrity and disclosure signals during crisis-driven volatility."
+    },
+    {
+      "id": "us-defense-one",
+      "agentId": "us",
+      "delivery": "training_core",
+      "name": "Defense One",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://www.defenseone.com/rss/all/"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "us",
+        "defense",
+        "analysis"
+      ],
+      "rationale": "Civil-military analysis and Pentagon ecosystem reporting."
+    },
+    {
+      "id": "us-defense-news",
+      "agentId": "us",
+      "delivery": "training_core",
+      "name": "Defense News",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://www.defensenews.com/arc/outboundfeeds/rss/?outputType=xml"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "us",
+        "defense",
+        "industry"
+      ],
+      "rationale": "Operational and defense-industrial coverage tied to force readiness."
+    },
+    {
+      "id": "us-military-times",
+      "agentId": "us",
+      "delivery": "training_core",
+      "name": "Military Times",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://www.militarytimes.com/arc/outboundfeeds/rss/?outputType=xml"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "us",
+        "military",
+        "personnel"
+      ],
+      "rationale": "Troop, veteran, and force-posture reporting relevant to domestic military sentiment."
+    },
+    {
+      "id": "us-abc-news-live",
+      "agentId": "us",
+      "delivery": "live_demo",
+      "name": "ABC News Live",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@ABCNews"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "us",
+        "live",
+        "media"
+      ],
+      "rationale": "Additional US broadcast-news reaction during live sessions."
+    },
+    {
+      "id": "us-cbs-news-live",
+      "agentId": "us",
+      "delivery": "live_demo",
+      "name": "CBS News Live",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@CBSNews"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "us",
+        "live",
+        "media"
+      ],
+      "rationale": "Mainstream TV framing and breaking-event cadence for demos."
+    },
+    {
+      "id": "us-nbc-news-live",
+      "agentId": "us",
+      "delivery": "live_demo",
+      "name": "NBC News Live",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@NBCNews"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "us",
+        "live",
+        "media"
+      ],
+      "rationale": "Broad domestic coverage lane for live domestic sentiment tracking."
+    },
+    {
+      "id": "israel-oref",
+      "agentId": "israel",
+      "delivery": "training_core",
+      "name": "OREF Rocket Alerts",
+      "kind": "structured",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "military/v1/list-oref-alerts"
+      },
+      "auth": "relay",
+      "allowlistStatus": "external",
+      "tags": [
+        "israel",
+        "sirens",
+        "air-defense"
+      ],
+      "rationale": "Highest-signal direct warning source for rockets, missiles, and drones."
+    },
+    {
+      "id": "israel-haaretz",
+      "agentId": "israel",
+      "delivery": "training_core",
+      "name": "Haaretz",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://news.google.com/rss/search?q=site:haaretz.com+when:7d&hl=en-US&gl=US&ceid=US:en"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "israel",
+        "security",
+        "local-reporting"
+      ],
+      "rationale": "Israeli political-security reporting with local context."
+    },
+    {
+      "id": "israel-opensky-flights",
+      "agentId": "israel",
+      "delivery": "training_core",
+      "name": "OpenSky Military Flights",
+      "kind": "structured",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "military/v1/list-military-flights",
+        "selector": "opensky"
+      },
+      "auth": "relay",
+      "allowlistStatus": "external",
+      "tags": [
+        "israel",
+        "airspace",
+        "opensky"
+      ],
+      "rationale": "Airspace and sortie activity tied to Israeli operational tempo."
+    },
+    {
+      "id": "israel-wingbits-enrichment",
+      "agentId": "israel",
+      "delivery": "training_core",
+      "name": "Wingbits Flight Enrichment",
+      "kind": "structured",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "military/v1/list-military-flights",
+        "selector": "wingbits"
+      },
+      "auth": "relay",
+      "allowlistStatus": "external",
+      "tags": [
+        "israel",
+        "airspace",
+        "wingbits"
+      ],
+      "rationale": "Adds operator and aircraft context for military-flight interpretation."
+    },
+    {
+      "id": "israel-tlv-notam",
+      "agentId": "israel",
+      "delivery": "training_core",
+      "name": "TLV NOTAM / Airport Closures",
+      "kind": "structured",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "aviation/v1/list-airport-delays",
+        "selector": "TLV"
+      },
+      "auth": "apiKey",
+      "allowlistStatus": "external",
+      "tags": [
+        "israel",
+        "notam",
+        "aviation"
+      ],
+      "rationale": "Captures Ben Gurion disruption, closure, and severe airspace changes."
+    },
+    {
+      "id": "israel-gpsjam-levant",
+      "agentId": "israel",
+      "delivery": "training_core",
+      "name": "GPSJam Levant View",
+      "kind": "scrape",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://gpsjam.org"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "israel",
+        "ew",
+        "gps-jamming"
+      ],
+      "rationale": "Electronic-warfare and GNSS-spoofing conditions in the Levant."
+    },
+    {
+      "id": "israel-kan11-live",
+      "agentId": "israel",
+      "delivery": "live_demo",
+      "name": "Kan 11 Live",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@KAN11NEWS"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "israel",
+        "live",
+        "hebrew-tv"
+      ],
+      "rationale": "Hebrew live-news situational awareness."
+    },
+    {
+      "id": "israel-i24-live",
+      "agentId": "israel",
+      "delivery": "live_demo",
+      "name": "i24NEWS Live",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@i24NEWS_HE"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "israel",
+        "live",
+        "tv"
+      ],
+      "rationale": "Israeli TV framing and rapid local updates."
+    },
+    {
+      "id": "israel-jerusalem-webcam",
+      "agentId": "israel",
+      "delivery": "live_demo",
+      "name": "Jerusalem Webcam",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@JerusalemLive"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "israel",
+        "live",
+        "webcam"
+      ],
+      "rationale": "Civilian and symbolic city-center visual context."
+    },
+    {
+      "id": "israel-tel-aviv-webcam",
+      "agentId": "israel",
+      "delivery": "live_demo",
+      "name": "Tel Aviv Webcam",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@IsraelLiveCam"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "israel",
+        "live",
+        "webcam"
+      ],
+      "rationale": "Urban impact visibility during escalation demos."
+    },
+    {
+      "id": "israel-defender-dome",
+      "agentId": "israel",
+      "delivery": "training_core",
+      "name": "The Defender Dome",
+      "kind": "telegram",
+      "endpoint": {
+        "kind": "telegram",
+        "handle": "DefenderDome"
+      },
+      "auth": "session",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "israel",
+        "telegram",
+        "air-defense"
+      ],
+      "rationale": "Fast conflict monitoring stream centered on missile-defense and strike reporting."
+    },
+    {
+      "id": "israel-yedioth-news",
+      "agentId": "israel",
+      "delivery": "training_core",
+      "name": "Yedioth News",
+      "kind": "telegram",
+      "endpoint": {
+        "kind": "telegram",
+        "handle": "yediotnews25"
+      },
+      "auth": "session",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "israel",
+        "telegram",
+        "breaking"
+      ],
+      "rationale": "Israeli breaking-news lane with local reaction and casualty reporting."
+    },
+    {
+      "id": "israel-bbc-middle-east",
+      "agentId": "israel",
+      "delivery": "training_core",
+      "name": "BBC Middle East",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://feeds.bbci.co.uk/news/world/middle_east/rss.xml"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "israel",
+        "regional",
+        "wire"
+      ],
+      "rationale": "External regional framing of Israeli operations and responses."
+    },
+    {
+      "id": "israel-times-of-israel",
+      "agentId": "israel",
+      "delivery": "training_core",
+      "name": "The Times of Israel",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://www.timesofisrael.com/feed/"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "israel",
+        "local-reporting",
+        "politics"
+      ],
+      "rationale": "Fast Israel-specific political and security coverage with local context."
+    },
+    {
+      "id": "israel-theater-posture",
+      "agentId": "israel",
+      "delivery": "training_core",
+      "name": "Levant Theater Posture",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "military/v1/get-theater-posture",
+        "selector": "levant"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "israel",
+        "military",
+        "posture"
+      ],
+      "rationale": "Regional force posture snapshot across Israel's immediate operating theater."
+    },
+    {
+      "id": "israel-military-bases",
+      "agentId": "israel",
+      "delivery": "training_core",
+      "name": "Israel Frontier Base Layer",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "military/v1/list-military-bases",
+        "selector": "israel-frontier"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "israel",
+        "bases",
+        "readiness"
+      ],
+      "rationale": "Static force-infrastructure layer for front-line readiness reasoning."
+    },
+    {
+      "id": "israel-eastern-med-warnings",
+      "agentId": "israel",
+      "delivery": "training_core",
+      "name": "Eastern Med Navigational Warnings",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "maritime/v1/list-navigational-warnings",
+        "selector": "eastern-med"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "israel",
+        "maritime",
+        "warnings"
+      ],
+      "rationale": "Detects maritime safety and exclusion-zone changes around the Eastern Mediterranean."
+    },
+    {
+      "id": "israel-aljazeera-english-live",
+      "agentId": "israel",
+      "delivery": "live_demo",
+      "name": "Al Jazeera English Live",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@AlJazeeraEnglish"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "israel",
+        "live",
+        "regional-media"
+      ],
+      "rationale": "Regional broadcast framing of Israeli military moves during live sessions."
+    },
+    {
+      "id": "israel-al-hadath-live",
+      "agentId": "israel",
+      "delivery": "live_demo",
+      "name": "Al Hadath Live",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@AlHadath"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "israel",
+        "live",
+        "regional-media"
+      ],
+      "rationale": "Arabic breaking coverage useful for monitoring regional reaction to Israeli actions."
+    },
+    {
+      "id": "israel-asharq-news-live",
+      "agentId": "israel",
+      "delivery": "live_demo",
+      "name": "Asharq News Live",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@asharqnews"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "israel",
+        "live",
+        "regional-media"
+      ],
+      "rationale": "Gulf-facing regional lens on Israeli escalation and diplomacy."
+    },
+    {
+      "id": "iran-vahid-online",
+      "agentId": "iran",
+      "delivery": "training_core",
+      "name": "VahidOnline",
+      "kind": "telegram",
+      "endpoint": {
+        "kind": "telegram",
+        "handle": "VahidOnline"
+      },
+      "auth": "session",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "iran",
+        "telegram",
+        "politics"
+      ],
+      "rationale": "High-signal Iran political and social monitoring from the curated Telegram set."
+    },
+    {
+      "id": "iran-bbc-persian",
+      "agentId": "iran",
+      "delivery": "training_core",
+      "name": "BBC Persian",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "http://feeds.bbci.co.uk/persian/tv-and-radio-37434376/rss.xml"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "iran",
+        "persian",
+        "opposition"
+      ],
+      "rationale": "Persian-language reporting from a distinct narrative lane."
+    },
+    {
+      "id": "iran-iran-international",
+      "agentId": "iran",
+      "delivery": "training_core",
+      "name": "Iran International",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://news.google.com/rss/search?q=site:iranintl.com+when:2d&hl=en-US&gl=US&ceid=US:en"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "iran",
+        "opposition",
+        "crisis"
+      ],
+      "rationale": "High-signal exile-media coverage of Iranian crisis conditions."
+    },
+    {
+      "id": "iran-fars-news",
+      "agentId": "iran",
+      "delivery": "training_core",
+      "name": "Fars News",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://news.google.com/rss/search?q=site:farsnews.ir+when:2d&hl=en-US&gl=US&ceid=US:en"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "iran",
+        "state",
+        "security"
+      ],
+      "rationale": "State-adjacent narrative and official-security framing."
+    },
+    {
+      "id": "iran-liveuamap-events",
+      "agentId": "iran",
+      "delivery": "training_core",
+      "name": "LiveUAMap Iran Events",
+      "kind": "structured",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "conflict/v1/list-iran-events"
+      },
+      "auth": "relay",
+      "allowlistStatus": "external",
+      "tags": [
+        "iran",
+        "map-events",
+        "strikes"
+      ],
+      "rationale": "Geocoded attacks, strikes, and military incidents focused on Iran."
+    },
+    {
+      "id": "iran-nasa-firms",
+      "agentId": "iran",
+      "delivery": "training_core",
+      "name": "NASA FIRMS Strike Heat",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "wildfire/v1/list-fire-detections",
+        "selector": "IR"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "iran",
+        "thermal",
+        "damage"
+      ],
+      "rationale": "Satellite thermal proxy for strike damage and industrial disruption."
+    },
+    {
+      "id": "iran-fotros-resistance",
+      "agentId": "iran",
+      "delivery": "training_core",
+      "name": "Fotros Resistance",
+      "kind": "telegram",
+      "endpoint": {
+        "kind": "telegram",
+        "handle": "FotrosResistancee"
+      },
+      "auth": "session",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "iran",
+        "telegram",
+        "proxy-network"
+      ],
+      "rationale": "Proxy-aligned conflict signal from inside the resistance ecosystem."
+    },
+    {
+      "id": "iran-iranintl-live",
+      "agentId": "iran",
+      "delivery": "live_demo",
+      "name": "Iran International Live",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@IranIntl"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "iran",
+        "live",
+        "tv"
+      ],
+      "rationale": "Live narrative pulse for Iranian crisis coverage."
+    },
+    {
+      "id": "iran-tehran-webcam",
+      "agentId": "iran",
+      "delivery": "live_demo",
+      "name": "Tehran Webcam",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@IranHDCams"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "iran",
+        "live",
+        "webcam"
+      ],
+      "rationale": "Visual monitoring of Tehran during live sessions."
+    },
+    {
+      "id": "iran-iranintl-telegram",
+      "agentId": "iran",
+      "delivery": "training_core",
+      "name": "Iran International Telegram",
+      "kind": "telegram",
+      "endpoint": {
+        "kind": "telegram",
+        "handle": "iranintltv"
+      },
+      "auth": "session",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "iran",
+        "telegram",
+        "opposition"
+      ],
+      "rationale": "Low-latency opposition and exile-media alerts in Telegram form."
+    },
+    {
+      "id": "iran-bno-news",
+      "agentId": "iran",
+      "delivery": "training_core",
+      "name": "BNO News",
+      "kind": "telegram",
+      "endpoint": {
+        "kind": "telegram",
+        "handle": "BNONews"
+      },
+      "auth": "session",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "iran",
+        "telegram",
+        "breaking"
+      ],
+      "rationale": "Fast global breaking-news lane for strike and escalation confirmation."
+    },
+    {
+      "id": "iran-al-arabiya",
+      "agentId": "iran",
+      "delivery": "training_core",
+      "name": "Al Arabiya",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://news.google.com/rss/search?q=site:english.alarabiya.net+when:2d&hl=en-US&gl=US&ceid=US:en"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "iran",
+        "regional",
+        "arab-media"
+      ],
+      "rationale": "Arab regional framing of Iranian retaliation, strikes, and diplomacy."
+    },
+    {
+      "id": "iran-nuclear-energy-watch",
+      "agentId": "iran",
+      "delivery": "training_core",
+      "name": "Iran Nuclear Energy Watch",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://news.google.com/rss/search?q=(Iran+IAEA+OR+Iran+uranium+OR+Iran+%22nuclear+energy%22)+when:3d&hl=en-US&gl=US&ceid=US:en"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "iran",
+        "nuclear",
+        "iaea"
+      ],
+      "rationale": "Dedicated nuclear and safeguards signal relevant to escalation thresholds."
+    },
+    {
+      "id": "iran-internet-outages",
+      "agentId": "iran",
+      "delivery": "training_core",
+      "name": "Iran Internet Outages",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "infrastructure/v1/list-internet-outages",
+        "selector": "IR"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "iran",
+        "infrastructure",
+        "internet"
+      ],
+      "rationale": "Tracks censorship, disruption, and wartime communications degradation."
+    },
+    {
+      "id": "iran-unrest-events",
+      "agentId": "iran",
+      "delivery": "training_core",
+      "name": "Iran Unrest Events",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "unrest/v1/list-unrest-events",
+        "selector": "IR"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "iran",
+        "unrest",
+        "domestic"
+      ],
+      "rationale": "Crowd action, protests, and unrest pressure affecting regime stability."
+    },
+    {
+      "id": "iran-climate-anomalies",
+      "agentId": "iran",
+      "delivery": "training_core",
+      "name": "Iran Climate Anomalies",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "climate/v1/list-climate-anomalies",
+        "selector": "IR"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "iran",
+        "climate",
+        "stress"
+      ],
+      "rationale": "Environmental stressor layer that can compound logistics and domestic strain."
+    },
+    {
+      "id": "iran-stock-index",
+      "agentId": "iran",
+      "delivery": "training_core",
+      "name": "Iran Stock Index",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "market/v1/get-country-stock-index",
+        "selector": "IR"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "iran",
+        "markets",
+        "macro"
+      ],
+      "rationale": "Market-stress proxy for domestic confidence and sanctions shock."
+    },
+    {
+      "id": "iran-trt-world-live",
+      "agentId": "iran",
+      "delivery": "live_demo",
+      "name": "TRT World Live",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@TRTWorld"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "iran",
+        "live",
+        "regional-media"
+      ],
+      "rationale": "External live regional coverage of Iranian crisis developments."
+    },
+    {
+      "id": "iran-cgtn-arabic-live",
+      "agentId": "iran",
+      "delivery": "live_demo",
+      "name": "CGTN Arabic Live",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@CGTNArabic"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "iran",
+        "live",
+        "regional-media"
+      ],
+      "rationale": "Alternative non-Western broadcast lane for Iranian events."
+    },
+    {
+      "id": "iran-france24-live",
+      "agentId": "iran",
+      "delivery": "live_demo",
+      "name": "France 24 Live",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@FRANCE24"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "iran",
+        "live",
+        "global-media"
+      ],
+      "rationale": "European live-news framing for Iranian escalation and diplomatic fallout."
+    },
+    {
+      "id": "hezbollah-abu-ali",
+      "agentId": "hezbollah",
+      "delivery": "training_core",
+      "name": "Abu Ali Express",
+      "kind": "telegram",
+      "endpoint": {
+        "kind": "telegram",
+        "handle": "abualiexpress"
+      },
+      "auth": "session",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "hezbollah",
+        "telegram",
+        "proxy"
+      ],
+      "rationale": "Fast proxy-aligned updates focused on the Levant theater."
+    },
+    {
+      "id": "hezbollah-abu-ali-en",
+      "agentId": "hezbollah",
+      "delivery": "training_core",
+      "name": "Abu Ali Express EN",
+      "kind": "telegram",
+      "endpoint": {
+        "kind": "telegram",
+        "handle": "englishabuali"
+      },
+      "auth": "session",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "hezbollah",
+        "telegram",
+        "proxy",
+        "english"
+      ],
+      "rationale": "English-readable mirror of the proxy operational narrative."
+    },
+    {
+      "id": "hezbollah-lebanon-update",
+      "agentId": "hezbollah",
+      "delivery": "training_core",
+      "name": "Lebanon Update",
+      "kind": "telegram",
+      "endpoint": {
+        "kind": "telegram",
+        "handle": "LebUpdate"
+      },
+      "auth": "session",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "hezbollah",
+        "telegram",
+        "lebanon"
+      ],
+      "rationale": "Lebanon-specific breaking updates for theater awareness."
+    },
+    {
+      "id": "hezbollah-middle-east-spectator",
+      "agentId": "hezbollah",
+      "delivery": "training_core",
+      "name": "Middle East Spectator",
+      "kind": "telegram",
+      "endpoint": {
+        "kind": "telegram",
+        "handle": "Middle_East_Spectator"
+      },
+      "auth": "session",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "hezbollah",
+        "telegram",
+        "osint"
+      ],
+      "rationale": "OSINT-style regional conflict monitoring aligned with proxy reasoning."
+    },
+    {
+      "id": "hezbollah-the-cradle",
+      "agentId": "hezbollah",
+      "delivery": "training_core",
+      "name": "The Cradle",
+      "kind": "telegram",
+      "endpoint": {
+        "kind": "telegram",
+        "handle": "thecradlemedia"
+      },
+      "auth": "session",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "hezbollah",
+        "telegram",
+        "regional-politics"
+      ],
+      "rationale": "Resistance-axis narrative and regional political framing."
+    },
+    {
+      "id": "hezbollah-acled-lebanon-syria",
+      "agentId": "hezbollah",
+      "delivery": "training_core",
+      "name": "ACLED Lebanon/Syria Conflict Events",
+      "kind": "structured",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "conflict/v1/list-acled-events",
+        "selector": "LB,SY"
+      },
+      "auth": "apiKey",
+      "allowlistStatus": "external",
+      "tags": [
+        "hezbollah",
+        "acled",
+        "theater-events"
+      ],
+      "rationale": "Event-level escalation tracking around Hezbollah's operating theater."
+    },
+    {
+      "id": "hezbollah-beirut-webcam",
+      "agentId": "hezbollah",
+      "delivery": "live_demo",
+      "name": "Beirut MTV Lebanon Webcam",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@MTVLebanonNews"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "hezbollah",
+        "live",
+        "webcam"
+      ],
+      "rationale": "Lebanese urban situational awareness during live sessions."
+    },
+    {
+      "id": "hezbollah-middle-east-now",
+      "agentId": "hezbollah",
+      "delivery": "training_core",
+      "name": "Middle East Now Breaking",
+      "kind": "telegram",
+      "endpoint": {
+        "kind": "telegram",
+        "handle": "MiddleEastNow_Breaking"
+      },
+      "auth": "session",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "hezbollah",
+        "telegram",
+        "breaking"
+      ],
+      "rationale": "Rapid regional conflict alerts with strong Levant focus."
+    },
+    {
+      "id": "hezbollah-aurora-intel",
+      "agentId": "hezbollah",
+      "delivery": "training_core",
+      "name": "Aurora Intel",
+      "kind": "telegram",
+      "endpoint": {
+        "kind": "telegram",
+        "handle": "AuroraIntel"
+      },
+      "auth": "session",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "hezbollah",
+        "telegram",
+        "conflict"
+      ],
+      "rationale": "Fast OSINT and military-incident feed useful for proxy-theater awareness."
+    },
+    {
+      "id": "hezbollah-osintdefender",
+      "agentId": "hezbollah",
+      "delivery": "training_core",
+      "name": "OSINTdefender",
+      "kind": "telegram",
+      "endpoint": {
+        "kind": "telegram",
+        "handle": "OSINTdefender"
+      },
+      "auth": "session",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "hezbollah",
+        "telegram",
+        "osint"
+      ],
+      "rationale": "High-frequency conflict monitoring and strike verification stream."
+    },
+    {
+      "id": "hezbollah-osintops-news",
+      "agentId": "hezbollah",
+      "delivery": "training_core",
+      "name": "OSIntOps News",
+      "kind": "telegram",
+      "endpoint": {
+        "kind": "telegram",
+        "handle": "Osintlatestnews"
+      },
+      "auth": "session",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "hezbollah",
+        "telegram",
+        "osint"
+      ],
+      "rationale": "Additional raw conflict reporting lane for cross-checking border activity."
+    },
+    {
+      "id": "hezbollah-osint-live",
+      "agentId": "hezbollah",
+      "delivery": "training_core",
+      "name": "OSINT Live",
+      "kind": "telegram",
+      "endpoint": {
+        "kind": "telegram",
+        "handle": "osintlive"
+      },
+      "auth": "session",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "hezbollah",
+        "telegram",
+        "osint"
+      ],
+      "rationale": "Low-latency conflict snapshots across the wider resistance theater."
+    },
+    {
+      "id": "hezbollah-guardian-middle-east",
+      "agentId": "hezbollah",
+      "delivery": "training_core",
+      "name": "Guardian Middle East",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://www.theguardian.com/world/middleeast/rss"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "hezbollah",
+        "regional",
+        "analysis"
+      ],
+      "rationale": "External regional reporting with Lebanese and Syrian theater coverage."
+    },
+    {
+      "id": "hezbollah-al-jazeera-arabic",
+      "agentId": "hezbollah",
+      "delivery": "training_core",
+      "name": "Al Jazeera Arabic",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://www.aljazeera.net/aljazeerarss/a7c186be-1adb-4b11-a982-4783e765316e/4e17ecdc-8fb9-40de-a5d6-d00f72384a51"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "hezbollah",
+        "arabic",
+        "regional"
+      ],
+      "rationale": "Arabic-language regional news lane aligned with the Hezbollah information environment."
+    },
+    {
+      "id": "hezbollah-humanitarian-summary",
+      "agentId": "hezbollah",
+      "delivery": "training_core",
+      "name": "Lebanon Humanitarian Summary",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "conflict/v1/get-humanitarian-summary",
+        "selector": "LBN"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "hezbollah",
+        "humanitarian",
+        "lebanon"
+      ],
+      "rationale": "Civilian-pressure signal relevant to Hezbollah's operating environment inside Lebanon."
+    },
+    {
+      "id": "hezbollah-unrest-lebanon",
+      "agentId": "hezbollah",
+      "delivery": "training_core",
+      "name": "Lebanon Unrest Events",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "unrest/v1/list-unrest-events",
+        "selector": "LB"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "hezbollah",
+        "unrest",
+        "lebanon"
+      ],
+      "rationale": "Captures protests and domestic pressure that shape Hezbollah's political room."
+    },
+    {
+      "id": "hezbollah-internet-outages",
+      "agentId": "hezbollah",
+      "delivery": "training_core",
+      "name": "Lebanon Internet Outages",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "infrastructure/v1/list-internet-outages",
+        "selector": "LB"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "hezbollah",
+        "infrastructure",
+        "internet"
+      ],
+      "rationale": "Communications-disruption proxy for domestic stress and wartime degradation."
+    },
+    {
+      "id": "hezbollah-climate-anomalies",
+      "agentId": "hezbollah",
+      "delivery": "training_core",
+      "name": "Lebanon Climate Anomalies",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "climate/v1/list-climate-anomalies",
+        "selector": "LB"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "hezbollah",
+        "climate",
+        "stress"
+      ],
+      "rationale": "Environmental strain layer that can worsen humanitarian and logistics pressure."
+    },
+    {
+      "id": "hezbollah-lebanon-coast-warnings",
+      "agentId": "hezbollah",
+      "delivery": "training_core",
+      "name": "Lebanon Coast Navigational Warnings",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "maritime/v1/list-navigational-warnings",
+        "selector": "lebanon-coast"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "hezbollah",
+        "maritime",
+        "coast"
+      ],
+      "rationale": "Coastal maritime-warning layer relevant to Beirut and southern Lebanese littoral activity."
+    },
+    {
+      "id": "hezbollah-rudaw-live",
+      "agentId": "hezbollah",
+      "delivery": "live_demo",
+      "name": "Rudaw Live",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@rudaw"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "hezbollah",
+        "live",
+        "regional-media"
+      ],
+      "rationale": "Regional Kurdish/Levant live coverage for cross-border developments."
+    },
+    {
+      "id": "gulf-arabian-business",
+      "agentId": "gulf",
+      "delivery": "training_core",
+      "name": "Arabian Business",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://news.google.com/rss/search?q=site:arabianbusiness.com+(Saudi+Arabia+OR+UAE+OR+GCC)+when:7d&hl=en-US&gl=US&ceid=US:en"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "gulf",
+        "business",
+        "gcc"
+      ],
+      "rationale": "GCC business and investment coverage."
+    },
+    {
+      "id": "gulf-the-national-gcc",
+      "agentId": "gulf",
+      "delivery": "training_core",
+      "name": "The National (GCC Query Set)",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://news.google.com/rss/search?q=site:thenationalnews.com+(Abu+Dhabi+OR+UAE+OR+Saudi)+when:7d&hl=en-US&gl=US&ceid=US:en"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "gulf",
+        "uae",
+        "regional"
+      ],
+      "rationale": "UAE and GCC political-economic framing."
+    },
+    {
+      "id": "gulf-gulf-investments",
+      "agentId": "gulf",
+      "delivery": "training_core",
+      "name": "Gulf Investments",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://news.google.com/rss/search?q=(%22Saudi+Arabia%22+OR+%22UAE%22+OR+%22Abu+Dhabi%22)+investment+infrastructure+when:7d&hl=en-US&gl=US&ceid=US:en"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "gulf",
+        "investments",
+        "infrastructure"
+      ],
+      "rationale": "Saudi/UAE investment and infrastructure signal."
+    },
+    {
+      "id": "gulf-gulf-quotes",
+      "agentId": "gulf",
+      "delivery": "training_core",
+      "name": "Gulf Economies Panel",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "market/v1/list-gulf-quotes"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "gulf",
+        "markets",
+        "currencies"
+      ],
+      "rationale": "GCC indices, currencies, and oil-linked quotes in one bundle."
+    },
+    {
+      "id": "gulf-oil-energy",
+      "agentId": "gulf",
+      "delivery": "training_core",
+      "name": "Oil and Energy Analytics",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "market/v1/list-commodity-quotes",
+        "selector": "oil-energy-analytics"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "gulf",
+        "oil",
+        "energy"
+      ],
+      "rationale": "WTI, Brent, and related energy-market stress relevant to Gulf hedging."
+    },
+    {
+      "id": "gulf-chokepoint-status",
+      "agentId": "gulf",
+      "delivery": "training_core",
+      "name": "Maritime Chokepoint Disruption Panel",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "supply-chain/v1/get-chokepoint-status"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "gulf",
+        "shipping",
+        "hormuz"
+      ],
+      "rationale": "Strait of Hormuz and nearby chokepoint disruption risk from AIS-linked signals."
+    },
+    {
+      "id": "gulf-fdi-layer",
+      "agentId": "gulf",
+      "delivery": "training_core",
+      "name": "Gulf FDI Layer",
+      "kind": "structured",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "economic/v1/list-gulf-fdi"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "gulf",
+        "fdi",
+        "capital-flows"
+      ],
+      "rationale": "Regional leverage and overseas economic exposure."
+    },
+    {
+      "id": "gulf-sky-news-arabia-live",
+      "agentId": "gulf",
+      "delivery": "live_demo",
+      "name": "Sky News Arabia Live",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@skynewsarabia"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "gulf",
+        "live",
+        "tv"
+      ],
+      "rationale": "Arab-region live coverage from a Gulf-aligned lens."
+    },
+    {
+      "id": "gulf-mecca-webcam",
+      "agentId": "gulf",
+      "delivery": "live_demo",
+      "name": "Mecca Webcam",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@MakkahLive"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "gulf",
+        "live",
+        "webcam"
+      ],
+      "rationale": "Symbolic and social-stability context in the Saudi sphere."
+    },
+    {
+      "id": "gulf-arab-news",
+      "agentId": "gulf",
+      "delivery": "training_core",
+      "name": "Arab News",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://news.google.com/rss/search?q=site:arabnews.com+when:7d&hl=en-US&gl=US&ceid=US:en"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "gulf",
+        "saudi",
+        "regional"
+      ],
+      "rationale": "Saudi-facing regional political and economic coverage."
+    },
+    {
+      "id": "gulf-reuters-business",
+      "agentId": "gulf",
+      "delivery": "training_core",
+      "name": "Reuters Business",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://news.google.com/rss/search?q=site:reuters.com+business+markets&hl=en-US&gl=US&ceid=US:en"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "gulf",
+        "markets",
+        "wire"
+      ],
+      "rationale": "Global business-market reporting that captures oil and shipping spillovers."
+    },
+    {
+      "id": "gulf-cnbc",
+      "agentId": "gulf",
+      "delivery": "training_core",
+      "name": "CNBC",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "gulf",
+        "markets",
+        "broadcast"
+      ],
+      "rationale": "Fast financial-media coverage of energy and market volatility."
+    },
+    {
+      "id": "gulf-yahoo-finance",
+      "agentId": "gulf",
+      "delivery": "training_core",
+      "name": "Yahoo Finance",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://finance.yahoo.com/news/rssindex"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "gulf",
+        "markets",
+        "portfolio"
+      ],
+      "rationale": "Broad market and commodity feed for GCC hedging behavior."
+    },
+    {
+      "id": "gulf-shipping-rates",
+      "agentId": "gulf",
+      "delivery": "training_core",
+      "name": "Shipping Rates Monitor",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "supply-chain/v1/get-shipping-rates"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "gulf",
+        "shipping",
+        "rates"
+      ],
+      "rationale": "Freight-cost signal tied to Red Sea and Hormuz disruptions."
+    },
+    {
+      "id": "gulf-critical-minerals",
+      "agentId": "gulf",
+      "delivery": "training_core",
+      "name": "Critical Minerals Monitor",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "supply-chain/v1/get-critical-minerals"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "gulf",
+        "minerals",
+        "supply-chain"
+      ],
+      "rationale": "Strategic materials view relevant to industrial and sovereign hedging decisions."
+    },
+    {
+      "id": "gulf-trade-restrictions",
+      "agentId": "gulf",
+      "delivery": "training_core",
+      "name": "Trade Restrictions Monitor",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "trade/v1/get-trade-restrictions"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "gulf",
+        "trade",
+        "restrictions"
+      ],
+      "rationale": "Tracks active restrictions that can reshape Gulf commercial routing."
+    },
+    {
+      "id": "gulf-tariff-trends",
+      "agentId": "gulf",
+      "delivery": "training_core",
+      "name": "Tariff Trends Monitor",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "trade/v1/get-tariff-trends"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "gulf",
+        "trade",
+        "tariffs"
+      ],
+      "rationale": "Trade-policy trendline for longer-horizon Gulf coalition planning."
+    },
+    {
+      "id": "gulf-al-arabiya-live",
+      "agentId": "gulf",
+      "delivery": "live_demo",
+      "name": "Al Arabiya Live",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@AlArabiya"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "gulf",
+        "live",
+        "regional-media"
+      ],
+      "rationale": "Gulf-aligned live television coverage during regional escalation."
+    },
+    {
+      "id": "gulf-aljazeera-arabic-live",
+      "agentId": "gulf",
+      "delivery": "live_demo",
+      "name": "Al Jazeera Arabic Live",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@AljazeeraChannel"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "gulf",
+        "live",
+        "regional-media"
+      ],
+      "rationale": "Countervailing Arab broadcast lane for live narrative competition."
+    },
+    {
+      "id": "gulf-middle-east-webcam",
+      "agentId": "gulf",
+      "delivery": "live_demo",
+      "name": "Middle East Regional Webcam",
+      "kind": "video",
+      "endpoint": {
+        "kind": "video",
+        "channel": "@MiddleEastCams"
+      },
+      "auth": "none",
+      "allowlistStatus": "not_applicable",
+      "tags": [
+        "gulf",
+        "live",
+        "webcam"
+      ],
+      "rationale": "Regional multicam view for symbolic and urban stability checks in demos."
+    },
+    {
+      "id": "oversight-cii",
+      "agentId": "oversight",
+      "delivery": "training_core",
+      "name": "Country Instability Index (CII)",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "intelligence/v1/get-risk-scores",
+        "selector": "cii"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "oversight",
+        "meta",
+        "instability"
+      ],
+      "rationale": "Global instability baseline across countries and time."
+    },
+    {
+      "id": "oversight-hotspot-escalation",
+      "agentId": "oversight",
+      "delivery": "training_core",
+      "name": "Hotspot Escalation Score",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "intelligence/v1/get-risk-scores",
+        "selector": "hotspot-escalation"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "oversight",
+        "meta",
+        "hotspots"
+      ],
+      "rationale": "Detects areas where multiple signals are converging into escalation."
+    },
+    {
+      "id": "oversight-strategic-risk",
+      "agentId": "oversight",
+      "delivery": "training_core",
+      "name": "Strategic Risk Score",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "intelligence/v1/get-risk-scores",
+        "selector": "strategic-risk"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "oversight",
+        "meta",
+        "risk"
+      ],
+      "rationale": "High-level risk estimate for intervention timing."
+    },
+    {
+      "id": "oversight-cross-stream-correlation",
+      "agentId": "oversight",
+      "delivery": "training_core",
+      "name": "Cross-Stream Correlation Engine",
+      "kind": "structured",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "intelligence/v1/get-risk-scores",
+        "selector": "cross-stream-correlation"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "oversight",
+        "meta",
+        "correlation"
+      ],
+      "rationale": "Finds multi-signal patterns single actors may miss."
+    },
+    {
+      "id": "oversight-intelligence-gap-tracker",
+      "agentId": "oversight",
+      "delivery": "training_core",
+      "name": "Intelligence Gap Tracker",
+      "kind": "structured",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "intelligence/v1/get-risk-scores",
+        "selector": "data-freshness"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "oversight",
+        "meta",
+        "freshness"
+      ],
+      "rationale": "Flags stale or missing critical signals to prevent false confidence."
+    },
+    {
+      "id": "oversight-headline-memory-brief",
+      "agentId": "oversight",
+      "delivery": "training_core",
+      "name": "Headline Memory / World Brief / AI Deduction",
+      "kind": "structured",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "intelligence/v1/get-country-intel-brief",
+        "selector": "headline-memory-world-brief"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "oversight",
+        "meta",
+        "ai-brief"
+      ],
+      "rationale": "Synthesized cross-source reasoning layer for oversight explanations."
+    },
+    {
+      "id": "oversight-hapi-displacement",
+      "agentId": "oversight",
+      "delivery": "training_core",
+      "name": "HAPI Displacement Data",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "displacement/v1/get-displacement-summary"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "oversight",
+        "humanitarian",
+        "displacement"
+      ],
+      "rationale": "Civilian displacement and humanitarian stress signal."
+    },
+    {
+      "id": "oversight-worldpop-exposure",
+      "agentId": "oversight",
+      "delivery": "training_core",
+      "name": "WorldPop Population Exposure",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "displacement/v1/get-population-exposure"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "oversight",
+        "humanitarian",
+        "population"
+      ],
+      "rationale": "Estimates likely civilian exposure around conflict or disaster events."
+    },
+    {
+      "id": "oversight-security-advisories",
+      "agentId": "oversight",
+      "delivery": "training_core",
+      "name": "Security Advisories Aggregation",
+      "kind": "structured",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "intelligence/v1/get-risk-scores",
+        "selector": "security-advisories"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "oversight",
+        "humanitarian",
+        "advisories"
+      ],
+      "rationale": "Government and health-risk warning layer that acts as an external guardrail."
+    },
+    {
+      "id": "oversight-ucdp-events",
+      "agentId": "oversight",
+      "delivery": "training_core",
+      "name": "UCDP Conflict Events",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "conflict/v1/list-ucdp-events",
+        "selector": "global"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "oversight",
+        "conflict",
+        "events"
+      ],
+      "rationale": "Global conflict-event baseline for cross-theater escalation monitoring."
+    },
+    {
+      "id": "oversight-natural-events",
+      "agentId": "oversight",
+      "delivery": "training_core",
+      "name": "Natural Events Monitor",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "natural/v1/list-natural-events",
+        "selector": "global"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "oversight",
+        "natural",
+        "events"
+      ],
+      "rationale": "Cross-domain disaster layer that can interact with conflict systems."
+    },
+    {
+      "id": "oversight-earthquakes",
+      "agentId": "oversight",
+      "delivery": "training_core",
+      "name": "Earthquakes Feed",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "seismology/v1/list-earthquakes",
+        "selector": "global"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "oversight",
+        "seismology",
+        "events"
+      ],
+      "rationale": "Global earthquake monitoring for compounding humanitarian and infrastructure risk."
+    },
+    {
+      "id": "oversight-internet-outages",
+      "agentId": "oversight",
+      "delivery": "training_core",
+      "name": "Internet Outages Baseline",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "infrastructure/v1/list-internet-outages",
+        "selector": "global"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "oversight",
+        "infrastructure",
+        "internet"
+      ],
+      "rationale": "System-wide communications degradation layer for detecting hidden crises."
+    },
+    {
+      "id": "oversight-cable-health",
+      "agentId": "oversight",
+      "delivery": "training_core",
+      "name": "Cable Health Advisory Layer",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "infrastructure/v1/get-cable-health",
+        "selector": "global"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "oversight",
+        "infrastructure",
+        "cables"
+      ],
+      "rationale": "Undersea cable health and warning layer for systemic resilience monitoring."
+    },
+    {
+      "id": "oversight-climate-anomalies",
+      "agentId": "oversight",
+      "delivery": "training_core",
+      "name": "Climate Anomalies Monitor",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "climate/v1/list-climate-anomalies",
+        "selector": "global"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "oversight",
+        "climate",
+        "stress"
+      ],
+      "rationale": "Global climate anomalies that may amplify instability and humanitarian risk."
+    },
+    {
+      "id": "oversight-cyber-threats",
+      "agentId": "oversight",
+      "delivery": "training_core",
+      "name": "Cyber Threats Feed",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "cyber/v1/list-cyber-threats",
+        "selector": "global"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "oversight",
+        "cyber",
+        "threats"
+      ],
+      "rationale": "Cross-border cyber IOC layer for latent escalation and infrastructure risk."
+    },
+    {
+      "id": "oversight-feed-digest",
+      "agentId": "oversight",
+      "delivery": "training_core",
+      "name": "Feed Digest Aggregator",
+      "kind": "structured",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "news/v1/list-feed-digest",
+        "selector": "oversight-digest"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "oversight",
+        "news",
+        "digest"
+      ],
+      "rationale": "Deduplicated multi-feed digest for broad situational awareness."
+    },
+    {
+      "id": "oversight-gdelt-search",
+      "agentId": "oversight",
+      "delivery": "training_core",
+      "name": "GDELT Document Search",
+      "kind": "structured",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "intelligence/v1/search-gdelt-documents",
+        "selector": "global-escalation"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "oversight",
+        "gdelt",
+        "documents"
+      ],
+      "rationale": "Cross-source document search to detect emerging event clusters and narratives."
+    },
+    {
+      "id": "oversight-pizzint-status",
+      "agentId": "oversight",
+      "delivery": "training_core",
+      "name": "Pizzint Status",
+      "kind": "structured",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "intelligence/v1/get-pizzint-status",
+        "selector": "oversight-watch"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "oversight",
+        "meta",
+        "watch"
+      ],
+      "rationale": "Supplementary anomaly signal for unusual activity and open-source chatter shifts."
+    },
+    {
+      "id": "oversight-unhcr-feed",
+      "agentId": "oversight",
+      "delivery": "live_demo",
+      "name": "UNHCR Feed",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://news.google.com/rss/search?q=site:unhcr.org+OR+UNHCR+refugees+when:3d&hl=en-US&gl=US&ceid=US:en"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "oversight",
+        "live",
+        "humanitarian"
+      ],
+      "rationale": "Live humanitarian trend visibility during monitored sessions."
+    }
+  ]
+}

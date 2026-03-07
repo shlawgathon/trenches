@@ -1,0 +1,258 @@
+:root {
+  --bg: #061014;
+  --panel: #0d1b22;
+  --panel-strong: #13242d;
+  --line: #21353f;
+  --text: #e4f2ed;
+  --muted: #8ca29c;
+  --accent: #8de3c4;
+  --warn: #f5c96c;
+  --error: #ff8b7f;
+  --shadow: 0 18px 60px rgba(0, 0, 0, 0.28);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(141, 227, 196, 0.12), transparent 30%),
+    radial-gradient(circle at top right, rgba(245, 201, 108, 0.08), transparent 24%),
+    linear-gradient(180deg, #071015 0%, #04080b 100%);
+  color: var(--text);
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+}
+
+button {
+  border: 1px solid var(--line);
+  background: var(--panel-strong);
+  color: var(--text);
+  padding: 0.85rem 1rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+pre,
+code,
+label,
+.eyebrow,
+.metric span,
+.panel-header span {
+  font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+}
+
+.shell {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(280px, 0.9fr);
+  gap: 1.25rem;
+  align-items: stretch;
+}
+
+.hero h1 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(2rem, 4vw, 4rem);
+  line-height: 0.95;
+}
+
+.eyebrow {
+  color: var(--accent);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+}
+
+.lede {
+  max-width: 58rem;
+  color: var(--muted);
+}
+
+.status-card,
+.metric,
+.panel,
+.agent-card,
+.banner {
+  background: rgba(13, 27, 34, 0.9);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.status-card {
+  padding: 1.25rem;
+  border-radius: 24px;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.status-card span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.status-card strong {
+  font-size: 1rem;
+}
+
+.control-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+}
+
+.banner {
+  padding: 1rem 1.2rem;
+  border-radius: 18px;
+  margin-bottom: 1rem;
+}
+
+.banner.error {
+  border-color: rgba(255, 139, 127, 0.6);
+  color: var(--error);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.metric {
+  border-radius: 18px;
+  padding: 1rem;
+}
+
+.metric span {
+  display: block;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+}
+
+.metric strong {
+  font-size: 1.5rem;
+}
+
+.panel-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.8fr);
+  gap: 1rem;
+}
+
+.panel,
+.agent-card {
+  border-radius: 24px;
+  padding: 1.1rem 1.15rem;
+}
+
+.panel-wide {
+  min-height: 320px;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: baseline;
+  margin-bottom: 1rem;
+}
+
+.panel-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.panel-header span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.world-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.world-stats label,
+.agent-block label {
+  display: block;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.world-stats pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.list-block {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.list-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.8rem 0.9rem;
+  background: rgba(19, 36, 45, 0.6);
+  border: 1px solid rgba(33, 53, 63, 0.8);
+  border-radius: 16px;
+}
+
+.agents-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.agent-card {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.agent-block ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--muted);
+}
+
+.agent-block li + li {
+  margin-top: 0.3rem;
+}
+
+@media (max-width: 1100px) {
+  .hero,
+  .panel-grid,
+  .world-stats,
+  .agents-grid,
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+}

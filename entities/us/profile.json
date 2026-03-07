@@ -1,0 +1,232 @@
+{
+  "id": "us",
+  "display_name": "United States / CENTCOM",
+  "entity_type": "state",
+  "home_region": "global",
+  "alliances": [
+    "Israel",
+    "Saudi Arabia",
+    "United Arab Emirates",
+    "Qatar",
+    "Jordan",
+    "United Kingdom",
+    "NATO maritime partners"
+  ],
+  "adversaries": [
+    "Iran",
+    "IRGC",
+    "Hezbollah",
+    "Iran-backed militias",
+    "shipping disruption networks"
+  ],
+  "strategic_objectives": [
+    "protect force posture and allies",
+    "preserve shipping lanes and oil stability",
+    "deter direct Iranian escalation",
+    "avoid prolonged domestic political backlash",
+    "keep coalition access and basing intact",
+    "retain escalation dominance without committing to open-ended occupation"
+  ],
+  "military_posture": {
+    "style": "expeditionary, alliance-backed, air-and-maritime-centric",
+    "strengths": [
+      "global logistics",
+      "air superiority",
+      "naval reach",
+      "integrated air and missile defense partnerships",
+      "sanctions leverage",
+      "rapid reinforcement options"
+    ],
+    "constraints": [
+      "domestic opinion",
+      "oil shock exposure",
+      "multi-theater commitments",
+      "host-nation political limits",
+      "munitions expenditure under sustained tempo"
+    ],
+    "preferred_instruments": [
+      "visible force posture",
+      "precision strike threats",
+      "base hardening and air defense reinforcement",
+      "maritime escort and interdiction",
+      "sanctions and financial pressure",
+      "coalition signaling"
+    ],
+    "readiness_drivers": [
+      "carrier and bomber availability",
+      "airbase access across the Gulf",
+      "regional tanker and ISR coverage",
+      "munition stock depth",
+      "partner confidence in US staying power"
+    ]
+  },
+  "decision_doctrine": {
+    "risk_tolerance": "moderate",
+    "time_horizon": "campaign",
+    "escalation_bias": "calibrated coercion backed by overwhelming surge capacity",
+    "negotiation_posture": "prefers negotiation from a visible position of force",
+    "deception_sensitivity": "high",
+    "red_lines": [
+      "mass-casualty attacks on US forces",
+      "sustained closure of the Strait of Hormuz",
+      "large strikes on Gulf energy infrastructure tied to Iran",
+      "direct attacks on Israel that threaten regime-level escalation"
+    ],
+    "off_ramps": [
+      "restored shipping flow",
+      "proxy pause verified across multiple fronts",
+      "bounded retaliation with clear signaling",
+      "credible partner-mediated deconfliction"
+    ]
+  },
+  "protected_interests": [
+    "regional base network",
+    "energy market stability",
+    "allied air-defense credibility",
+    "maritime freedom of navigation",
+    "domestic political resilience",
+    "command-and-control continuity"
+  ],
+  "economic_pressure_points": [
+    "oil price spikes",
+    "equity selloff and bond stress",
+    "shipping disruption in Hormuz and Bab el-Mandeb",
+    "election and approval polling deterioration",
+    "insurance and freight price surges for Gulf traffic",
+    "perceived loss of deterrence that weakens allied investment confidence"
+  ],
+  "intelligence_priorities": [
+    "Iranian strike preparation",
+    "proxy launch indicators",
+    "shipping and chokepoint disruption",
+    "domestic political and market sentiment",
+    "ally readiness and coalition durability",
+    "missile and drone salvos aimed at US basing",
+    "cross-theater coupling between Gulf, Levant, and Red Sea fronts"
+  ],
+  "priority_fronts": [
+    {
+      "name": "Central Gulf",
+      "priority": "critical",
+      "goal": "keep Hormuz open and preserve base survivability",
+      "trigger_indicators": [
+        "IRGC naval dispersal",
+        "merchant vessel harassment",
+        "missile or drone launches toward Gulf facilities"
+      ]
+    },
+    {
+      "name": "Levant Support Arc",
+      "priority": "high",
+      "goal": "backstop Israel while limiting uncontrolled regional spillover",
+      "trigger_indicators": [
+        "northern Israel saturation attacks",
+        "Syrian corridor activation",
+        "requests for emergency resupply"
+      ]
+    },
+    {
+      "name": "Red Sea and Bab el-Mandeb",
+      "priority": "high",
+      "goal": "contain secondary shipping shocks and escort burden",
+      "trigger_indicators": [
+        "missile or drone threats to transiting vessels",
+        "port access disruptions",
+        "insurance market stress"
+      ]
+    },
+    {
+      "name": "Iraq-Syria Transit Corridor",
+      "priority": "medium",
+      "goal": "watch militia movement and protect distributed personnel",
+      "trigger_indicators": [
+        "rocket alerts near US positions",
+        "border logistics surges",
+        "new militia messaging from Tehran-aligned groups"
+      ]
+    },
+    {
+      "name": "Domestic Political Front",
+      "priority": "medium",
+      "goal": "avoid a perception of drift, overreach, or oil-price incompetence",
+      "trigger_indicators": [
+        "approval drops",
+        "market selloff tied to war risk",
+        "visible allied burden-sharing failures"
+      ]
+    }
+  ],
+  "strategic_relationships": [
+    {
+      "counterparty": "Israel",
+      "type": "core ally",
+      "trust_level": "high",
+      "dependency": "missile-defense coordination and escalation messaging",
+      "notes": "Support is politically resilient but strain rises under prolonged high-volume conflict."
+    },
+    {
+      "counterparty": "Saudi Arabia",
+      "type": "security partner",
+      "trust_level": "medium",
+      "dependency": "energy stability and Gulf basing environment",
+      "notes": "Useful for market continuity and regional signaling, but cautious about direct war ownership."
+    },
+    {
+      "counterparty": "United Arab Emirates",
+      "type": "security partner",
+      "trust_level": "high",
+      "dependency": "logistics, port access, and air defense cooperation",
+      "notes": "High infrastructure value makes force protection central."
+    },
+    {
+      "counterparty": "Qatar",
+      "type": "host nation and mediator",
+      "trust_level": "high",
+      "dependency": "command-and-control access and deconfliction channels",
+      "notes": "Base access and mediation role make disruption politically costly."
+    },
+    {
+      "counterparty": "Jordan",
+      "type": "stability partner",
+      "trust_level": "high",
+      "dependency": "air corridor and buffer-state stability",
+      "notes": "Quiet cooperation is valuable and politically sensitive."
+    },
+    {
+      "counterparty": "Iran",
+      "type": "principal adversary",
+      "trust_level": "low",
+      "dependency": "mutual signaling to avoid accidental regional runaway",
+      "notes": "US reads Iran through proxy behavior, shipping activity, and missile posture."
+    }
+  ],
+  "geopolitical_chokepoints": [
+    {
+      "name": "Strait of Hormuz",
+      "importance": "critical",
+      "desired_state": "open under visible coalition monitoring"
+    },
+    {
+      "name": "Bab el-Mandeb",
+      "importance": "high",
+      "desired_state": "commercially usable without continuous crisis premiums"
+    },
+    {
+      "name": "Eastern Mediterranean air-sea corridor",
+      "importance": "high",
+      "desired_state": "available for reinforcement and deterrent positioning"
+    },
+    {
+      "name": "Iraq-Jordan transit arc",
+      "importance": "medium",
+      "desired_state": "stable enough for sustainment and evacuation pathways"
+    }
+  ],
+  "geospatial_focus": [
+    "Washington and Tampa command layer",
+    "Qatar-Bahrain-Kuwait-UAE basing belt",
+    "Hormuz and Gulf shipping lanes",
+    "Northern Israel and eastern Mediterranean support arc",
+    "Bab el-Mandeb spillover zone"
+  ]
+}

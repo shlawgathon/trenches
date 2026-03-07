@@ -1,0 +1,308 @@
+{
+  "locations": [
+    {
+      "name": "Pentagon",
+      "category": "command",
+      "lat": 38.8719,
+      "lon": -77.0563,
+      "notes": "Political-military command center and domestic signaling node."
+    },
+    {
+      "name": "White House Situation Room",
+      "category": "command",
+      "lat": 38.8977,
+      "lon": -77.0365,
+      "notes": "National crisis decision node for force authorization and messaging."
+    },
+    {
+      "name": "CENTCOM Headquarters, Tampa",
+      "category": "command",
+      "lat": 27.8493,
+      "lon": -82.5211,
+      "notes": "Operational planning anchor for Gulf and Levant contingencies."
+    },
+    {
+      "name": "Al Udeid Air Base",
+      "category": "airbase",
+      "lat": 25.1174,
+      "lon": 51.3149,
+      "notes": "Core Gulf airpower hub."
+    },
+    {
+      "name": "Naval Support Activity Bahrain",
+      "category": "naval",
+      "lat": 26.2295,
+      "lon": 50.6077,
+      "notes": "Persistent maritime footprint near Gulf shipping lanes."
+    },
+    {
+      "name": "Camp Arifjan",
+      "category": "base",
+      "lat": 28.9092,
+      "lon": 47.9344,
+      "notes": "Ground sustainment and prepositioning anchor in Kuwait."
+    },
+    {
+      "name": "Al Dhafra Air Base",
+      "category": "airbase",
+      "lat": 24.2486,
+      "lon": 54.5477,
+      "notes": "Forward air node for ISR, tanking, and defensive counter-air."
+    },
+    {
+      "name": "Jebel Ali Logistics Node",
+      "category": "logistics-port",
+      "lat": 25.0113,
+      "lon": 55.0617,
+      "notes": "Representative sealift and sustainment gateway for Gulf operations."
+    },
+    {
+      "name": "Diego Garcia",
+      "category": "airbase",
+      "lat": -7.3133,
+      "lon": 72.4119,
+      "notes": "Long-range logistics and bomber-support node."
+    },
+    {
+      "name": "Camp Lemonnier",
+      "category": "base",
+      "lat": 11.5473,
+      "lon": 43.1595,
+      "notes": "Red Sea and Bab el-Mandeb proximity for spillover control."
+    },
+    {
+      "name": "Eastern Mediterranean Patrol Box",
+      "category": "maritime-box",
+      "lat": 34.6,
+      "lon": 33.0,
+      "notes": "Representative sea-air reinforcement zone for Levant contingencies."
+    },
+    {
+      "name": "Central Gulf Air-Maritime Corridor",
+      "category": "theater-anchor",
+      "lat": 26.3,
+      "lon": 52.2,
+      "notes": "Operational reference point for sorties, escorts, and ISR around Gulf basing."
+    }
+  ],
+  "watchpoints": [
+    "Strait of Hormuz",
+    "Bab el-Mandeb",
+    "Eastern Mediterranean",
+    "Northern Israel",
+    "Tehran",
+    "Qatar and Bahrain basing continuity",
+    "Kuwait and UAE airbase hardening",
+    "Jebel Ali sustainment flow",
+    "Iraq-Syria militia transit",
+    "US domestic market reaction"
+  ],
+  "fronts": [
+    {
+      "name": "Central Gulf Deterrence Front",
+      "type": "maritime-air",
+      "priority": "critical",
+      "anchor_lat": 26.3,
+      "anchor_lon": 52.2,
+      "operational_focus": [
+        "Hormuz access",
+        "merchant shipping security",
+        "base defense",
+        "counter-missile posture"
+      ],
+      "notes": "Primary front where force protection, maritime stability, and oil prices intersect."
+    },
+    {
+      "name": "Levant Support Arc",
+      "type": "air-logistics",
+      "priority": "high",
+      "anchor_lat": 33.4,
+      "anchor_lon": 35.2,
+      "operational_focus": [
+        "Israel resupply confidence",
+        "missile-defense support",
+        "de-escalation signaling"
+      ],
+      "notes": "Measures whether US backing steadies allies or accelerates escalation."
+    },
+    {
+      "name": "Red Sea Spillover Front",
+      "type": "maritime",
+      "priority": "high",
+      "anchor_lat": 14.0,
+      "anchor_lon": 42.8,
+      "operational_focus": [
+        "escort burden",
+        "freight continuity",
+        "secondary chokepoint stability"
+      ],
+      "notes": "Important because Red Sea stress compounds Hormuz pressure."
+    },
+    {
+      "name": "Iraq-Syria Transit Front",
+      "type": "land-air",
+      "priority": "medium",
+      "anchor_lat": 33.0,
+      "anchor_lon": 41.2,
+      "operational_focus": [
+        "militia movement",
+        "distributed force protection",
+        "cross-border logistics awareness"
+      ],
+      "notes": "Useful for detecting indirect escalation before it reaches Gulf bases."
+    }
+  ],
+  "infrastructure": [
+    {
+      "name": "Gulf expeditionary airbase network",
+      "category": "base-network",
+      "anchor_lat": 25.2,
+      "anchor_lon": 51.9,
+      "criticality": "critical",
+      "functions": [
+        "sortie generation",
+        "air defense",
+        "aerial refueling",
+        "ISR staging"
+      ],
+      "vulnerabilities": [
+        "missile salvos",
+        "host-nation political friction",
+        "runway saturation"
+      ]
+    },
+    {
+      "name": "Regional sealift and sustainment chain",
+      "category": "logistics-network",
+      "anchor_lat": 25.0,
+      "anchor_lon": 55.1,
+      "criticality": "high",
+      "functions": [
+        "munitions flow",
+        "repair parts",
+        "surge sustainment"
+      ],
+      "vulnerabilities": [
+        "port congestion",
+        "shipping insurance shocks",
+        "drone or sabotage threats"
+      ]
+    },
+    {
+      "name": "Long-range bomber support backbone",
+      "category": "strategic-logistics",
+      "anchor_lat": -7.3,
+      "anchor_lon": 72.4,
+      "criticality": "high",
+      "functions": [
+        "surge strike support",
+        "deterrent signaling",
+        "deep logistics reserve"
+      ],
+      "vulnerabilities": [
+        "distance-related sortie limits",
+        "weather windows",
+        "political sensitivity of visible escalation"
+      ]
+    }
+  ],
+  "strategic_sites": [
+    {
+      "name": "Washington political-command nexus",
+      "category": "command-system",
+      "anchor_lat": 38.8895,
+      "anchor_lon": -77.0353,
+      "importance": "critical"
+    },
+    {
+      "name": "CENTCOM planning node",
+      "category": "command-system",
+      "anchor_lat": 27.8493,
+      "anchor_lon": -82.5211,
+      "importance": "high"
+    },
+    {
+      "name": "Fifth Fleet maritime control layer",
+      "category": "naval-command",
+      "anchor_lat": 26.2295,
+      "anchor_lon": 50.6077,
+      "importance": "high"
+    }
+  ],
+  "alliance_anchors": [
+    {
+      "partner": "Qatar",
+      "location": "Al Udeid Air Base",
+      "function": "air operations and command continuity"
+    },
+    {
+      "partner": "Bahrain",
+      "location": "Naval Support Activity Bahrain",
+      "function": "maritime presence and escort coordination"
+    },
+    {
+      "partner": "United Arab Emirates",
+      "location": "Al Dhafra Air Base",
+      "function": "defensive counter-air and ISR"
+    },
+    {
+      "partner": "Kuwait",
+      "location": "Camp Arifjan",
+      "function": "ground sustainment and surge support"
+    },
+    {
+      "partner": "Israel",
+      "location": "Eastern Mediterranean Patrol Box",
+      "function": "rapid backstop and visible deterrence"
+    }
+  ],
+  "chokepoints": [
+    {
+      "name": "Strait of Hormuz",
+      "lat": 26.5667,
+      "lon": 56.25,
+      "importance": "critical",
+      "desired_state": "open with predictable merchant traffic"
+    },
+    {
+      "name": "Bab el-Mandeb",
+      "lat": 12.585,
+      "lon": 43.333,
+      "importance": "high",
+      "desired_state": "usable without sustained escort crisis"
+    },
+    {
+      "name": "Suez-Red Sea connection",
+      "lat": 29.9668,
+      "lon": 32.5498,
+      "importance": "medium",
+      "desired_state": "stable enough to avoid compound shipping shocks"
+    }
+  ],
+  "geospatial_anchors": [
+    {
+      "name": "Washington-Tampa command axis",
+      "lat": 33.4,
+      "lon": -79.8,
+      "role": "national direction to theater execution"
+    },
+    {
+      "name": "Gulf basing belt",
+      "lat": 25.6,
+      "lon": 51.8,
+      "role": "forward combat power and force protection"
+    },
+    {
+      "name": "Levant support corridor",
+      "lat": 34.0,
+      "lon": 34.5,
+      "role": "ally reinforcement and deterrent signaling"
+    },
+    {
+      "name": "Red Sea spillover corridor",
+      "lat": 16.4,
+      "lon": 41.8,
+      "role": "secondary maritime stress tracking"
+    }
+  ]
+}

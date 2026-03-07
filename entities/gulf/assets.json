@@ -1,0 +1,60 @@
+{
+  "locations": [
+    {
+      "name": "Riyadh",
+      "category": "capital",
+      "lat": 24.7136,
+      "lon": 46.6753,
+      "notes": "Saudi political and economic center."
+    },
+    {
+      "name": "Abu Dhabi",
+      "category": "capital",
+      "lat": 24.4539,
+      "lon": 54.3773,
+      "notes": "UAE political center and strategic investment hub."
+    },
+    {
+      "name": "Doha",
+      "category": "capital",
+      "lat": 25.2854,
+      "lon": 51.531,
+      "notes": "Qatari coordination and diplomatic node."
+    },
+    {
+      "name": "Jebel Ali Port",
+      "category": "port",
+      "lat": 25.0113,
+      "lon": 55.0617,
+      "notes": "Major logistics and shipping hub."
+    },
+    {
+      "name": "Ras Tanura",
+      "category": "energy",
+      "lat": 26.6435,
+      "lon": 50.1586,
+      "notes": "Major export terminal and oil node."
+    },
+    {
+      "name": "Fujairah",
+      "category": "energy-port",
+      "lat": 25.1288,
+      "lon": 56.3265,
+      "notes": "Critical bypass and storage node outside the Gulf proper."
+    },
+    {
+      "name": "Strait of Hormuz",
+      "category": "chokepoint",
+      "lat": 26.5667,
+      "lon": 56.25,
+      "notes": "Primary strategic chokepoint for coalition risk."
+    }
+  ],
+  "watchpoints": [
+    "Hormuz traffic density",
+    "Ras Tanura and Jubail energy corridor",
+    "Jebel Ali and Khalifa port activity",
+    "Fujairah storage and tanker flow",
+    "Red Sea spillover into GCC insurance and freight pricing"
+  ]
+}

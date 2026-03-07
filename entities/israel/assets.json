@@ -1,0 +1,283 @@
+{
+  "locations": [
+    {
+      "name": "The Kirya, Tel Aviv",
+      "category": "command",
+      "lat": 32.0733,
+      "lon": 34.787,
+      "notes": "Political-military decision center."
+    },
+    {
+      "name": "Jerusalem Government Core",
+      "category": "political-center",
+      "lat": 31.7683,
+      "lon": 35.2137,
+      "notes": "Civil authority and strategic messaging anchor."
+    },
+    {
+      "name": "Haifa Bay Corridor",
+      "category": "infrastructure-zone",
+      "lat": 32.8214,
+      "lon": 35.0037,
+      "notes": "Representative industrial, port, and maritime continuity zone."
+    },
+    {
+      "name": "Central Coastal Belt",
+      "category": "civil-core",
+      "lat": 32.0853,
+      "lon": 34.7818,
+      "notes": "Economic and population core sensitive to missile leakage and airspace closures."
+    },
+    {
+      "name": "Galilee Panhandle",
+      "category": "front",
+      "lat": 33.2794,
+      "lon": 35.5795,
+      "notes": "Representative northern-front flashpoint."
+    },
+    {
+      "name": "Golan Defensive Arc",
+      "category": "front",
+      "lat": 32.9928,
+      "lon": 35.6891,
+      "notes": "Eastern monitoring and maneuver belt tied to Syria spillover."
+    },
+    {
+      "name": "Negev Strategic Depth",
+      "category": "depth-zone",
+      "lat": 30.9506,
+      "lon": 34.8888,
+      "notes": "Rear-area depth for air operations, reserves, and strategic continuity."
+    },
+    {
+      "name": "Ashdod Logistics Coast",
+      "category": "port-zone",
+      "lat": 31.8014,
+      "lon": 34.6435,
+      "notes": "Representative southern logistics and port continuity node."
+    },
+    {
+      "name": "Eilat-Aqaba Access Corridor",
+      "category": "maritime-access",
+      "lat": 29.5581,
+      "lon": 34.9482,
+      "notes": "Southern maritime outlet sensitive to broader Red Sea instability."
+    },
+    {
+      "name": "Eastern Mediterranean Energy Belt",
+      "category": "offshore-zone",
+      "lat": 33.1,
+      "lon": 33.6,
+      "notes": "Representative offshore energy and naval depth zone."
+    }
+  ],
+  "watchpoints": [
+    "South Lebanon",
+    "Golan approaches",
+    "Eastern Mediterranean",
+    "Ben Gurion air corridor",
+    "Northern Israel civil-defense grid",
+    "Haifa Bay infrastructure resilience",
+    "Tel Aviv metropolitan continuity",
+    "Syrian transfer corridor",
+    "Ashdod and southern logistics coast",
+    "Eilat and Red Sea access"
+  ],
+  "fronts": [
+    {
+      "name": "Northern Home Front",
+      "type": "border-civil-defense",
+      "priority": "critical",
+      "anchor_lat": 33.1,
+      "anchor_lon": 35.45,
+      "operational_focus": [
+        "launch suppression",
+        "interceptor conservation",
+        "population protection",
+        "reserve mobilization"
+      ],
+      "notes": "Main front where Hezbollah volume fire threatens deterrence and daily life."
+    },
+    {
+      "name": "Syrian Interdiction Front",
+      "type": "air-intelligence",
+      "priority": "high",
+      "anchor_lat": 33.2,
+      "anchor_lon": 36.4,
+      "operational_focus": [
+        "weapons transfer disruption",
+        "proxy reinforcement denial",
+        "air-defense management"
+      ],
+      "notes": "Tracks whether regional corridor pressure is building faster than it can be contained."
+    },
+    {
+      "name": "Central Home-Front Continuity Front",
+      "type": "civil-infrastructure",
+      "priority": "high",
+      "anchor_lat": 32.05,
+      "anchor_lon": 34.8,
+      "operational_focus": [
+        "airport continuity",
+        "command continuity",
+        "economic resilience"
+      ],
+      "notes": "Measures whether the war remains bounded or visibly penetrates the national core."
+    },
+    {
+      "name": "Eastern Mediterranean Security Front",
+      "type": "naval-energy",
+      "priority": "medium",
+      "anchor_lat": 33.1,
+      "anchor_lon": 33.6,
+      "operational_focus": [
+        "offshore energy continuity",
+        "naval maneuver space",
+        "allied reinforcement routes"
+      ],
+      "notes": "Provides economic and strategic depth beyond the land frontier."
+    }
+  ],
+  "infrastructure": [
+    {
+      "name": "National air-defense belt",
+      "category": "defense-network",
+      "anchor_lat": 32.5,
+      "anchor_lon": 35.0,
+      "criticality": "critical",
+      "functions": [
+        "intercept rockets and drones",
+        "protect population centers",
+        "preserve sortie generation"
+      ],
+      "vulnerabilities": [
+        "saturation fire",
+        "munition depletion",
+        "simultaneous multi-front attacks"
+      ]
+    },
+    {
+      "name": "Haifa-Ashdod coastal logistics system",
+      "category": "port-industrial-network",
+      "anchor_lat": 32.2,
+      "anchor_lon": 34.8,
+      "criticality": "high",
+      "functions": [
+        "imports and resupply",
+        "industrial continuity",
+        "naval sustainment"
+      ],
+      "vulnerabilities": [
+        "missile leakage",
+        "airspace interruptions",
+        "insurance cost spikes"
+      ]
+    },
+    {
+      "name": "Central aviation continuity system",
+      "category": "air-transport-network",
+      "anchor_lat": 32.0,
+      "anchor_lon": 34.88,
+      "criticality": "high",
+      "functions": [
+        "civil continuity",
+        "rapid travel and resupply",
+        "international reassurance"
+      ],
+      "vulnerabilities": [
+        "airspace warnings",
+        "precision-guided threats",
+        "public confidence shock"
+      ]
+    }
+  ],
+  "strategic_sites": [
+    {
+      "name": "Tel Aviv command and economic core",
+      "category": "command-system",
+      "anchor_lat": 32.0853,
+      "anchor_lon": 34.7818,
+      "importance": "critical"
+    },
+    {
+      "name": "Northern civil-defense belt",
+      "category": "population-defense",
+      "anchor_lat": 33.1,
+      "anchor_lon": 35.45,
+      "importance": "critical"
+    },
+    {
+      "name": "Haifa Bay industrial-maritime zone",
+      "category": "industrial-port",
+      "anchor_lat": 32.8214,
+      "anchor_lon": 35.0037,
+      "importance": "high"
+    }
+  ],
+  "alliance_anchors": [
+    {
+      "partner": "United States",
+      "location": "Eastern Mediterranean Security Front",
+      "function": "resupply, deterrence, and diplomatic cover"
+    },
+    {
+      "partner": "Jordan",
+      "location": "Golan Defensive Arc",
+      "function": "eastern stability and airspace quiet"
+    },
+    {
+      "partner": "Egypt",
+      "location": "Eilat-Aqaba Access Corridor",
+      "function": "southern maritime confidence and regional containment"
+    }
+  ],
+  "chokepoints": [
+    {
+      "name": "Blue Line / south Lebanon approaches",
+      "lat": 33.26,
+      "lon": 35.5,
+      "importance": "critical",
+      "desired_state": "kept below sustained high-volume launch tempo"
+    },
+    {
+      "name": "Ben Gurion air corridor",
+      "lat": 32.0,
+      "lon": 34.88,
+      "importance": "high",
+      "desired_state": "usable for civil and military continuity"
+    },
+    {
+      "name": "Haifa maritime approaches",
+      "lat": 32.9,
+      "lon": 34.95,
+      "importance": "high",
+      "desired_state": "commercially and militarily usable"
+    }
+  ],
+  "geospatial_anchors": [
+    {
+      "name": "Tel Aviv-Jerusalem decision core",
+      "lat": 31.95,
+      "lon": 35.0,
+      "role": "political direction and national resilience"
+    },
+    {
+      "name": "Galilee defensive arc",
+      "lat": 33.15,
+      "lon": 35.4,
+      "role": "northern launch warning and reserve concentration"
+    },
+    {
+      "name": "Coastal logistics belt",
+      "lat": 32.25,
+      "lon": 34.8,
+      "role": "industrial, port, and population continuity"
+    },
+    {
+      "name": "Eastern Mediterranean depth zone",
+      "lat": 33.1,
+      "lon": 33.6,
+      "role": "naval depth and offshore economic resilience"
+    }
+  ]
+}

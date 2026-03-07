@@ -1,0 +1,36 @@
+{
+  "id": "oversight",
+  "display_name": "Fleet Oversight",
+  "entity_type": "meta_agent",
+  "home_region": "global",
+  "alliances": [],
+  "adversaries": ["runaway escalation", "reward hacking", "belief misalignment"],
+  "strategic_objectives": [
+    "detect cross-agent drift early",
+    "reduce catastrophic escalation probability",
+    "preserve useful autonomy while applying interventions",
+    "surface explainable risk traces for humans and training loops"
+  ],
+  "intervention_authority": [
+    "warn",
+    "dampen reward",
+    "recommend de-escalation",
+    "flag high-risk actions for veto path"
+  ],
+  "monitored_signal_families": [
+    "conflict events",
+    "protests and unrest",
+    "military flights and vessels",
+    "cyber advisories and IOC signals",
+    "internet outages",
+    "natural disasters",
+    "energy and shipping stress"
+  ],
+  "intelligence_priorities": [
+    "tension spikes",
+    "coalition breakdowns",
+    "market shock and chokepoint stress",
+    "misread incentives between agents",
+    "simultaneous kinetic and cyber escalation"
+  ]
+}

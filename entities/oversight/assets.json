@@ -1,0 +1,46 @@
+{
+  "locations": [
+    {
+      "name": "Strait of Hormuz",
+      "category": "chokepoint",
+      "lat": 26.5667,
+      "lon": 56.25,
+      "notes": "Global oil and escalation sensitivity anchor."
+    },
+    {
+      "name": "Bab el-Mandeb",
+      "category": "chokepoint",
+      "lat": 12.585,
+      "lon": 43.333,
+      "notes": "Shipping disruption spillover anchor."
+    },
+    {
+      "name": "Eastern Mediterranean",
+      "category": "theater",
+      "lat": 34.8,
+      "lon": 34.9,
+      "notes": "Proxy, naval, and air activity convergence zone."
+    },
+    {
+      "name": "Tel Aviv",
+      "category": "civil-center",
+      "lat": 32.0853,
+      "lon": 34.7818,
+      "notes": "Representative civilian-impact node."
+    },
+    {
+      "name": "Tehran",
+      "category": "civil-center",
+      "lat": 35.6892,
+      "lon": 51.389,
+      "notes": "Representative regime and command-impact node."
+    }
+  ],
+  "watchpoints": [
+    "Hormuz and Gulf shipping",
+    "northern Israel and south Lebanon",
+    "Tehran strategic-site damage reports",
+    "cyber and internet-outage anomalies",
+    "multi-signal correlation across market, military, and unrest data"
+  ]
+}

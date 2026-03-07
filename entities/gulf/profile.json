@@ -1,0 +1,33 @@
+{
+  "id": "gulf",
+  "display_name": "Gulf Coalition",
+  "entity_type": "coalition",
+  "home_region": "Gulf",
+  "members": ["Saudi Arabia", "United Arab Emirates", "Qatar"],
+  "alliances": ["United States", "regional security partners"],
+  "adversaries": ["shipping disruption", "oil shock", "proxy attacks on infrastructure"],
+  "strategic_objectives": [
+    "keep Hormuz and Gulf shipping moving",
+    "protect export terminals and refineries",
+    "prevent local conflict spillover from crashing markets",
+    "retain diplomatic flexibility"
+  ],
+  "military_posture": {
+    "style": "defensive, infrastructure-protection, coalition-hedging",
+    "strengths": ["energy leverage", "capital reserves", "port infrastructure", "host-nation basing"],
+    "constraints": ["shipping dependence", "exposure to missile and drone attacks", "internal coalition divergence"]
+  },
+  "economic_pressure_points": [
+    "Hormuz closure or partial disruption",
+    "terminal or refinery strike",
+    "insurance and freight cost spikes",
+    "capital flight and currency stress"
+  ],
+  "intelligence_priorities": [
+    "shipping lane disruptions",
+    "oil price shock indicators",
+    "proxy threats to energy infrastructure",
+    "US and Iranian posture near the Gulf",
+    "port and refinery continuity"
+  ]
+}

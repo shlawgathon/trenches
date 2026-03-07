@@ -1,0 +1,201 @@
+{
+  "id": "hezbollah",
+  "display_name": "Hezbollah",
+  "entity_type": "non_state_actor",
+  "home_region": "Lebanon",
+  "alliances": [
+    "Iran",
+    "aligned regional proxy networks",
+    "supportive logistics corridors through Syria"
+  ],
+  "adversaries": [
+    "Israel",
+    "United States",
+    "cross-border interdiction networks",
+    "domestic actors that resist militia escalation"
+  ],
+  "strategic_objectives": [
+    "maintain deterrent value against Israel",
+    "support Iran through deniable escalation",
+    "stretch Israeli air-defense and reserve posture",
+    "preserve force survivability in Lebanon",
+    "retain domestic political relevance despite conflict costs",
+    "keep logistics links resilient under interdiction pressure"
+  ],
+  "military_posture": {
+    "style": "asymmetric, dispersed, rocket-and-drone-heavy",
+    "strengths": [
+      "terrain familiarity",
+      "concealment",
+      "volume fires",
+      "proxy coordination",
+      "ability to blend military and political activity",
+      "distributed local support structures"
+    ],
+    "constraints": [
+      "dependence on Iranian support",
+      "Lebanese political blowback",
+      "infrastructure vulnerability",
+      "Israeli ISR pressure",
+      "logistics fragility through Syria"
+    ],
+    "preferred_instruments": [
+      "distributed launch pressure",
+      "localized escalation calibrated to Iranian signaling",
+      "attritional air-defense saturation",
+      "political messaging through endurance and survivability"
+    ],
+    "readiness_drivers": [
+      "southern launch-zone survivability",
+      "Bekaa logistics continuity",
+      "political cover within Lebanese institutions",
+      "Iranian replenishment confidence",
+      "ability to preserve communications under heavy pressure"
+    ]
+  },
+  "decision_doctrine": {
+    "risk_tolerance": "high for attritional border conflict, lower for full collapse of Lebanese support base",
+    "time_horizon": "attritional and opportunistic",
+    "escalation_bias": "prefer steady pressure and selective spikes over immediate all-out war",
+    "negotiation_posture": "accepts pauses that preserve claim of resistance and leave survivable capacity intact",
+    "deception_sensitivity": "high",
+    "red_lines": [
+      "loss of core political-control zones around Beirut and the Bekaa",
+      "collapse of southern launch survivability",
+      "visible break with Iran-backed deterrence logic",
+      "domestic legitimacy shock caused by unmanageable Lebanese destruction"
+    ],
+    "off_ramps": [
+      "pause that can be framed as deterrence success",
+      "restored corridor access from Syria",
+      "reduced Israeli pressure on the central Lebanese political core",
+      "continued ability to claim survivability and relevance"
+    ]
+  },
+  "protected_interests": [
+    "southern launch-belt survivability",
+    "Bekaa logistics depth",
+    "Beirut political influence",
+    "Iranian backing",
+    "communications and command continuity",
+    "perception of resistance credibility"
+  ],
+  "economic_pressure_points": [
+    "Lebanese infrastructure collapse",
+    "logistics interruption through Syria",
+    "loss of launch areas in southern Lebanon",
+    "funding pressure from sanctions or interdiction",
+    "civilian backlash tied to prolonged destruction",
+    "degradation of commercial and social support networks in Beirut and the Bekaa"
+  ],
+  "intelligence_priorities": [
+    "northern Israel defense gaps",
+    "air and drone interception patterns",
+    "Israeli reserve mobilization tempo",
+    "safe logistics corridors",
+    "Iranian escalation guidance",
+    "which Lebanese zones remain politically and logistically permissive",
+    "how quickly Israel regenerates strike tempo on the northern front"
+  ],
+  "priority_fronts": [
+    {
+      "name": "Southern Launch Belt",
+      "priority": "critical",
+      "goal": "preserve enough launch access to sustain deterrence through persistence",
+      "trigger_indicators": [
+        "border-force concentrations",
+        "high-tempo airstrikes",
+        "civilian evacuation shifts near the border"
+      ]
+    },
+    {
+      "name": "Bekaa Logistics Depth",
+      "priority": "high",
+      "goal": "keep material, personnel, and communications moving under pressure",
+      "trigger_indicators": [
+        "corridor interdiction",
+        "air-defense suppression",
+        "cross-border transport disruptions"
+      ]
+    },
+    {
+      "name": "Beirut Political Core",
+      "priority": "high",
+      "goal": "retain command continuity and domestic relevance",
+      "trigger_indicators": [
+        "central political backlash",
+        "communications degradation",
+        "pressure on core influence zones"
+      ]
+    },
+    {
+      "name": "Syrian Transit Corridor",
+      "priority": "medium",
+      "goal": "maintain external replenishment and strategic depth",
+      "trigger_indicators": [
+        "cross-border interdiction",
+        "partner instability in Syria",
+        "route closures"
+      ]
+    }
+  ],
+  "strategic_relationships": [
+    {
+      "counterparty": "Iran",
+      "type": "principal sponsor and strategic patron",
+      "trust_level": "high",
+      "dependency": "weapons flow, strategic guidance, and deterrence framing",
+      "notes": "Core source of legitimacy for regional resistance posture."
+    },
+    {
+      "counterparty": "Lebanese state institutions",
+      "type": "domestic political environment",
+      "trust_level": "medium",
+      "dependency": "room for maneuver and political cover",
+      "notes": "Necessary but unstable relationship shaped by conflict damage."
+    },
+    {
+      "counterparty": "Israel",
+      "type": "principal battlefield adversary",
+      "trust_level": "low",
+      "dependency": "mutual deterrence through pain thresholds and signaling",
+      "notes": "Hezbollah reads Israel through reserve tempo, evacuation policy, and interception patterns."
+    },
+    {
+      "counterparty": "Syrian logistics corridor",
+      "type": "sustainment dependency",
+      "trust_level": "medium",
+      "dependency": "material depth and replenishment",
+      "notes": "If degraded, Hezbollah becomes more cautious and survival-focused."
+    }
+  ],
+  "geopolitical_chokepoints": [
+    {
+      "name": "Blue Line launch belt",
+      "importance": "critical",
+      "desired_state": "survivable enough for continued pressure"
+    },
+    {
+      "name": "Bekaa-Syria transit arc",
+      "importance": "high",
+      "desired_state": "porous enough for sustainment and movement"
+    },
+    {
+      "name": "Beirut southern-suburb political core",
+      "importance": "high",
+      "desired_state": "retained as a command and legitimacy anchor"
+    },
+    {
+      "name": "Litani south-north depth belt",
+      "importance": "medium",
+      "desired_state": "usable as maneuver, dispersal, and concealment space"
+    }
+  ],
+  "geospatial_focus": [
+    "south Lebanon launch belt",
+    "Bekaa logistics arc",
+    "Beirut southern political core",
+    "Syrian replenishment corridor",
+    "Litani depth belt"
+  ]
+}

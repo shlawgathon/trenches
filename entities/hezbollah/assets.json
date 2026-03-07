@@ -1,0 +1,38 @@
+{
+  "locations": [
+    {
+      "name": "Dahiyeh, Beirut",
+      "category": "political-center",
+      "lat": 33.8547,
+      "lon": 35.4838,
+      "notes": "Representative command-and-influence center."
+    },
+    {
+      "name": "Baalbek / Bekaa Axis",
+      "category": "logistics",
+      "lat": 34.006,
+      "lon": 36.2181,
+      "notes": "Interior logistics and force-preservation corridor."
+    },
+    {
+      "name": "Bint Jbeil Area",
+      "category": "front",
+      "lat": 33.1194,
+      "lon": 35.4334,
+      "notes": "Representative southern launch and border-pressure zone."
+    },
+    {
+      "name": "Naqoura Coast",
+      "category": "front",
+      "lat": 33.1128,
+      "lon": 35.1397,
+      "notes": "Coastal pressure and observation node."
+    }
+  ],
+  "watchpoints": [
+    "South Lebanon launch belt",
+    "Bekaa logistics routes",
+    "Blue Line flashpoints",
+    "Israeli northern command tempo"
+  ]
+}
