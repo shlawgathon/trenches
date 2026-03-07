@@ -1,18 +1,37 @@
 from __future__ import annotations
 
 import json
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+DEFAULT_ENTITIES_ROOT = Path(__file__).resolve().parents[3] / "entities"
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-ENTITIES_ROOT = REPO_ROOT / "entities"
+
+@lru_cache(maxsize=1)
+def resolve_entities_root() -> Path:
+    configured_root = os.getenv("TRENCHES_ENTITIES_ROOT")
+    if configured_root:
+        candidate = Path(configured_root).expanduser().resolve()
+        if candidate.exists():
+            return candidate
+
+    fallback_candidates = (
+        DEFAULT_ENTITIES_ROOT,
+        Path.cwd() / "entities",
+        Path.cwd().parent / "entities",
+    )
+    for candidate in fallback_candidates:
+        if candidate.exists():
+            return candidate
+
+    return DEFAULT_ENTITIES_ROOT
 
 
 @lru_cache(maxsize=None)
 def load_entity_pack(agent_id: str) -> dict[str, Any]:
-    entity_dir = ENTITIES_ROOT / agent_id
+    entity_dir = resolve_entities_root() / agent_id
     profile_path = entity_dir / "profile.json"
     assets_path = entity_dir / "assets.json"
 

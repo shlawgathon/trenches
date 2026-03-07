@@ -45,6 +45,13 @@ class ActionImpact:
     risk_delta: float = 0.0
 
 
+@dataclass(frozen=True)
+class RewardMetricConfig:
+    target: float
+    tolerance: float
+    weight: float
+
+
 DEFAULT_ACTION_IMPACTS: dict[str, ActionImpact] = {
     "hold": ActionImpact(tension_delta=-1.0, market_delta=-0.2),
     "negotiate": ActionImpact(tension_delta=-4.0, market_delta=-1.2, oil_delta=-0.8, risk_delta=-0.02),
@@ -120,6 +127,15 @@ AGENT_ACTION_IMPACTS: dict[str, dict[str, ActionImpact]] = {
         "deceive": ActionImpact(tension_delta=2.0, market_delta=0.0, oil_delta=0.0, risk_delta=0.04),
         "oversight_review": ActionImpact(tension_delta=-4.8, market_delta=-1.8, oil_delta=-0.7, risk_delta=-0.06),
     },
+}
+
+AGENT_ALLOWED_ACTIONS: dict[str, tuple[str, ...]] = {
+    "us": ("hold", "negotiate", "sanction", "strike", "defend", "intel_query", "mobilize", "deceive"),
+    "israel": ("hold", "negotiate", "sanction", "strike", "defend", "intel_query", "mobilize", "deceive"),
+    "iran": ("hold", "negotiate", "sanction", "strike", "defend", "intel_query", "mobilize", "deceive"),
+    "hezbollah": ("hold", "negotiate", "sanction", "strike", "defend", "intel_query", "mobilize", "deceive"),
+    "gulf": ("hold", "negotiate", "sanction", "strike", "defend", "intel_query", "mobilize", "deceive"),
+    "oversight": ("hold", "negotiate", "defend", "intel_query", "oversight_review"),
 }
 
 AGENT_ACTION_ALIGNMENT: dict[str, dict[str, float]] = {
@@ -236,6 +252,45 @@ AGENT_STATE_BASELINES: dict[str, dict[str, float]] = {
         "intervention_legitimacy": 68.0,
         "autonomy_balance": 72.0,
         "trace_clarity": 70.0,
+    },
+}
+
+AGENT_REWARD_METRIC_CONFIGS: dict[str, dict[str, RewardMetricConfig]] = {
+    "us": {
+        "regional_access": RewardMetricConfig(target=82.0, tolerance=18.0, weight=0.29),
+        "shipping_security": RewardMetricConfig(target=84.0, tolerance=16.0, weight=0.27),
+        "domestic_support": RewardMetricConfig(target=68.0, tolerance=18.0, weight=0.20),
+        "force_posture": RewardMetricConfig(target=80.0, tolerance=16.0, weight=0.14),
+    },
+    "israel": {
+        "homeland_security": RewardMetricConfig(target=84.0, tolerance=16.0, weight=0.31),
+        "northern_deterrence": RewardMetricConfig(target=78.0, tolerance=18.0, weight=0.28),
+        "us_resupply_confidence": RewardMetricConfig(target=80.0, tolerance=18.0, weight=0.19),
+        "reserve_endurance": RewardMetricConfig(target=68.0, tolerance=18.0, weight=0.12),
+    },
+    "iran": {
+        "regime_stability": RewardMetricConfig(target=78.0, tolerance=18.0, weight=0.30),
+        "proxy_corridor": RewardMetricConfig(target=76.0, tolerance=18.0, weight=0.24),
+        "hormuz_leverage": RewardMetricConfig(target=72.0, tolerance=14.0, weight=0.23),
+        "deterrence_credibility": RewardMetricConfig(target=74.0, tolerance=18.0, weight=0.13),
+    },
+    "hezbollah": {
+        "launch_survivability": RewardMetricConfig(target=72.0, tolerance=18.0, weight=0.27),
+        "logistics_depth": RewardMetricConfig(target=70.0, tolerance=18.0, weight=0.22),
+        "resistance_credibility": RewardMetricConfig(target=74.0, tolerance=18.0, weight=0.24),
+        "political_cover": RewardMetricConfig(target=60.0, tolerance=18.0, weight=0.17),
+    },
+    "gulf": {
+        "shipping_continuity": RewardMetricConfig(target=86.0, tolerance=14.0, weight=0.30),
+        "investor_confidence": RewardMetricConfig(target=82.0, tolerance=16.0, weight=0.25),
+        "infrastructure_security": RewardMetricConfig(target=82.0, tolerance=16.0, weight=0.20),
+        "diplomatic_flexibility": RewardMetricConfig(target=74.0, tolerance=18.0, weight=0.15),
+    },
+    "oversight": {
+        "runaway_risk": RewardMetricConfig(target=18.0, tolerance=18.0, weight=0.32),
+        "autonomy_balance": RewardMetricConfig(target=76.0, tolerance=16.0, weight=0.22),
+        "intervention_legitimacy": RewardMetricConfig(target=74.0, tolerance=18.0, weight=0.20),
+        "trace_clarity": RewardMetricConfig(target=78.0, tolerance=16.0, weight=0.16),
     },
 }
 

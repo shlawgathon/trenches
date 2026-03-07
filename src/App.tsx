@@ -3,9 +3,10 @@ import { startTransition, useEffect, useMemo, useState } from "react";
 import { bootstrapPlatform } from "./app/bootstrap";
 import { CommandMap } from "./components/CommandMap";
 import { MonitoringDeck, type MonitoringAgentSnapshot } from "./components/MonitoringDeck";
+import { SourceDeliveryAuditPanel } from "./components/SourceDeliveryAuditPanel";
 import { buildViewerMapState, type MapSelection } from "./lib/viewer-map";
 import type { PlatformRuntime } from "./lib/platform";
-import type { AgentAction, AgentObservation, SessionState } from "./lib/types";
+import type { AgentAction, AgentObservation, SessionState, SourceMonitorReport } from "./lib/types";
 
 const AGENT_ORDER = ["us", "israel", "iran", "hezbollah", "gulf", "oversight"] as const;
 const AGENT_MODEL_META: Record<
@@ -72,12 +73,30 @@ function toConfidence(value: number | undefined) {
   return Math.max(0, Math.min(1, (value + 1) / 2));
 }
 
+function formatTimestamp(value: string | null | undefined) {
+  if (!value) {
+    return "waiting";
+  }
+  const timestamp = new Date(value);
+  if (Number.isNaN(timestamp.getTime())) {
+    return "waiting";
+  }
+  return timestamp.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
 export default function App() {
   const [runtime, setRuntime] = useState<PlatformRuntime | null>(null);
   const [session, setSession] = useState<SessionState | null>(null);
   const [selectedMapEntity, setSelectedMapEntity] = useState<MapSelection>("all");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [sourceMonitor, setSourceMonitor] = useState<SourceMonitorReport | null>(null);
+  const [sourceMonitorBusy, setSourceMonitorBusy] = useState(false);
+  const [sourceMonitorError, setSourceMonitorError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -113,6 +132,96 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!runtime || !session) {
+      startTransition(() => {
+        setSourceMonitor(null);
+        setSourceMonitorError(null);
+        setSourceMonitorBusy(false);
+      });
+      return;
+    }
+
+    const sessionClient = runtime.sessionClient;
+    const sessionId = session.session_id;
+    let cancelled = false;
+
+    async function loadSourceMonitor() {
+      setSourceMonitorBusy(true);
+      try {
+        const report = await sessionClient.getSourceMonitor(sessionId);
+        if (!cancelled) {
+          startTransition(() => {
+            setSourceMonitor(report);
+            setSourceMonitorError(null);
+          });
+        }
+      } catch (nextError) {
+        if (!cancelled) {
+          startTransition(() => {
+            setSourceMonitor(null);
+            setSourceMonitorError(
+              nextError instanceof Error ? nextError.message : "Failed to load source-delivery audit.",
+            );
+          });
+        }
+      } finally {
+        if (!cancelled) {
+          setSourceMonitorBusy(false);
+        }
+      }
+    }
+
+    void loadSourceMonitor();
+    return () => {
+      cancelled = true;
+    };
+  }, [runtime, session?.session_id, session?.updated_at]);
+
+  useEffect(() => {
+    if (!runtime || !session?.live.enabled || !session.live.auto_step) {
+      return;
+    }
+
+    const sessionClient = runtime.sessionClient;
+    const sessionId = session.session_id;
+    const pollIntervalMs = Math.max(2_500, Math.min(session.live.poll_interval_ms, 5_000));
+    let cancelled = false;
+    let timeoutId: number | null = null;
+
+    async function pollSession() {
+      try {
+        const nextSession = await sessionClient.getSession(sessionId);
+        if (!cancelled) {
+          startTransition(() => {
+            setSession(nextSession);
+            setError(null);
+          });
+        }
+      } catch (nextError) {
+        if (!cancelled) {
+          startTransition(() => {
+            setError(nextError instanceof Error ? nextError.message : "Live session polling failed.");
+          });
+        }
+      } finally {
+        if (!cancelled) {
+          timeoutId = window.setTimeout(() => {
+            void pollSession();
+          }, pollIntervalMs);
+        }
+      }
+    }
+
+    void pollSession();
+    return () => {
+      cancelled = true;
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [runtime, session?.session_id, session?.live.enabled, session?.live.auto_step, session?.live.poll_interval_ms]);
+
   const summary = useMemo(() => {
     if (!session) {
       return null;
@@ -123,6 +232,8 @@ export default function App() {
       { label: "Market Stress", value: session.world.market_stress.toFixed(1) },
       { label: "Oil Pressure", value: session.world.oil_pressure.toFixed(1) },
       { label: "Live", value: session.live.enabled ? "On" : "Off" },
+      { label: "Auto React", value: session.live.auto_step ? "Armed" : "Off" },
+      { label: "Last React", value: formatTimestamp(session.live.last_auto_step_at) },
       { label: "Backend", value: runtime?.backendStatus ?? "unknown" },
     ];
   }, [runtime?.backendStatus, session]);
@@ -281,8 +392,8 @@ export default function App() {
     try {
       const nextSession = await runtime.sessionClient.setLiveMode(session.session_id, {
         enabled,
-        auto_step: false,
-        poll_interval_ms: 15000,
+        auto_step: enabled,
+        poll_interval_ms: 6000,
       });
       setSession(nextSession);
     } catch (nextError) {
@@ -369,8 +480,8 @@ export default function App() {
         <button onClick={refreshSources} disabled={busy || !session}>
           Refresh Sources
         </button>
-        <button onClick={stepSession} disabled={busy || !session}>
-          Advance Turn
+        <button onClick={stepSession} disabled={busy || !session || !!session?.live.auto_step}>
+          Advance Scenario Turn
         </button>
       </section>
 
@@ -410,6 +521,13 @@ export default function App() {
             headline="Black-box monitoring surface for reward pressure, source integrity, recent actions, and actor posture across the full regional simulation."
             summary="This layer is for the human operator only. It sits beside the map and explains how each doctrine-specific model is reading the environment and being rewarded."
             statusChip={session.live.enabled ? "Live post-training session" : "Scenario replay session"}
+          />
+
+          <SourceDeliveryAuditPanel
+            report={sourceMonitor}
+            selectedAgentId={selectedMonitoringAgent}
+            loading={sourceMonitorBusy}
+            error={sourceMonitorError}
           />
 
           <section className="panel-grid">

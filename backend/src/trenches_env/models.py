@@ -20,6 +20,9 @@ ActionType = Literal[
 
 TrainingStage = Literal["stage_1_dense", "stage_2_partial", "stage_3_sparse"]
 SourcePacketStatus = Literal["pending", "ok", "error"]
+SourceMonitorStatus = Literal["healthy", "degraded", "blocked"]
+SourceMonitorIssueSeverity = Literal["warning", "error"]
+AssetConditionStatus = Literal["operational", "degraded", "malfunctioning", "destroyed"]
 
 
 def utc_now() -> datetime:
@@ -45,6 +48,32 @@ class SourcePacket(BaseModel):
     summary: str = ""
     sample_items: list[str] = Field(default_factory=list)
     error: str | None = None
+
+
+class DataSourceContext(BaseModel):
+    source_id: str
+    name: str
+    delivery: Literal["training_core", "live_demo"]
+    kind: str
+    rationale: str
+    tags: list[str] = Field(default_factory=list)
+    access_notes: str | None = None
+
+
+class AssetCondition(BaseModel):
+    asset_id: str
+    owner: str
+    name: str
+    category: str
+    section: str
+    latitude: float | None = None
+    longitude: float | None = None
+    status: AssetConditionStatus = "operational"
+    health: float = 100.0
+    operational_load: float = 0.0
+    criticality: str = "tracked"
+    notes: str | None = None
+    last_change_reason: str | None = None
 
 
 class ExternalSignal(BaseModel):
@@ -95,9 +124,13 @@ class AgentObservation(BaseModel):
     perceived_tension: float = 50.0
     known_coalitions: list[str] = Field(default_factory=list)
     event_log: list[BlackSwanEvent] = Field(default_factory=list)
+    decision_prompt: str = ""
+    available_actions: list[str] = Field(default_factory=list)
+    available_data_sources: list[DataSourceContext] = Field(default_factory=list)
     entity_profile: dict[str, Any] = Field(default_factory=dict)
     strategic_state: dict[str, float] = Field(default_factory=dict)
     strategic_assets: list[dict[str, Any]] = Field(default_factory=list)
+    asset_alerts: list[str] = Field(default_factory=list)
     source_bundle: list[str] = Field(default_factory=list)
     training_source_bundle: list[str] = Field(default_factory=list)
     live_source_bundle: list[str] = Field(default_factory=list)
@@ -112,6 +145,7 @@ class WorldState(BaseModel):
     market_stress: float = 30.0
     oil_pressure: float = 40.0
     actor_state: dict[str, dict[str, float]] = Field(default_factory=dict)
+    asset_state: dict[str, dict[str, AssetCondition]] = Field(default_factory=dict)
     coalition_graph: dict[str, list[str]] = Field(default_factory=dict)
     active_events: list[BlackSwanEvent] = Field(default_factory=list)
     hidden_intents: dict[str, str] = Field(default_factory=dict)
@@ -127,7 +161,9 @@ class LiveSessionConfig(BaseModel):
     poll_interval_ms: int = 30_000
     started_at: datetime | None = None
     last_source_sync_at: datetime | None = None
+    last_auto_step_at: datetime | None = None
     source_queue_sizes: dict[str, int] = Field(default_factory=dict)
+    reacted_packet_fetched_at: dict[str, datetime] = Field(default_factory=dict)
 
 
 class EpisodeMetadata(BaseModel):
@@ -164,6 +200,55 @@ class SessionState(BaseModel):
     live: LiveSessionConfig = Field(default_factory=LiveSessionConfig)
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
+
+
+class SourceMonitorIssue(BaseModel):
+    severity: SourceMonitorIssueSeverity
+    message: str
+
+
+class AgentSourceMonitor(BaseModel):
+    agent_id: str
+    display_name: str
+    status: SourceMonitorStatus = "healthy"
+    configured_training_sources: int = 0
+    configured_live_sources: int = 0
+    active_source_count: int = 0
+    ok_packet_count: int = 0
+    pending_packet_count: int = 0
+    error_packet_count: int = 0
+    available_training_packet_count: int = 0
+    available_live_packet_count: int = 0
+    delivered_training_brief_count: int = 0
+    delivered_live_brief_count: int = 0
+    missing_training_sources: list[str] = Field(default_factory=list)
+    missing_live_sources: list[str] = Field(default_factory=list)
+    unbundled_training_sources: list[str] = Field(default_factory=list)
+    unbundled_live_sources: list[str] = Field(default_factory=list)
+    missing_packet_sources: list[str] = Field(default_factory=list)
+    sources_without_probe_targets: list[str] = Field(default_factory=list)
+    stale_sources: list[str] = Field(default_factory=list)
+    error_sources: list[str] = Field(default_factory=list)
+    pending_sources: list[str] = Field(default_factory=list)
+    delivered_source_names: list[str] = Field(default_factory=list)
+    issues: list[SourceMonitorIssue] = Field(default_factory=list)
+
+
+class SourceMonitorSummary(BaseModel):
+    healthy_agents: int = 0
+    degraded_agents: int = 0
+    blocked_agents: int = 0
+    active_source_count: int = 0
+    ok_packet_count: int = 0
+    delivered_source_brief_count: int = 0
+
+
+class SourceMonitorReport(BaseModel):
+    session_id: str
+    live_enabled: bool = False
+    generated_at: datetime = Field(default_factory=utc_now)
+    summary: SourceMonitorSummary = Field(default_factory=SourceMonitorSummary)
+    agents: list[AgentSourceMonitor] = Field(default_factory=list)
 
 
 class CreateSessionRequest(BaseModel):

@@ -1,6 +1,33 @@
+from datetime import datetime, timedelta, timezone
+
+from trenches_env.env import FogOfWarDiplomacyEnv
 from trenches_env.models import AgentAction, LiveControlRequest, StepSessionRequest
 from trenches_env.session_manager import SessionManager
 from trenches_env.source_bundles import AGENT_LIVE_SOURCE_BUNDLES
+from trenches_env.source_ingestion import SourceHarvester
+
+
+class ShippingFeedFetcher:
+    def fetch(self, _: str) -> tuple[str, str]:
+        return (
+            """
+            <rss>
+              <channel>
+                <title>Maritime Watch</title>
+                <item>
+                  <title>Shipping risk rises in Hormuz after drone intercept near tanker lanes</title>
+                </item>
+              </channel>
+            </rss>
+            """,
+            "application/rss+xml",
+        )
+
+
+def build_live_manager() -> SessionManager:
+    harvester = SourceHarvester(fetcher=ShippingFeedFetcher(), auto_start=False)
+    env = FogOfWarDiplomacyEnv(source_harvester=harvester)
+    return SessionManager(env=env)
 
 
 def test_session_lifecycle() -> None:
@@ -64,3 +91,39 @@ def test_stage_1_disables_live_mode() -> None:
         pass
     else:
         raise AssertionError("stage_1_dense sessions should reject live mode")
+
+
+def test_source_monitor_report_is_available_for_sessions() -> None:
+    manager = SessionManager()
+    session = manager.create_session(seed=7)
+    report = manager.source_monitor(session.session_id)
+
+    assert report.session_id == session.session_id
+    assert len(report.agents) == len(AGENT_LIVE_SOURCE_BUNDLES)
+    assert report.summary.active_source_count > 0
+
+
+def test_live_get_session_auto_steps_once_for_new_source_packets() -> None:
+    manager = build_live_manager()
+    session = manager.create_session(seed=7)
+    manager.set_live_mode(
+        session.session_id,
+        LiveControlRequest(enabled=True, auto_step=True, poll_interval_ms=1_000),
+    )
+
+    first_live_tick = manager.get_session(session.session_id)
+
+    assert first_live_tick.world.turn == 1
+    assert first_live_tick.live.last_auto_step_at is not None
+    assert first_live_tick.live.reacted_packet_fetched_at
+    assert first_live_tick.recent_traces[-1].actions["gulf"].type == "defend"
+    assert first_live_tick.recent_traces[-1].actions["oversight"].type == "oversight_review"
+
+    for observation in first_live_tick.observations.values():
+        for packet in observation.source_packets:
+            if packet.fetched_at is not None:
+                manager._sessions[session.session_id].live.reacted_packet_fetched_at[packet.source_id] = packet.fetched_at
+    manager._sessions[session.session_id].live.last_auto_step_at = datetime.now(timezone.utc) - timedelta(seconds=2)
+    second_live_tick = manager.get_session(session.session_id)
+
+    assert second_live_tick.world.turn == 1

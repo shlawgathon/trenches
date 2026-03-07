@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import random
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from trenches_env.agents import AGENT_IDS, AGENT_PROFILES
@@ -9,7 +9,9 @@ from trenches_env.entity_knowledge import load_entity_pack
 from trenches_env.models import (
     AgentAction,
     AgentObservation,
+    AssetCondition,
     BlackSwanEvent,
+    DataSourceContext,
     EpisodeMetadata,
     ExternalSignal,
     IntelSnippet,
@@ -17,15 +19,19 @@ from trenches_env.models import (
     OversightIntervention,
     RewardBreakdown,
     SessionState,
+    SourcePacket,
+    SourceMonitorReport,
     StepTrace,
     StepSessionRequest,
     StepSessionResponse,
     WorldState,
 )
 from trenches_env.rl import (
+    AGENT_ALLOWED_ACTIONS,
     AGENT_ACTION_ALIGNMENT,
     AGENT_ACTION_IMPACTS,
     AGENT_PREFERRED_COALITIONS,
+    AGENT_REWARD_METRIC_CONFIGS,
     AGENT_STATE_ACTION_EFFECTS,
     AGENT_STATE_BASELINES,
     DEFAULT_ACTION_IMPACTS,
@@ -33,8 +39,10 @@ from trenches_env.rl import (
     DEFAULT_TRAINING_STAGE,
     TRAINING_STAGE_CONFIGS,
 )
+from trenches_env.source_catalog import get_source_by_id, get_sources_for_agent
 from trenches_env.source_bundles import AGENT_LIVE_SOURCE_BUNDLES, AGENT_TRAINING_SOURCE_BUNDLES
-from trenches_env.source_ingestion import SourceHarvester
+from trenches_env.source_ingestion import SourceHarvester, source_ttl_seconds
+from trenches_env.source_monitor import build_source_monitor_report
 
 ACTION_STANCE_SCORES: dict[str, float] = {
     "hold": -0.4,
@@ -79,6 +87,90 @@ ESCALATORY_INTENT_MARKERS = (
     "deceive",
 )
 
+MAX_PUBLIC_BRIEF_ITEMS = 4
+MAX_PRIVATE_BRIEF_ITEMS = 6
+MAX_INTEL_SUMMARY_CHARS = 220
+MAX_TRAINING_SOURCE_BRIEFS = 2
+MAX_LIVE_SOURCE_BRIEFS = 2
+MAX_AUTO_REACTION_SIGNALS = 8
+MIN_LIVE_AUTO_STEP_MS = 1_000
+ASSET_DECISION_SOURCE_LIMITS: dict[str, tuple[int, int]] = {
+    "large": (8, 8),
+    "medium-large": (6, 6),
+    "medium": (5, 5),
+}
+PHYSICAL_ASSET_SECTIONS = (
+    "locations",
+    "fronts",
+    "infrastructure",
+    "strategic_sites",
+    "chokepoints",
+    "geospatial_anchors",
+    "alliance_anchors",
+)
+ASSET_PRIORITY_SCORES = {
+    "critical": 4,
+    "high": 3,
+    "medium": 2,
+    "tracked": 1,
+    "linked": 1,
+}
+ASSET_STATUS_DAMAGE_THRESHOLDS = (
+    (25.0, "destroyed"),
+    (55.0, "malfunctioning"),
+    (85.0, "degraded"),
+)
+
+AGENT_PRIMARY_ADVERSARIES: dict[str, tuple[str, ...]] = {
+    "us": ("iran",),
+    "israel": ("hezbollah", "iran"),
+    "iran": ("israel", "us", "gulf"),
+    "hezbollah": ("israel",),
+    "gulf": ("iran",),
+    "oversight": (),
+}
+
+AGENT_TOOL_LABELS: dict[str, str] = {
+    "us": "shipping security, coalition access, and force-posture tools",
+    "israel": "air-defense, reserve, and northern-front tools",
+    "iran": "proxy, chokepoint, and regime-security tools",
+    "hezbollah": "launch-survivability, logistics, and deniable-pressure tools",
+    "gulf": "shipping, infrastructure, and market-stability tools",
+    "oversight": "trace, intervention, and autonomy-balancing tools",
+}
+ASSET_CATEGORY_BIAS: dict[str, dict[str, tuple[str, ...]]] = {
+    "us": {
+        "strike": ("energy", "port", "chokepoint", "command", "launch-zone"),
+        "defend": ("airbase", "base", "naval", "logistics-port", "base-network", "command-system"),
+        "deceive": ("command", "command-system", "radar", "air-defense", "theater-anchor"),
+        "sanction": ("energy", "port", "logistics-network", "energy-network"),
+    },
+    "israel": {
+        "strike": ("launch-network", "launch-zone", "corridor-node", "logistics-network", "logistics"),
+        "defend": ("command", "front", "civil-core", "infrastructure-zone", "offshore-zone", "air-defense"),
+        "deceive": ("launch-zone", "command-network", "corridor-node"),
+    },
+    "iran": {
+        "strike": ("airbase", "base", "energy", "energy-port", "port", "chokepoint"),
+        "defend": ("command", "energy-network", "maritime-control-zone", "command-and-industry-network"),
+        "deceive": ("chokepoint", "port", "naval", "maritime-box", "maritime-access"),
+    },
+    "hezbollah": {
+        "strike": ("front", "civil-core", "command", "offshore-zone", "infrastructure-zone"),
+        "defend": ("launch-network", "front", "corridor-node", "command-network", "logistics-network"),
+        "deceive": ("launch-zone", "command-network", "logistics-network"),
+    },
+    "gulf": {
+        "strike": ("energy-network", "energy", "energy-port", "port", "chokepoint", "base"),
+        "defend": ("port", "energy", "energy-port", "capital", "infrastructure-protection", "chokepoint"),
+        "deceive": ("energy-port", "port", "chokepoint"),
+        "sanction": ("energy", "energy-port", "port", "logistics-network"),
+    },
+    "oversight": {
+        "defend": ("chokepoint", "theater", "civil-center"),
+    },
+}
+
 
 class FogOfWarDiplomacyEnv:
     """OpenEnv-compatible scaffolding for the crisis simulator.
@@ -91,6 +183,11 @@ class FogOfWarDiplomacyEnv:
     def __init__(self, source_harvester: SourceHarvester | None = None) -> None:
         self._rng = random.Random()
         self._source_harvester = source_harvester or SourceHarvester(auto_start=False)
+        self._source_warm_start_enabled = False
+
+    def enable_source_warm_start(self) -> "FogOfWarDiplomacyEnv":
+        self._source_warm_start_enabled = True
+        return self
 
     def create_session(
         self,
@@ -103,6 +200,12 @@ class FogOfWarDiplomacyEnv:
         self._seed(seed)
         world = self._initial_world()
         episode = self._build_episode_metadata(training_stage=training_stage, max_turns=max_turns)
+        if self._source_warm_start_enabled:
+            self._source_harvester.warm_start_agents(
+                include_live=False,
+                max_training_sources=2,
+                max_live_sources=0,
+            )
         observations = self._build_observations(world, episode)
         rewards = {agent_id: RewardBreakdown() for agent_id in AGENT_IDS}
         session = SessionState(
@@ -113,7 +216,10 @@ class FogOfWarDiplomacyEnv:
             rewards=rewards,
             episode=episode,
         )
-        return self.refresh_session_sources(session)
+        last_sync_at = self._source_harvester.last_sync_at()
+        if last_sync_at is not None:
+            session.live.last_source_sync_at = last_sync_at
+        return session
 
     def reset_session(
         self,
@@ -137,9 +243,11 @@ class FogOfWarDiplomacyEnv:
             )
         updated.live.enabled = request.enabled
         updated.live.auto_step = request.auto_step
-        updated.live.poll_interval_ms = request.poll_interval_ms
+        updated.live.poll_interval_ms = max(request.poll_interval_ms, MIN_LIVE_AUTO_STEP_MS)
         updated.live.started_at = datetime.now(timezone.utc) if request.enabled else None
         updated.live.last_source_sync_at = datetime.now(timezone.utc) if request.enabled else None
+        updated.live.last_auto_step_at = None
+        updated.live.reacted_packet_fetched_at = {}
         updated.live.source_queue_sizes = (
             {
                 agent_id: len(AGENT_LIVE_SOURCE_BUNDLES.get(agent_id, []))
@@ -152,7 +260,14 @@ class FogOfWarDiplomacyEnv:
             updated.live.source_queue_sizes = {}
         updated.updated_at = datetime.now(timezone.utc)
         if request.enabled:
-            self._source_harvester.refresh_due_batch(include_live=True)
+            if self._source_warm_start_enabled:
+                self._source_harvester.warm_start_agents(
+                    include_live=True,
+                    max_training_sources=1,
+                    max_live_sources=1,
+                )
+            else:
+                self._source_harvester.refresh_due_batch(include_live=True)
         return self.refresh_session_sources(updated)
 
     def step_session(self, session: SessionState, request: StepSessionRequest) -> StepSessionResponse:
@@ -201,6 +316,8 @@ class FogOfWarDiplomacyEnv:
         updated = session.model_copy(deep=True)
         if force:
             self._source_harvester.refresh_agents(include_live=updated.live.enabled, force=True)
+        elif self._source_warm_start_enabled:
+            self._source_harvester.warm_start_agents(include_live=updated.live.enabled, force=False)
         updated.observations = self._build_observations(
             updated.world,
             updated.episode,
@@ -211,6 +328,447 @@ class FogOfWarDiplomacyEnv:
             updated.live.last_source_sync_at = last_sync_at
         updated.updated_at = datetime.now(timezone.utc)
         return updated
+
+    def source_monitor(self, session: SessionState) -> SourceMonitorReport:
+        return build_source_monitor_report(session, harvester=self._source_harvester)
+
+    def maybe_auto_step_live_session(self, session: SessionState) -> SessionState:
+        refreshed = self.refresh_session_sources(session)
+        if not refreshed.live.enabled or not refreshed.live.auto_step:
+            return refreshed
+
+        now = datetime.now(timezone.utc)
+        if not self._live_auto_step_due(refreshed, now):
+            return refreshed
+
+        signals, reacted_packets = self._collect_live_external_signals(refreshed)
+        if not signals:
+            return refreshed
+
+        actions = self._select_live_actions(refreshed, signals)
+        result = self.step_session(
+            refreshed,
+            StepSessionRequest(actions=actions, external_signals=signals),
+        )
+        next_session = result.session
+        next_session.live.last_auto_step_at = now
+        next_session.live.reacted_packet_fetched_at.update(reacted_packets)
+        next_session.updated_at = datetime.now(timezone.utc)
+        return next_session
+
+    def _live_auto_step_due(self, session: SessionState, now: datetime) -> bool:
+        last_auto_step_at = session.live.last_auto_step_at
+        if last_auto_step_at is None:
+            return True
+        return now - last_auto_step_at >= timedelta(
+            milliseconds=max(session.live.poll_interval_ms, MIN_LIVE_AUTO_STEP_MS)
+        )
+
+    def _collect_live_external_signals(
+        self,
+        session: SessionState,
+    ) -> tuple[list[ExternalSignal], dict[str, datetime]]:
+        newest_packets: dict[str, tuple[str, SourcePacket]] = {}
+        for agent_id, observation in session.observations.items():
+            for packet in observation.source_packets:
+                if packet.status != "ok" or not packet.summary or packet.fetched_at is None:
+                    continue
+                if not self._is_source_packet_fresh(packet):
+                    continue
+                last_reacted = session.live.reacted_packet_fetched_at.get(packet.source_id)
+                if last_reacted is not None and packet.fetched_at <= last_reacted:
+                    continue
+                cached = newest_packets.get(packet.source_id)
+                if cached is None or packet.fetched_at > (cached[1].fetched_at or datetime.fromtimestamp(0, tz=timezone.utc)):
+                    newest_packets[packet.source_id] = (agent_id, packet)
+
+        ordered_packets = sorted(
+            newest_packets.values(),
+            key=lambda item: item[1].fetched_at or datetime.fromtimestamp(0, tz=timezone.utc),
+            reverse=True,
+        )[:MAX_AUTO_REACTION_SIGNALS]
+
+        signals: list[ExternalSignal] = []
+        reacted_packets: dict[str, datetime] = {}
+        for agent_id, packet in ordered_packets:
+            signal = self._packet_to_external_signal(agent_id, packet)
+            signals.append(signal)
+            reacted_packets[packet.source_id] = packet.fetched_at  # type: ignore[assignment]
+        return signals, reacted_packets
+
+    def _packet_to_external_signal(self, agent_id: str, packet: SourcePacket) -> ExternalSignal:
+        packet_text = " ".join([packet.source_name, packet.summary, *packet.sample_items]).lower()
+        categories = self._classify_signal_categories(packet_text)
+        severity = 0.35
+        if "attack" in categories:
+            severity = max(severity, 0.82)
+        if "shipping" in categories:
+            severity = max(severity, 0.72)
+        if "cyber" in categories or "unrest" in categories:
+            severity = max(severity, 0.64)
+        if "market" in categories:
+            severity = max(severity, 0.56)
+        if "humanitarian" in categories or "diplomacy" in categories:
+            severity = max(severity, 0.44)
+        if packet.delivery == "live_demo":
+            severity += 0.05
+
+        lead = packet.sample_items[0] if packet.sample_items else packet.summary
+        return ExternalSignal(
+            source=packet.source_name,
+            headline=self._clip_summary(f"{packet.source_name}: {lead}", limit=160),
+            region=None if agent_id == "oversight" else agent_id,
+            tags=sorted(categories | {agent_id, packet.kind, packet.delivery}),
+            severity=round(min(severity, 0.95), 2),
+        )
+
+    def _classify_signal_categories(self, text: str) -> set[str]:
+        categories: set[str] = set()
+        if self._signal_mentions(
+            text,
+            "strike",
+            "rocket",
+            "missile",
+            "drone",
+            "attack",
+            "raid",
+            "blast",
+            "explosion",
+            "intercept",
+            "retaliat",
+            "launch",
+        ):
+            categories.add("attack")
+        if self._signal_mentions(
+            text,
+            "shipping",
+            "tanker",
+            "vessel",
+            "hormuz",
+            "oil",
+            "port",
+            "terminal",
+            "maritime",
+            "strait",
+            "pipeline",
+            "red sea",
+        ):
+            categories.add("shipping")
+        if self._signal_mentions(text, "ceasefire", "talk", "negotiat", "summit", "diplomat", "mediat"):
+            categories.add("diplomacy")
+        if self._signal_mentions(text, "humanitarian", "aid", "displacement", "relief", "civilian", "refugee"):
+            categories.add("humanitarian")
+        if self._signal_mentions(text, "cyber", "internet", "blackout", "outage", "malware", "network"):
+            categories.add("cyber")
+        if self._signal_mentions(text, "protest", "unrest", "sanction", "inflation", "currency", "black market"):
+            categories.add("unrest")
+        if self._signal_mentions(text, "market", "investor", "trade", "stocks", "shares", "bond"):
+            categories.add("market")
+        return categories or {"general"}
+
+    def _select_live_actions(
+        self,
+        session: SessionState,
+        signals: list[ExternalSignal],
+    ) -> dict[str, AgentAction]:
+        actions: dict[str, AgentAction] = {}
+        for agent_id in AGENT_IDS:
+            signal_context, top_headline = self._build_signal_context(agent_id, signals)
+            allowed_actions = AGENT_ALLOWED_ACTIONS.get(agent_id, ())
+            action_type = max(
+                allowed_actions,
+                key=lambda candidate: self._score_live_action(
+                    agent_id=agent_id,
+                    action_type=candidate,
+                    session=session,
+                    signal_context=signal_context,
+                ),
+            )
+            target = self._select_live_action_target(agent_id, action_type, session, signal_context)
+            driver = self._event_driver_label(signal_context)
+            metadata: dict[str, object] = {
+                "mode": "live_auto",
+                "driver": driver,
+                "signal_count": int(signal_context["relevant_count"]),
+            }
+            if top_headline:
+                metadata["trigger_headline"] = top_headline
+            actions[agent_id] = AgentAction(
+                actor=agent_id,
+                type=action_type,
+                target=target,
+                summary=self._build_auto_action_summary(agent_id, action_type, target, driver),
+                metadata=metadata,
+            )
+        return actions
+
+    def _build_signal_context(
+        self,
+        agent_id: str,
+        signals: list[ExternalSignal],
+    ) -> tuple[dict[str, float], str]:
+        signal_context = {
+            "attack": 0.0,
+            "shipping": 0.0,
+            "diplomacy": 0.0,
+            "humanitarian": 0.0,
+            "cyber": 0.0,
+            "unrest": 0.0,
+            "market": 0.0,
+            "general": 0.0,
+            "pressure": 0.0,
+            "relevant_count": 0.0,
+        }
+        top_headline = ""
+        top_severity = 0.0
+
+        for signal in signals:
+            if agent_id != "oversight":
+                affected_agents = set(self._infer_affected_agents(signal))
+                if agent_id not in affected_agents and signal.region != agent_id:
+                    continue
+
+            text = f"{signal.headline} {' '.join(signal.tags)} {(signal.region or '')}".lower()
+            categories = self._classify_signal_categories(text)
+            weight = max(0.2, signal.severity)
+            signal_context["relevant_count"] += 1.0
+            for category in categories:
+                signal_context[category] = signal_context.get(category, 0.0) + weight
+            if signal.severity >= top_severity:
+                top_severity = signal.severity
+                top_headline = signal.headline
+
+        signal_context["pressure"] = sum(
+            signal_context[category]
+            for category in ("attack", "shipping", "diplomacy", "humanitarian", "cyber", "unrest", "market")
+        ) + 0.3 * signal_context["general"]
+        return signal_context, top_headline
+
+    def _score_live_action(
+        self,
+        *,
+        agent_id: str,
+        action_type: str,
+        session: SessionState,
+        signal_context: dict[str, float],
+    ) -> float:
+        observation = session.observations[agent_id]
+        metric_gain = 0.0
+        action_effects = AGENT_STATE_ACTION_EFFECTS[agent_id].get(action_type, {})
+
+        for metric, config in AGENT_REWARD_METRIC_CONFIGS[agent_id].items():
+            current_value = observation.strategic_state.get(
+                metric,
+                AGENT_STATE_BASELINES[agent_id].get(metric, 50.0),
+            )
+            projected_value = self._clamp_percent(current_value + action_effects.get(metric, 0.0))
+            before_score = self._target_score(current_value, config.target, config.tolerance)
+            after_score = self._target_score(projected_value, config.target, config.tolerance)
+            metric_gain += (after_score - before_score) * config.weight
+
+        doctrinal_fit = AGENT_ACTION_ALIGNMENT[agent_id].get(action_type, 0.0)
+        signal_bias = self._live_signal_action_bias(agent_id, action_type, signal_context)
+        asset_pressure = self._asset_pressure(session.world, agent_id)
+        if action_type in {"defend", "intel_query"}:
+            signal_bias += 0.22 * asset_pressure
+        elif action_type == "negotiate":
+            signal_bias += 0.10 * asset_pressure
+        elif action_type == "hold":
+            signal_bias -= 0.14 * asset_pressure
+        continuity_bonus = 0.0
+        if any(action.actor == agent_id and action.type == action_type for action in session.world.last_actions):
+            continuity_bonus = 0.06
+
+        escalation_penalty = 0.0
+        if session.world.tension_level >= 78.0 and action_type in {"strike", "mobilize", "deceive", "sanction"}:
+            escalation_penalty += 0.28
+        if signal_context["diplomacy"] >= 0.6 and action_type in {"strike", "mobilize", "deceive"}:
+            escalation_penalty += 0.18
+        if signal_context["attack"] >= 0.65 and action_type == "hold":
+            escalation_penalty += 0.18
+        if signal_context["shipping"] >= 0.55 and agent_id in {"us", "gulf"} and action_type in {"strike", "deceive"}:
+            escalation_penalty += 0.2
+        if asset_pressure >= 0.35 and action_type in {"strike", "mobilize", "deceive"}:
+            escalation_penalty += 0.16
+
+        if agent_id == "oversight" and action_type == "oversight_review":
+            escalation_penalty -= min(0.25, signal_context["pressure"] * 0.2)
+
+        return metric_gain * 1.8 + doctrinal_fit * 0.28 + signal_bias + continuity_bonus - escalation_penalty
+
+    def _live_signal_action_bias(
+        self,
+        agent_id: str,
+        action_type: str,
+        signal_context: dict[str, float],
+    ) -> float:
+        attack = signal_context["attack"]
+        shipping = signal_context["shipping"]
+        diplomacy = signal_context["diplomacy"]
+        humanitarian = signal_context["humanitarian"]
+        cyber = signal_context["cyber"]
+        unrest = signal_context["unrest"]
+        market = signal_context["market"]
+        pressure = signal_context["pressure"]
+
+        if agent_id == "us":
+            return {
+                "defend": 0.34 * shipping + 0.22 * attack + 0.18 * cyber + 0.14 * market,
+                "negotiate": 0.30 * diplomacy + 0.18 * humanitarian + 0.16 * market + 0.08 * attack,
+                "intel_query": 0.24 * cyber + 0.18 * attack + 0.12 * unrest,
+                "mobilize": 0.16 * attack + 0.12 * shipping,
+                "sanction": 0.18 * unrest + 0.10 * cyber,
+                "strike": 0.08 * attack - 0.18 * diplomacy - 0.12 * humanitarian,
+                "deceive": 0.04 * attack - 0.10 * diplomacy,
+                "hold": 0.10 * diplomacy - 0.10 * attack,
+            }.get(action_type, 0.0)
+
+        if agent_id == "israel":
+            return {
+                "defend": 0.38 * attack + 0.14 * cyber,
+                "strike": 0.22 * attack - 0.12 * humanitarian,
+                "mobilize": 0.18 * attack,
+                "intel_query": 0.20 * cyber + 0.16 * attack,
+                "negotiate": 0.16 * diplomacy + 0.08 * humanitarian,
+                "hold": 0.08 * diplomacy - 0.12 * attack,
+                "deceive": 0.12 * attack,
+                "sanction": 0.06 * unrest,
+            }.get(action_type, 0.0)
+
+        if agent_id == "iran":
+            return {
+                "mobilize": 0.26 * shipping + 0.18 * attack,
+                "deceive": 0.22 * attack + 0.18 * shipping + 0.14 * cyber,
+                "defend": 0.26 * unrest + 0.12 * attack,
+                "intel_query": 0.18 * cyber + 0.16 * unrest,
+                "negotiate": 0.14 * diplomacy - 0.14 * attack,
+                "strike": 0.12 * attack + 0.10 * shipping - 0.18 * diplomacy,
+                "hold": 0.08 * diplomacy - 0.06 * shipping,
+                "sanction": 0.08 * unrest,
+            }.get(action_type, 0.0)
+
+        if agent_id == "hezbollah":
+            return {
+                "defend": 0.28 * attack,
+                "deceive": 0.24 * attack + 0.14 * cyber,
+                "mobilize": 0.18 * attack,
+                "strike": 0.14 * attack - 0.14 * humanitarian,
+                "negotiate": 0.22 * humanitarian + 0.14 * diplomacy - 0.18 * attack,
+                "hold": 0.18 * humanitarian + 0.10 * diplomacy - 0.12 * attack,
+                "intel_query": 0.12 * cyber + 0.10 * attack,
+                "sanction": 0.04 * unrest,
+            }.get(action_type, 0.0)
+
+        if agent_id == "gulf":
+            return {
+                "defend": 0.38 * shipping + 0.18 * attack + 0.16 * market,
+                "negotiate": 0.28 * diplomacy + 0.24 * market + 0.14 * humanitarian,
+                "intel_query": 0.22 * shipping + 0.14 * cyber,
+                "mobilize": 0.16 * attack + 0.10 * shipping - 0.12 * market,
+                "hold": 0.12 * diplomacy - 0.12 * shipping,
+                "strike": 0.04 * attack - 0.24 * market,
+                "sanction": 0.06 * unrest - 0.10 * market,
+                "deceive": -0.12 * market,
+            }.get(action_type, 0.0)
+
+        return {
+            "oversight_review": 0.34 * pressure + 0.20 * attack + 0.16 * shipping,
+            "intel_query": 0.24 * cyber + 0.18 * attack + 0.10 * unrest,
+            "negotiate": 0.20 * diplomacy + 0.12 * humanitarian,
+            "defend": 0.16 * attack + 0.12 * shipping,
+            "hold": 0.08 * diplomacy - 0.08 * pressure,
+        }.get(action_type, 0.0)
+
+    def _select_live_action_target(
+        self,
+        agent_id: str,
+        action_type: str,
+        session: SessionState,
+        signal_context: dict[str, float],
+    ) -> str | None:
+        if action_type == "defend":
+            return agent_id if agent_id != "oversight" else None
+
+        if action_type == "negotiate":
+            if agent_id == "us":
+                return "gulf" if signal_context["shipping"] >= signal_context["attack"] else "israel"
+            if agent_id == "israel":
+                return "us"
+            if agent_id == "iran":
+                return "hezbollah"
+            if agent_id == "hezbollah":
+                return "iran"
+            if agent_id == "gulf":
+                return "us"
+            if agent_id == "oversight":
+                return max(
+                    ("us", "israel", "iran", "hezbollah", "gulf"),
+                    key=lambda candidate: session.world.risk_scores.get(candidate, 0.0),
+                )
+
+        if action_type in {"strike", "sanction"}:
+            adversaries = AGENT_PRIMARY_ADVERSARIES.get(agent_id, ())
+            if not adversaries:
+                return None
+            if agent_id == "iran" and signal_context["shipping"] > signal_context["attack"]:
+                return "gulf"
+            return adversaries[0]
+
+        return None
+
+    def _event_driver_label(self, signal_context: dict[str, float]) -> str:
+        ranked_categories = sorted(
+            (
+                (category, value)
+                for category, value in signal_context.items()
+                if category in {"attack", "shipping", "diplomacy", "humanitarian", "cyber", "unrest", "market"}
+            ),
+            key=lambda item: item[1],
+            reverse=True,
+        )
+        if not ranked_categories or ranked_categories[0][1] <= 0.0:
+            return "regional source refresh"
+
+        top_category = ranked_categories[0][0]
+        return {
+            "attack": "cross-border attack reporting",
+            "shipping": "shipping-lane disruption reporting",
+            "diplomacy": "diplomatic movement",
+            "humanitarian": "humanitarian pressure",
+            "cyber": "cyber and trace uncertainty",
+            "unrest": "domestic instability",
+            "market": "market stress",
+        }.get(top_category, "regional source refresh")
+
+    def _build_auto_action_summary(
+        self,
+        agent_id: str,
+        action_type: str,
+        target: str | None,
+        driver: str,
+    ) -> str:
+        tool_label = AGENT_TOOL_LABELS[agent_id]
+        if action_type == "hold":
+            return f"Hold with {tool_label} in reserve while {driver} clarifies."
+        if action_type == "negotiate":
+            target_label = target or "regional counterparts"
+            return f"Use {tool_label} to negotiate with {target_label} around {driver}."
+        if action_type == "sanction":
+            target_label = target or "the pressure source"
+            return f"Apply economic pressure tools against {target_label} after {driver}."
+        if action_type == "strike":
+            target_label = target or "the active threat node"
+            return f"Use kinetic tools against {target_label} in response to {driver}."
+        if action_type == "defend":
+            target_label = target or agent_id
+            return f"Harden {target_label} with {tool_label} as {driver} comes in."
+        if action_type == "intel_query":
+            return f"Pull more collection through {tool_label} before escalating beyond {driver}."
+        if action_type == "mobilize":
+            return f"Shift readiness and posture with {tool_label} around {driver}."
+        if action_type == "deceive":
+            return f"Use deniable signaling and masking tools while {driver} unfolds."
+        return f"Run an oversight review with {tool_label} against {driver}."
 
     def shutdown(self) -> None:
         self._source_harvester.stop()
@@ -225,6 +783,7 @@ class FogOfWarDiplomacyEnv:
             market_stress=28.0,
             oil_pressure=36.0,
             actor_state={agent_id: metrics.copy() for agent_id, metrics in AGENT_STATE_BASELINES.items()},
+            asset_state=self._initial_asset_state(),
             coalition_graph={
                 "us": ["israel"],
                 "israel": ["us"],
@@ -285,6 +844,7 @@ class FogOfWarDiplomacyEnv:
             if "oil" in signal.headline.lower() or "shipping" in signal.tags:
                 world.oil_pressure = min(100.0, world.oil_pressure + signal.severity * 10.0)
             self._apply_signal_pressure(world, signal)
+            self._apply_signal_asset_effects(world, signal)
 
     def _infer_affected_agents(self, signal: ExternalSignal) -> list[str]:
         text = f"{signal.headline} {' '.join(signal.tags)} {(signal.region or '')}".lower()
@@ -300,6 +860,7 @@ class FogOfWarDiplomacyEnv:
 
     def _apply_actions(self, world: WorldState, actions: dict[str, AgentAction]) -> None:
         for agent_id, action in actions.items():
+            self._validate_action(agent_id, action)
             impact = AGENT_ACTION_IMPACTS.get(agent_id, {}).get(
                 action.type,
                 DEFAULT_ACTION_IMPACTS.get(action.type, DEFAULT_ACTION_IMPACTS["hold"]),
@@ -332,11 +893,19 @@ class FogOfWarDiplomacyEnv:
                 action=action,
             )
             self._apply_actor_state_effects(world, agent_id, action)
+            self._apply_asset_action_effects(world, agent_id, action)
 
         world.tension_level = round(world.tension_level, 2)
         world.market_stress = round(world.market_stress, 2)
         world.oil_pressure = round(world.oil_pressure, 2)
         self._reconcile_actor_state(world, actions)
+
+    @staticmethod
+    def _validate_action(agent_id: str, action: AgentAction) -> None:
+        if action.actor != agent_id:
+            raise ValueError(f"Action actor mismatch: payload actor={action.actor}, slot={agent_id}")
+        if action.type not in AGENT_ALLOWED_ACTIONS.get(agent_id, ()):
+            raise ValueError(f"Unsupported action for {agent_id}: {action.type}")
 
     def _link_agents(self, world: WorldState, source: str, target: str) -> None:
         world.coalition_graph.setdefault(source, [])
@@ -410,12 +979,12 @@ class FogOfWarDiplomacyEnv:
         include_live_sources: bool = False,
     ) -> dict[str, AgentObservation]:
         observations: dict[str, AgentObservation] = {}
-        public_events = [event for event in world.active_events if event.public][-5:]
+        public_events = [event for event in world.active_events if event.public][-MAX_PUBLIC_BRIEF_ITEMS:]
         public_brief = [
             IntelSnippet(
                 source=event.source,
                 category="public_event",
-                summary=event.summary,
+                summary=self._clip_summary(event.summary),
                 confidence=event.severity,
             )
             for event in public_events
@@ -425,48 +994,73 @@ class FogOfWarDiplomacyEnv:
             profile = AGENT_PROFILES[agent_id]
             entity_pack = load_entity_pack(agent_id)
             entity_profile = entity_pack.get("profile", {})
-            strategic_assets = self._flatten_strategic_assets(entity_pack)[:12]
+            strategic_assets = self._flatten_strategic_assets(
+                agent_id=agent_id,
+                entity_pack=entity_pack,
+                world=world,
+            )
             training_source_bundle = AGENT_TRAINING_SOURCE_BUNDLES.get(agent_id, [])
             live_source_bundle = AGENT_LIVE_SOURCE_BUNDLES.get(agent_id, [])
+            available_data_sources = self._build_data_source_context(agent_id)
             training_source_packets, live_source_packets = self._source_harvester.get_packets_for_agent(
                 agent_id,
                 include_live=include_live_sources,
             )
-            private_brief = [
+            baseline_private_brief = [
                 IntelSnippet(
                     source="scenario",
                     category="private_intel",
-                    summary=summary,
+                    summary=self._clip_summary(summary),
                     confidence=0.72,
                 )
                 for summary in profile.baseline_private_intel
             ]
+            focused_private_brief: list[IntelSnippet] = []
             for event in world.active_events[-6:]:
                 haystack = f"{event.summary} {event.source}".lower()
                 if any(term in haystack for term in profile.intelligence_focus):
-                    private_brief.append(
+                    focused_private_brief.append(
                         IntelSnippet(
                             source=event.source,
                             category="focused_event",
-                            summary=event.summary,
+                            summary=self._clip_summary(event.summary),
                             confidence=event.severity,
                         )
                     )
-            private_brief.extend(
-                self._source_packets_to_briefs(training_source_packets[:5], category="training_source")
+            training_source_brief = self._source_packets_to_briefs(training_source_packets, category="training_source")
+            live_source_brief = (
+                self._source_packets_to_briefs(live_source_packets, category="live_source")
+                if include_live_sources
+                else []
             )
-            if include_live_sources:
-                private_brief.extend(self._source_packets_to_briefs(live_source_packets[:3], category="live_source"))
+            private_brief = self._compose_private_brief(
+                baseline_private_brief=baseline_private_brief,
+                focused_private_brief=focused_private_brief,
+                training_source_brief=training_source_brief,
+                live_source_brief=live_source_brief,
+            )
+            asset_alerts = self._build_asset_alerts(strategic_assets)
+            decision_prompt = self._build_decision_prompt(
+                agent_id=agent_id,
+                entity_profile=entity_profile,
+                strategic_assets=strategic_assets,
+                available_data_sources=available_data_sources,
+                live_enabled=include_live_sources,
+            )
 
             observations[agent_id] = AgentObservation(
                 public_brief=public_brief,
-                private_brief=private_brief[:6],
+                private_brief=private_brief,
                 perceived_tension=self._perceived_tension(world.tension_level, agent_id, episode.fog_of_war),
                 known_coalitions=sorted(world.coalition_graph.get(agent_id, [])),
                 event_log=public_events,
+                decision_prompt=decision_prompt,
+                available_actions=list(AGENT_ALLOWED_ACTIONS.get(agent_id, ())),
+                available_data_sources=available_data_sources,
                 entity_profile=entity_profile,
                 strategic_state=world.actor_state.get(agent_id, {}).copy(),
                 strategic_assets=strategic_assets,
+                asset_alerts=asset_alerts,
                 source_bundle=training_source_bundle,
                 training_source_bundle=training_source_bundle,
                 live_source_bundle=live_source_bundle,
@@ -479,18 +1073,75 @@ class FogOfWarDiplomacyEnv:
     @staticmethod
     def _source_packets_to_briefs(source_packets: list, category: str) -> list[IntelSnippet]:
         briefs: list[IntelSnippet] = []
-        for packet in source_packets:
-            if packet.status != "ok" or not packet.summary:
-                continue
+        sorted_packets = sorted(
+            (
+                packet
+                for packet in source_packets
+                if packet.status == "ok"
+                and packet.summary
+                and FogOfWarDiplomacyEnv._is_source_packet_fresh(packet)
+            ),
+            key=lambda packet: packet.fetched_at or datetime.fromtimestamp(0, tz=timezone.utc),
+            reverse=True,
+        )
+        for packet in sorted_packets:
             briefs.append(
                 IntelSnippet(
                     source=packet.source_name,
                     category=category,
-                    summary=packet.summary,
+                    summary=FogOfWarDiplomacyEnv._clip_summary(packet.summary),
                     confidence=0.65 if packet.delivery == "training_core" else 0.55,
                 )
             )
         return briefs
+
+    @staticmethod
+    def _clip_summary(summary: str, limit: int = MAX_INTEL_SUMMARY_CHARS) -> str:
+        collapsed = " ".join(summary.split())
+        if len(collapsed) <= limit:
+            return collapsed
+        return f"{collapsed[: limit - 3].rstrip()}..."
+
+    @staticmethod
+    def _is_source_packet_fresh(packet) -> bool:
+        if packet.fetched_at is None:
+            return False
+        try:
+            source = get_source_by_id(packet.source_id)
+        except KeyError:
+            return False
+        return datetime.now(timezone.utc) - packet.fetched_at <= timedelta(seconds=source_ttl_seconds(source))
+
+    @staticmethod
+    def _compose_private_brief(
+        *,
+        baseline_private_brief: list[IntelSnippet],
+        focused_private_brief: list[IntelSnippet],
+        training_source_brief: list[IntelSnippet],
+        live_source_brief: list[IntelSnippet],
+        limit: int = MAX_PRIVATE_BRIEF_ITEMS,
+    ) -> list[IntelSnippet]:
+        # Reserve space for live/training source intel so fresh news always reaches the model.
+        primary_groups = [
+            training_source_brief[:MAX_TRAINING_SOURCE_BRIEFS],
+            live_source_brief[:MAX_LIVE_SOURCE_BRIEFS],
+            focused_private_brief[:1],
+            baseline_private_brief[:1],
+        ]
+        overflow_groups = [
+            training_source_brief[MAX_TRAINING_SOURCE_BRIEFS:],
+            live_source_brief[MAX_LIVE_SOURCE_BRIEFS:],
+            focused_private_brief[1:],
+            baseline_private_brief[1:],
+        ]
+
+        private_brief: list[IntelSnippet] = []
+        for group in primary_groups + overflow_groups:
+            for brief in group:
+                if len(private_brief) >= limit:
+                    return private_brief
+                private_brief.append(brief)
+        return private_brief
 
     def _perceived_tension(self, tension_level: float, agent_id: str, fog_of_war: bool) -> float:
         if agent_id == "oversight" or not fog_of_war:
@@ -743,26 +1394,158 @@ class FogOfWarDiplomacyEnv:
     def _signal_mentions(text: str, *terms: str) -> bool:
         return any(term in text for term in terms)
 
+    def _initial_asset_state(self) -> dict[str, dict[str, AssetCondition]]:
+        asset_state: dict[str, dict[str, AssetCondition]] = {}
+        for agent_id in AGENT_IDS:
+            entity_pack = load_entity_pack(agent_id)
+            asset_state[agent_id] = {
+                asset["asset_id"]: AssetCondition(
+                    asset_id=asset["asset_id"],
+                    owner=agent_id,
+                    name=asset["name"],
+                    category=asset["category"],
+                    section=asset["section"],
+                    latitude=asset.get("latitude"),
+                    longitude=asset.get("longitude"),
+                    criticality=str(asset.get("status", "tracked")),
+                    notes=asset.get("notes"),
+                )
+                for asset in self._asset_inventory(agent_id, entity_pack)
+            }
+        return asset_state
+
+    def _build_data_source_context(self, agent_id: str) -> list[DataSourceContext]:
+        return [
+            DataSourceContext(
+                source_id=source.id,
+                name=source.name,
+                delivery=source.delivery,
+                kind=source.kind,
+                rationale=source.rationale,
+                tags=list(source.tags),
+                access_notes=source.notes,
+            )
+            for source in get_sources_for_agent(agent_id)
+        ]
+
+    def _build_decision_prompt(
+        self,
+        *,
+        agent_id: str,
+        entity_profile: dict[str, object],
+        strategic_assets: list[dict[str, object]],
+        available_data_sources: list[DataSourceContext],
+        live_enabled: bool,
+    ) -> str:
+        profile = AGENT_PROFILES[agent_id]
+        source_limit, asset_limit = ASSET_DECISION_SOURCE_LIMITS[profile.model_size]
+        objectives = entity_profile.get("strategic_objectives", [])
+        protected_interests = entity_profile.get("protected_interests", [])
+        priority_fronts = entity_profile.get("priority_fronts", [])
+        top_objectives = [str(item) for item in objectives[:3]] if isinstance(objectives, list) else []
+        top_interests = [str(item) for item in protected_interests[:3]] if isinstance(protected_interests, list) else []
+
+        source_lines = [
+            f"- {source.name} [{source.delivery}/{source.kind}]: {self._clip_summary(source.rationale, 96)}"
+            for source in available_data_sources[:source_limit]
+        ]
+        asset_lines = [
+            f"- {asset['name']} [{asset['category']}] @ {asset.get('latitude', '?')}, {asset.get('longitude', '?')} status={asset.get('status')} health={asset.get('health')}"
+            for asset in strategic_assets[:asset_limit]
+        ]
+        damaged_assets = [asset for asset in strategic_assets if str(asset.get("status")) != "operational"]
+        damaged_lines = [
+            f"- {asset['name']} is {asset.get('status')} ({asset.get('last_change_reason', 'needs attention')})"
+            for asset in damaged_assets[:3]
+        ]
+
+        front_summary = []
+        if isinstance(priority_fronts, list):
+            for front in priority_fronts[:2]:
+                if isinstance(front, dict) and isinstance(front.get("name"), str):
+                    front_summary.append(str(front["name"]))
+
+        prompt_sections = [
+            f"You are {profile.display_name}. Role: {profile.role}. Model size: {profile.model_size}.",
+            "Choose exactly one allowed action each turn and ground it in current source packets, private/public briefs, strategic state, and asset condition.",
+            f"Live mode is {'enabled' if live_enabled else 'disabled'}; prefer the freshest source packets when live mode is on.",
+        ]
+        if top_objectives:
+            prompt_sections.append(f"Priority objectives: {', '.join(top_objectives)}.")
+        if top_interests:
+            prompt_sections.append(f"Protected interests: {', '.join(top_interests)}.")
+        if front_summary:
+            prompt_sections.append(f"Priority fronts: {', '.join(front_summary)}.")
+        prompt_sections.append(f"Allowed actions: {', '.join(AGENT_ALLOWED_ACTIONS.get(agent_id, ()))}.")
+        prompt_sections.append("Data sources available to you:\n" + ("\n".join(source_lines) if source_lines else "- None configured."))
+        prompt_sections.append("Mapped assets under your control:\n" + ("\n".join(asset_lines) if asset_lines else "- No mapped assets available."))
+        if damaged_lines:
+            prompt_sections.append("Assets currently degraded or malfunctioning:\n" + "\n".join(damaged_lines))
+        prompt_sections.append("Use defense or repair-minded choices when critical assets are damaged; use strike, sanction, or deception only when the reward tradeoff is justified by your doctrine and the observed threat.")
+        return "\n".join(prompt_sections)
+
     @staticmethod
-    def _flatten_strategic_assets(entity_pack: dict[str, object]) -> list[dict[str, object]]:
+    def _build_asset_alerts(strategic_assets: list[dict[str, object]]) -> list[str]:
+        alerts = [
+            f"{asset['name']} is {asset.get('status')} ({asset.get('last_change_reason', 'operational concern')})"
+            for asset in strategic_assets
+            if str(asset.get("status")) != "operational"
+        ]
+        return alerts[:6]
+
+    def _flatten_strategic_assets(
+        self,
+        *,
+        agent_id: str,
+        entity_pack: dict[str, object],
+        world: WorldState,
+    ) -> list[dict[str, object]]:
+        inventory = self._asset_inventory(agent_id, entity_pack)
+        conditions = world.asset_state.get(agent_id, {})
+        flattened: list[dict[str, object]] = []
+        for asset in inventory:
+            condition = conditions.get(asset["asset_id"])
+            flattened.append(
+                {
+                    **asset,
+                    "status": condition.status if condition is not None else asset.get("status", "operational"),
+                    "health": round(condition.health, 1) if condition is not None else 100.0,
+                    "operational_load": round(condition.operational_load, 1) if condition is not None else 0.0,
+                    "last_change_reason": condition.last_change_reason if condition is not None else None,
+                }
+            )
+        return flattened
+
+    def _asset_inventory(self, agent_id: str, entity_pack: dict[str, object]) -> list[dict[str, object]]:
         assets = entity_pack.get("assets", {})
         if not isinstance(assets, dict):
             return []
 
-        flattened: list[dict[str, object]] = []
+        inventory: list[dict[str, object]] = []
+        location_lookup = self._asset_location_lookup(assets)
 
-        def append_asset(item: dict[str, object], default_category: str) -> None:
-            name = item.get("name") or item.get("location") or item.get("partner")
+        def append_asset(item: dict[str, object], section_name: str) -> None:
+            name = item.get("name")
+            if not isinstance(name, str) and section_name == "alliance_anchors" and isinstance(item.get("partner"), str):
+                name = f"{item['partner']} alliance anchor"
+            if not isinstance(name, str):
+                name = item.get("location") or item.get("partner")
             if not isinstance(name, str):
                 return
 
             entry: dict[str, object] = {
+                "asset_id": self._asset_id(agent_id, section_name, name),
                 "name": name,
-                "category": item.get("category") or item.get("type") or default_category,
+                "category": item.get("category") or item.get("type") or ("alliance-anchor" if section_name == "alliance_anchors" else section_name),
+                "section": section_name,
                 "status": item.get("priority") or item.get("importance") or item.get("criticality") or "tracked",
             }
             latitude = item.get("lat", item.get("anchor_lat"))
             longitude = item.get("lon", item.get("anchor_lon"))
+            if not (isinstance(latitude, (int, float)) and isinstance(longitude, (int, float))):
+                resolved = location_lookup.get(str(item.get("location", name)).strip().lower())
+                if resolved is not None:
+                    latitude, longitude = resolved
             if isinstance(latitude, (int, float)) and isinstance(longitude, (int, float)):
                 entry["latitude"] = latitude
                 entry["longitude"] = longitude
@@ -773,35 +1556,283 @@ class FogOfWarDiplomacyEnv:
             elif "role" in item:
                 entry["notes"] = item["role"]
             elif "function" in item:
-                entry["notes"] = item["function"]
-            flattened.append(entry)
+                if section_name == "alliance_anchors" and isinstance(item.get("location"), str):
+                    entry["notes"] = f"{item['location']}: {item['function']}"
+                else:
+                    entry["notes"] = item["function"]
+            inventory.append(entry)
 
-        for section_name in ("locations", "fronts", "infrastructure", "strategic_sites", "chokepoints", "geospatial_anchors"):
+        for section_name in PHYSICAL_ASSET_SECTIONS:
             section = assets.get(section_name, [])
             if isinstance(section, list):
                 for item in section:
                     if isinstance(item, dict):
                         append_asset(item, section_name)
 
-        alliance_anchors = assets.get("alliance_anchors", [])
-        if isinstance(alliance_anchors, list):
-            for item in alliance_anchors:
+        return inventory
+
+    @staticmethod
+    def _asset_id(agent_id: str, section_name: str, name: str) -> str:
+        slug = "".join(char.lower() if char.isalnum() else "-" for char in name).strip("-")
+        return f"{agent_id}-{section_name}-{slug}"
+
+    @staticmethod
+    def _asset_location_lookup(assets: dict[str, object]) -> dict[str, tuple[float, float]]:
+        lookup: dict[str, tuple[float, float]] = {}
+        for section_name in PHYSICAL_ASSET_SECTIONS:
+            section = assets.get(section_name, [])
+            if not isinstance(section, list):
+                continue
+            for item in section:
                 if not isinstance(item, dict):
                     continue
-                partner = item.get("partner")
-                location = item.get("location")
-                if not isinstance(partner, str) or not isinstance(location, str):
-                    continue
-                flattened.append(
-                    {
-                        "name": f"{partner} alliance anchor",
-                        "category": "alliance-anchor",
-                        "status": "linked",
-                        "notes": f"{location}: {item.get('function', 'strategic alignment')}",
-                    }
+                name = item.get("name") or item.get("location")
+                latitude = item.get("lat", item.get("anchor_lat"))
+                longitude = item.get("lon", item.get("anchor_lon"))
+                if isinstance(name, str) and isinstance(latitude, (int, float)) and isinstance(longitude, (int, float)):
+                    lookup[name.strip().lower()] = (latitude, longitude)
+        return lookup
+
+    def _apply_asset_action_effects(self, world: WorldState, actor_id: str, action: AgentAction) -> None:
+        if action.type == "strike" and action.target in AGENT_IDS:
+            self._damage_assets(
+                world,
+                owner=action.target,
+                intensity=42.0,
+                reason=f"{actor_id} strike pressure",
+                section_bias=ASSET_CATEGORY_BIAS.get(actor_id, {}).get("strike", ()),
+                max_assets=2,
+            )
+        elif action.type == "deceive" and action.target in AGENT_IDS:
+            self._damage_assets(
+                world,
+                owner=action.target,
+                intensity=22.0,
+                reason=f"{actor_id} deception caused systems malfunction",
+                section_bias=ASSET_CATEGORY_BIAS.get(actor_id, {}).get("deceive", ()),
+                max_assets=1,
+                max_status="malfunctioning",
+            )
+        elif action.type == "sanction" and action.target in AGENT_IDS:
+            self._damage_assets(
+                world,
+                owner=action.target,
+                intensity=18.0,
+                reason=f"{actor_id} sanction pressure degraded asset availability",
+                section_bias=ASSET_CATEGORY_BIAS.get(actor_id, {}).get("sanction", ()),
+                max_assets=1,
+                max_status="malfunctioning",
+            )
+        elif action.type in {"defend", "oversight_review"}:
+            defended_owner = actor_id if action.type == "oversight_review" or action.target not in AGENT_IDS else action.target
+            self._restore_assets(
+                world,
+                owner=defended_owner,
+                intensity=18.0 if action.type == "defend" else 12.0,
+                reason=f"{actor_id} {action.type} hardened critical assets",
+                section_bias=ASSET_CATEGORY_BIAS.get(actor_id, {}).get("defend", ()),
+                max_assets=2,
+            )
+
+    def _apply_signal_asset_effects(self, world: WorldState, signal: ExternalSignal) -> None:
+        text = f"{signal.headline} {' '.join(signal.tags)} {(signal.region or '')}".lower()
+        severity = max(0.0, min(1.0, signal.severity))
+        if self._signal_mentions(text, "strike", "rocket", "missile", "drone", "attack", "explosion", "raid"):
+            for owner in self._infer_affected_agents(signal):
+                self._damage_assets(
+                    world,
+                    owner=owner,
+                    intensity=24.0 * severity,
+                    reason=f"fresh reporting from {signal.source}",
+                    section_bias=("front", "airbase", "base", "launch-network", "launch-zone", "energy-port"),
+                    max_assets=1,
+                    max_status="malfunctioning",
+                )
+        if self._signal_mentions(text, "shipping", "tanker", "hormuz", "port", "terminal", "oil"):
+            for owner in ("us", "gulf", "iran"):
+                self._damage_assets(
+                    world,
+                    owner=owner,
+                    intensity=16.0 * severity,
+                    reason=f"{signal.source} reported shipping disruption",
+                    section_bias=("port", "energy", "energy-port", "chokepoint", "maritime-box"),
+                    max_assets=1,
+                    max_status="malfunctioning",
+                )
+        if self._signal_mentions(text, "cyber", "outage", "blackout", "internet"):
+            for owner in self._infer_affected_agents(signal):
+                self._damage_assets(
+                    world,
+                    owner=owner,
+                    intensity=14.0 * severity,
+                    reason=f"{signal.source} reported systems disruption",
+                    section_bias=("command", "command-system", "command-network", "civil-center"),
+                    max_assets=1,
+                    max_status="malfunctioning",
                 )
 
-        return flattened
+    def _damage_assets(
+        self,
+        world: WorldState,
+        *,
+        owner: str,
+        intensity: float,
+        reason: str,
+        section_bias: tuple[str, ...],
+        max_assets: int,
+        max_status: str | None = None,
+    ) -> None:
+        if owner not in world.asset_state:
+            return
+        selected_assets = self._select_assets_for_effect(world, owner, section_bias, max_assets=max_assets, reverse=False)
+        for asset in selected_assets:
+            current = world.asset_state[owner][asset.asset_id]
+            previous_status = current.status
+            current.health = round(self._clamp_percent(current.health - intensity), 2)
+            current.operational_load = round(min(100.0, current.operational_load + intensity * 0.7), 2)
+            current.status = self._derive_asset_status(current.health, current.operational_load, max_status=max_status)
+            current.last_change_reason = reason
+            self._apply_asset_metric_impacts(world, owner, current, direction="damage")
+            if current.status != previous_status:
+                world.active_events.append(
+                    BlackSwanEvent(
+                        id=f"asset-{owner}-{asset.asset_id}-{world.turn}-{len(world.active_events)}",
+                        summary=f"{current.name} is now {current.status} after {reason}.",
+                        source="asset-state",
+                        severity=min(1.0, max(0.35, (100.0 - current.health) / 100.0)),
+                        public=True,
+                        affected_agents=[owner],
+                    )
+                )
+
+    def _restore_assets(
+        self,
+        world: WorldState,
+        *,
+        owner: str,
+        intensity: float,
+        reason: str,
+        section_bias: tuple[str, ...],
+        max_assets: int,
+    ) -> None:
+        if owner not in world.asset_state:
+            return
+        selected_assets = self._select_assets_for_effect(world, owner, section_bias, max_assets=max_assets, reverse=True)
+        for asset in selected_assets:
+            current = world.asset_state[owner][asset.asset_id]
+            current.health = round(self._clamp_percent(current.health + intensity), 2)
+            current.operational_load = round(max(0.0, current.operational_load - intensity * 0.8), 2)
+            current.status = self._derive_asset_status(current.health, current.operational_load)
+            current.last_change_reason = reason
+            self._apply_asset_metric_impacts(world, owner, current, direction="repair")
+
+    def _select_assets_for_effect(
+        self,
+        world: WorldState,
+        owner: str,
+        section_bias: tuple[str, ...],
+        *,
+        max_assets: int,
+        reverse: bool,
+    ) -> list[AssetCondition]:
+        assets = list(world.asset_state.get(owner, {}).values())
+        if not assets:
+            return []
+
+        bias_terms = tuple(term.lower() for term in section_bias)
+
+        def asset_key(asset: AssetCondition) -> tuple[float, float, str]:
+            priority = float(ASSET_PRIORITY_SCORES.get(asset.criticality.lower(), 1))
+            bias_score = 1.0 if any(term in asset.category.lower() or term in asset.section.lower() for term in bias_terms) else 0.0
+            damage_score = 100.0 - asset.health if reverse else asset.health
+            return (priority + bias_score, damage_score, asset.name)
+
+        sorted_assets = sorted(assets, key=asset_key, reverse=True)
+        if reverse:
+            sorted_assets = [asset for asset in sorted_assets if asset.status != "operational"] or sorted_assets
+        else:
+            sorted_assets = [asset for asset in sorted_assets if asset.status != "destroyed"] or sorted_assets
+        return sorted_assets[:max_assets]
+
+    @staticmethod
+    def _derive_asset_status(health: float, operational_load: float, max_status: str | None = None) -> str:
+        derived = "operational"
+        for threshold, status in ASSET_STATUS_DAMAGE_THRESHOLDS:
+            if health <= threshold:
+                derived = status
+                break
+        if derived == "operational" and operational_load >= 72.0:
+            derived = "malfunctioning"
+        if max_status == "malfunctioning" and derived == "destroyed":
+            return "malfunctioning"
+        return derived
+
+    def _apply_asset_metric_impacts(
+        self,
+        world: WorldState,
+        owner: str,
+        asset: AssetCondition,
+        *,
+        direction: str,
+    ) -> None:
+        scale = -1.0 if direction == "damage" else 0.6
+        category = f"{asset.section} {asset.category}".lower()
+        owner_metric_map = {
+            "us": {
+                "regional_access": ("base", "airbase", "logistics", "command"),
+                "shipping_security": ("naval", "port", "maritime", "chokepoint"),
+                "force_posture": ("base", "airbase", "command"),
+                "domestic_support": ("command", "capital"),
+            },
+            "israel": {
+                "homeland_security": ("front", "civil", "infrastructure", "air-defense"),
+                "northern_deterrence": ("front", "launch", "command"),
+                "reserve_endurance": ("depth", "logistics", "port"),
+                "us_resupply_confidence": ("port", "offshore", "command"),
+            },
+            "iran": {
+                "regime_stability": ("command", "capital", "civil"),
+                "proxy_corridor": ("corridor", "logistics", "front"),
+                "hormuz_leverage": ("chokepoint", "maritime", "energy-port"),
+                "deterrence_credibility": ("front", "command", "maritime"),
+            },
+            "hezbollah": {
+                "launch_survivability": ("launch", "front", "depth"),
+                "logistics_depth": ("logistics", "corridor", "reserve"),
+                "political_cover": ("political", "command", "civil"),
+                "resistance_credibility": ("launch", "front", "command"),
+            },
+            "gulf": {
+                "shipping_continuity": ("port", "chokepoint", "maritime"),
+                "infrastructure_security": ("energy", "capital", "port"),
+                "investor_confidence": ("energy", "capital", "port"),
+                "diplomatic_flexibility": ("capital", "port", "chokepoint"),
+            },
+            "oversight": {
+                "runaway_risk": ("chokepoint", "theater", "civil"),
+                "intervention_legitimacy": ("civil", "theater"),
+                "autonomy_balance": ("theater", "command"),
+                "trace_clarity": ("command", "civil", "theater"),
+            },
+        }
+        for metric, keywords in owner_metric_map.get(owner, {}).items():
+            if any(keyword in category for keyword in keywords):
+                magnitude = 2.8 if direction == "damage" else 1.4
+                self._bump_actor_metric(world, owner, metric, scale * magnitude)
+
+    def _asset_pressure(self, world: WorldState, agent_id: str) -> float:
+        assets = list(world.asset_state.get(agent_id, {}).values())
+        if not assets:
+            return 0.0
+        weighted_damage = 0.0
+        max_weight = 0.0
+        for asset in assets:
+            priority = float(ASSET_PRIORITY_SCORES.get(asset.criticality.lower(), 1))
+            weighted_damage += priority * max(0.0, 100.0 - asset.health)
+            max_weight += priority * 100.0
+        if max_weight == 0.0:
+            return 0.0
+        return min(1.0, weighted_damage / max_weight)
 
     def _compute_rewards(self, world: WorldState, episode: EpisodeMetadata) -> dict[str, RewardBreakdown]:
         rewards: dict[str, RewardBreakdown] = {}
@@ -853,6 +1884,50 @@ class FogOfWarDiplomacyEnv:
         doctrinal_fit = AGENT_ACTION_ALIGNMENT[agent_id].get(action.type, 0.0)
         return self._clamp_unit(baseline * 0.6 + doctrinal_fit * 0.4)
 
+    def _reward_metric(self, world: WorldState, agent_id: str, metric: str) -> float:
+        config = AGENT_REWARD_METRIC_CONFIGS[agent_id][metric]
+        return self._state_score(world, agent_id, metric, config.target, config.tolerance)
+
+    def _action_response_score(self, world: WorldState, agent_id: str, recent_actions: dict[str, AgentAction]) -> float:
+        action = recent_actions.get(agent_id)
+        if action is None:
+            return 0.0
+
+        effects = AGENT_STATE_ACTION_EFFECTS.get(agent_id, {}).get(action.type, {})
+        if not effects:
+            return -0.25
+
+        weighted_total = 0.0
+        total_weight = 0.0
+        metric_configs = AGENT_REWARD_METRIC_CONFIGS[agent_id]
+
+        for metric, delta in effects.items():
+            config = metric_configs.get(metric)
+            if config is None:
+                continue
+            metric_score = self._reward_metric(world, agent_id, metric)
+            direction = 1.0 if delta >= 0 else -1.0
+            magnitude = min(abs(delta) / 4.0, 1.0)
+            weight = config.weight * magnitude
+            weighted_total += direction * metric_score * weight
+            total_weight += weight
+
+        if total_weight == 0.0:
+            return -0.25
+
+        return self._clamp_unit(weighted_total / total_weight)
+
+    @staticmethod
+    def _blend_reward_total(
+        metric_weights: dict[str, float],
+        metric_scores: dict[str, float],
+        behavior: float,
+        action_response: float,
+    ) -> float:
+        metric_total = sum(metric_weights[metric] * metric_scores[metric] for metric in metric_scores)
+        total_weight = sum(metric_weights.values()) + 0.10 + 0.08
+        return max(-1.0, min(1.0, (metric_total + 0.10 * behavior + 0.08 * action_response) / total_weight))
+
     def _action_pressure(
         self,
         recent_actions: dict[str, AgentAction],
@@ -895,17 +1970,25 @@ class FogOfWarDiplomacyEnv:
         episode: EpisodeMetadata,
         recent_actions: dict[str, AgentAction],
     ) -> RewardBreakdown:
-        regional_access = self._state_score(world, "us", "regional_access", 82.0, 18.0)
-        shipping_stability = self._state_score(world, "us", "shipping_security", 84.0, 16.0)
-        domestic_resilience = self._state_score(world, "us", "domestic_support", 68.0, 18.0)
-        force_posture = self._state_score(world, "us", "force_posture", 80.0, 16.0)
+        metric_weights = {
+            metric: config.weight for metric, config in AGENT_REWARD_METRIC_CONFIGS["us"].items()
+        }
+        regional_access = self._reward_metric(world, "us", "regional_access")
+        shipping_stability = self._reward_metric(world, "us", "shipping_security")
+        domestic_resilience = self._reward_metric(world, "us", "domestic_support")
+        force_posture = self._reward_metric(world, "us", "force_posture")
         behavior = self._behavior_score(world, "us", recent_actions)
-        total = (
-            0.29 * regional_access
-            + 0.27 * shipping_stability
-            + 0.20 * domestic_resilience
-            + 0.14 * force_posture
-            + 0.10 * behavior
+        action_response = self._action_response_score(world, "us", recent_actions)
+        total = self._blend_reward_total(
+            metric_weights,
+            {
+                "regional_access": regional_access,
+                "shipping_security": shipping_stability,
+                "domestic_support": domestic_resilience,
+                "force_posture": force_posture,
+            },
+            behavior,
+            action_response,
         )
         return self._finalize_reward(
             episode=episode,
@@ -920,6 +2003,7 @@ class FogOfWarDiplomacyEnv:
                 "shipping_stability": shipping_stability,
                 "domestic_resilience": domestic_resilience,
                 "force_posture": force_posture,
+                "action_response": action_response,
             },
         )
 
@@ -929,17 +2013,25 @@ class FogOfWarDiplomacyEnv:
         episode: EpisodeMetadata,
         recent_actions: dict[str, AgentAction],
     ) -> RewardBreakdown:
-        homeland_security = self._state_score(world, "israel", "homeland_security", 84.0, 16.0)
-        northern_deterrence = self._state_score(world, "israel", "northern_deterrence", 78.0, 18.0)
-        reserve_endurance = self._state_score(world, "israel", "reserve_endurance", 68.0, 18.0)
-        us_backstop = self._state_score(world, "israel", "us_resupply_confidence", 80.0, 18.0)
+        metric_weights = {
+            metric: config.weight for metric, config in AGENT_REWARD_METRIC_CONFIGS["israel"].items()
+        }
+        homeland_security = self._reward_metric(world, "israel", "homeland_security")
+        northern_deterrence = self._reward_metric(world, "israel", "northern_deterrence")
+        reserve_endurance = self._reward_metric(world, "israel", "reserve_endurance")
+        us_backstop = self._reward_metric(world, "israel", "us_resupply_confidence")
         behavior = self._behavior_score(world, "israel", recent_actions)
-        total = (
-            0.31 * homeland_security
-            + 0.28 * northern_deterrence
-            + 0.19 * us_backstop
-            + 0.12 * reserve_endurance
-            + 0.10 * behavior
+        action_response = self._action_response_score(world, "israel", recent_actions)
+        total = self._blend_reward_total(
+            metric_weights,
+            {
+                "homeland_security": homeland_security,
+                "northern_deterrence": northern_deterrence,
+                "us_resupply_confidence": us_backstop,
+                "reserve_endurance": reserve_endurance,
+            },
+            behavior,
+            action_response,
         )
         return self._finalize_reward(
             episode=episode,
@@ -954,6 +2046,7 @@ class FogOfWarDiplomacyEnv:
                 "northern_deterrence": northern_deterrence,
                 "us_backstop": us_backstop,
                 "reserve_endurance": reserve_endurance,
+                "action_response": action_response,
             },
         )
 
@@ -963,17 +2056,25 @@ class FogOfWarDiplomacyEnv:
         episode: EpisodeMetadata,
         recent_actions: dict[str, AgentAction],
     ) -> RewardBreakdown:
-        regime_survival = self._state_score(world, "iran", "regime_stability", 78.0, 18.0)
-        proxy_axis_integrity = self._state_score(world, "iran", "proxy_corridor", 76.0, 18.0)
-        chokepoint_leverage = self._state_score(world, "iran", "hormuz_leverage", 72.0, 14.0)
-        deterrence_credibility = self._state_score(world, "iran", "deterrence_credibility", 74.0, 18.0)
+        metric_weights = {
+            metric: config.weight for metric, config in AGENT_REWARD_METRIC_CONFIGS["iran"].items()
+        }
+        regime_survival = self._reward_metric(world, "iran", "regime_stability")
+        proxy_axis_integrity = self._reward_metric(world, "iran", "proxy_corridor")
+        chokepoint_leverage = self._reward_metric(world, "iran", "hormuz_leverage")
+        deterrence_credibility = self._reward_metric(world, "iran", "deterrence_credibility")
         behavior = self._behavior_score(world, "iran", recent_actions)
-        total = (
-            0.30 * regime_survival
-            + 0.24 * proxy_axis_integrity
-            + 0.23 * chokepoint_leverage
-            + 0.13 * deterrence_credibility
-            + 0.10 * behavior
+        action_response = self._action_response_score(world, "iran", recent_actions)
+        total = self._blend_reward_total(
+            metric_weights,
+            {
+                "regime_stability": regime_survival,
+                "proxy_corridor": proxy_axis_integrity,
+                "hormuz_leverage": chokepoint_leverage,
+                "deterrence_credibility": deterrence_credibility,
+            },
+            behavior,
+            action_response,
         )
         return self._finalize_reward(
             episode=episode,
@@ -988,6 +2089,7 @@ class FogOfWarDiplomacyEnv:
                 "proxy_axis_integrity": proxy_axis_integrity,
                 "chokepoint_leverage": chokepoint_leverage,
                 "deterrence_credibility": deterrence_credibility,
+                "action_response": action_response,
             },
         )
 
@@ -997,18 +2099,26 @@ class FogOfWarDiplomacyEnv:
         episode: EpisodeMetadata,
         recent_actions: dict[str, AgentAction],
     ) -> RewardBreakdown:
-        launch_survivability = self._state_score(world, "hezbollah", "launch_survivability", 72.0, 18.0)
-        logistics_depth = self._state_score(world, "hezbollah", "logistics_depth", 70.0, 18.0)
-        political_cover = self._state_score(world, "hezbollah", "political_cover", 60.0, 18.0)
-        resistance_credibility = self._state_score(world, "hezbollah", "resistance_credibility", 74.0, 18.0)
+        metric_weights = {
+            metric: config.weight for metric, config in AGENT_REWARD_METRIC_CONFIGS["hezbollah"].items()
+        }
+        launch_survivability = self._reward_metric(world, "hezbollah", "launch_survivability")
+        logistics_depth = self._reward_metric(world, "hezbollah", "logistics_depth")
+        political_cover = self._reward_metric(world, "hezbollah", "political_cover")
+        resistance_credibility = self._reward_metric(world, "hezbollah", "resistance_credibility")
         iran_backing = self._clamp_unit(0.6 * self._alliance_score(world, "hezbollah") + 0.4 * logistics_depth)
         behavior = self._behavior_score(world, "hezbollah", recent_actions)
-        total = (
-            0.27 * launch_survivability
-            + 0.22 * logistics_depth
-            + 0.24 * resistance_credibility
-            + 0.17 * political_cover
-            + 0.10 * behavior
+        action_response = self._action_response_score(world, "hezbollah", recent_actions)
+        total = self._blend_reward_total(
+            metric_weights,
+            {
+                "launch_survivability": launch_survivability,
+                "logistics_depth": logistics_depth,
+                "resistance_credibility": resistance_credibility,
+                "political_cover": political_cover,
+            },
+            behavior,
+            action_response,
         )
         return self._finalize_reward(
             episode=episode,
@@ -1024,6 +2134,7 @@ class FogOfWarDiplomacyEnv:
                 "logistics_depth": logistics_depth,
                 "political_cover": political_cover,
                 "resistance_credibility": resistance_credibility,
+                "action_response": action_response,
             },
         )
 
@@ -1033,17 +2144,25 @@ class FogOfWarDiplomacyEnv:
         episode: EpisodeMetadata,
         recent_actions: dict[str, AgentAction],
     ) -> RewardBreakdown:
-        shipping_continuity = self._state_score(world, "gulf", "shipping_continuity", 86.0, 14.0)
-        infrastructure_security = self._state_score(world, "gulf", "infrastructure_security", 82.0, 16.0)
-        investor_confidence = self._state_score(world, "gulf", "investor_confidence", 82.0, 16.0)
-        diplomatic_flexibility = self._state_score(world, "gulf", "diplomatic_flexibility", 74.0, 18.0)
+        metric_weights = {
+            metric: config.weight for metric, config in AGENT_REWARD_METRIC_CONFIGS["gulf"].items()
+        }
+        shipping_continuity = self._reward_metric(world, "gulf", "shipping_continuity")
+        infrastructure_security = self._reward_metric(world, "gulf", "infrastructure_security")
+        investor_confidence = self._reward_metric(world, "gulf", "investor_confidence")
+        diplomatic_flexibility = self._reward_metric(world, "gulf", "diplomatic_flexibility")
         behavior = self._behavior_score(world, "gulf", recent_actions)
-        total = (
-            0.30 * shipping_continuity
-            + 0.25 * investor_confidence
-            + 0.20 * infrastructure_security
-            + 0.15 * diplomatic_flexibility
-            + 0.10 * behavior
+        action_response = self._action_response_score(world, "gulf", recent_actions)
+        total = self._blend_reward_total(
+            metric_weights,
+            {
+                "shipping_continuity": shipping_continuity,
+                "investor_confidence": investor_confidence,
+                "infrastructure_security": infrastructure_security,
+                "diplomatic_flexibility": diplomatic_flexibility,
+            },
+            behavior,
+            action_response,
         )
         return self._finalize_reward(
             episode=episode,
@@ -1058,6 +2177,7 @@ class FogOfWarDiplomacyEnv:
                 "infrastructure_security": infrastructure_security,
                 "investor_confidence": investor_confidence,
                 "diplomatic_flexibility": diplomatic_flexibility,
+                "action_response": action_response,
             },
         )
 
@@ -1067,17 +2187,25 @@ class FogOfWarDiplomacyEnv:
         episode: EpisodeMetadata,
         recent_actions: dict[str, AgentAction],
     ) -> RewardBreakdown:
-        risk_reduction = self._state_score(world, "oversight", "runaway_risk", 18.0, 18.0)
-        intervention_legitimacy = self._state_score(world, "oversight", "intervention_legitimacy", 74.0, 18.0)
-        autonomy_preservation = self._state_score(world, "oversight", "autonomy_balance", 76.0, 16.0)
-        trace_clarity = self._state_score(world, "oversight", "trace_clarity", 78.0, 16.0)
+        metric_weights = {
+            metric: config.weight for metric, config in AGENT_REWARD_METRIC_CONFIGS["oversight"].items()
+        }
+        risk_reduction = self._reward_metric(world, "oversight", "runaway_risk")
+        intervention_legitimacy = self._reward_metric(world, "oversight", "intervention_legitimacy")
+        autonomy_preservation = self._reward_metric(world, "oversight", "autonomy_balance")
+        trace_clarity = self._reward_metric(world, "oversight", "trace_clarity")
         behavior = self._behavior_score(world, "oversight", recent_actions)
-        total = (
-            0.32 * risk_reduction
-            + 0.22 * autonomy_preservation
-            + 0.20 * intervention_legitimacy
-            + 0.16 * trace_clarity
-            + 0.10 * behavior
+        action_response = self._action_response_score(world, "oversight", recent_actions)
+        total = self._blend_reward_total(
+            metric_weights,
+            {
+                "runaway_risk": risk_reduction,
+                "autonomy_balance": autonomy_preservation,
+                "intervention_legitimacy": intervention_legitimacy,
+                "trace_clarity": trace_clarity,
+            },
+            behavior,
+            action_response,
         )
         return self._finalize_reward(
             episode=episode,
@@ -1092,6 +2220,7 @@ class FogOfWarDiplomacyEnv:
                 "intervention_legitimacy": intervention_legitimacy,
                 "autonomy_preservation": autonomy_preservation,
                 "trace_clarity": trace_clarity,
+                "action_response": action_response,
             },
         )
 

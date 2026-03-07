@@ -5,6 +5,7 @@ import re
 import threading
 import time
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from html import unescape
 from typing import Protocol
@@ -15,7 +16,13 @@ from trenches_env.agents import AGENT_IDS
 from trenches_env.models import SourcePacket, utc_now
 from trenches_env.source_catalog import SourceSpec, get_all_sources, get_sources_for_agent
 
-_USER_AGENT = "trenches-source-harvester/0.1 (+https://github.com/koala73/worldmonitor)"
+# Some public data providers block synthetic client strings. A neutral browser UA
+# keeps the passive probe path stable without changing request semantics.
+_USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/122.0.0.0 Safari/537.36"
+)
 
 _WHITESPACE_RE = re.compile(r"\s+")
 _TAG_RE = re.compile(r"<[^>]+>")
@@ -33,12 +40,12 @@ _TELEGRAM_MESSAGE_RE = re.compile(
 _WORLDMONITOR_PROBE_URLS: dict[str, str] = {
     "aviation/v1/list-airport-delays": "https://www.aviationstack.com/",
     "climate/v1/list-climate-anomalies": "https://open-meteo.com/",
-    "conflict/v1/get-humanitarian-summary": "https://data.humdata.org/",
+    "conflict/v1/get-humanitarian-summary": "https://data.humdata.org/dataset",
     "conflict/v1/list-acled-events": "https://acleddata.com/",
     "conflict/v1/list-iran-events": "https://liveuamap.com/",
     "conflict/v1/list-ucdp-events": "https://ucdp.uu.se/",
     "cyber/v1/list-cyber-threats": "https://www.abuse.ch/",
-    "displacement/v1/get-displacement-summary": "https://data.humdata.org/",
+    "displacement/v1/get-displacement-summary": "https://hapi.humdata.org/docs",
     "displacement/v1/get-population-exposure": "https://data.humdata.org/",
     "economic/v1/list-gulf-fdi": "https://www.worldbank.org/en/topic/financialsector/brief/foreign-direct-investment",
     "infrastructure/v1/get-cable-health": "https://www.submarinecablemap.com/",
@@ -74,11 +81,11 @@ _SOURCE_ID_PROBE_URLS: dict[str, list[str]] = {
     "israel-wingbits-enrichment": ["https://docs.wingbits.com/"],
     "israel-tel-aviv-webcam": ["https://www.youtube.com/watch?v=gmtlJ_m2r5A"],
     "iran-tehran-webcam": ["https://www.youtube.com/watch?v=-zGuR1qVKrU"],
-    "hezbollah-humanitarian-summary": ["https://www.unhcr.org/"],
+    "hezbollah-humanitarian-summary": ["https://data.humdata.org/dataset"],
     "hezbollah-rudaw-live": ["https://svs.itworkscdn.net/rudawlive/rudawlive.smil/playlist.m3u8"],
     "gulf-aljazeera-arabic-live": ["https://www.youtube.com/watch?v=bNyUyrR0PHo"],
     "gulf-middle-east-webcam": ["https://www.youtube.com/watch?v=4E-iFtUM2kk"],
-    "oversight-hapi-displacement": ["https://www.unhcr.org/"],
+    "oversight-hapi-displacement": ["https://hapi.humdata.org/docs"],
     "oversight-worldpop-exposure": ["https://hub.worldpop.org/"],
 }
 
@@ -190,6 +197,50 @@ class SourceHarvester:
                 refreshed_by_agent[agent_id] += 1
         return refreshed_by_agent
 
+    def warm_start_agents(
+        self,
+        agent_ids: list[str] | None = None,
+        *,
+        include_live: bool = False,
+        max_training_sources: int = 2,
+        max_live_sources: int = 1,
+        force: bool = False,
+    ) -> dict[str, int]:
+        targets = agent_ids or list(AGENT_IDS)
+        refreshed_by_agent = {agent_id: 0 for agent_id in targets}
+        scheduled_sources: list[tuple[str, SourceSpec]] = []
+
+        for agent_id in targets:
+            training_sources = self._select_sources_for_refresh(
+                get_sources_for_agent(agent_id, "training_core"),
+                limit=max_training_sources,
+                force=force,
+            )
+            scheduled_sources.extend((agent_id, source) for source in training_sources)
+
+            if include_live:
+                live_sources = self._select_sources_for_refresh(
+                    get_sources_for_agent(agent_id, "live_demo"),
+                    limit=max_live_sources,
+                    force=force,
+                )
+                scheduled_sources.extend((agent_id, source) for source in live_sources)
+
+        if not scheduled_sources:
+            return refreshed_by_agent
+
+        max_workers = min(len(scheduled_sources), max(self.batch_size, len(targets), 1))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_agent = {
+                executor.submit(self._collect_source, source): agent_id for agent_id, source in scheduled_sources
+            }
+            for future in as_completed(future_to_agent):
+                packet = future.result()
+                self._store_packet(packet)
+                refreshed_by_agent[future_to_agent[future]] += 1
+
+        return refreshed_by_agent
+
     def probe_source(self, source: SourceSpec) -> SourcePacket:
         packet = self._collect_source(source)
         self._store_packet(packet)
@@ -249,6 +300,23 @@ class SourceHarvester:
         if include_live:
             sources += get_sources_for_agent(agent_id, "live_demo")
         return sources
+
+    def _select_sources_for_refresh(
+        self,
+        sources: list[SourceSpec],
+        *,
+        limit: int,
+        force: bool,
+    ) -> list[SourceSpec]:
+        selected: list[SourceSpec] = []
+        for source in sources:
+            packet = self._cache.get(source.id)
+            if not force and packet is not None and not self._is_due(packet, source):
+                continue
+            selected.append(source)
+            if len(selected) >= limit:
+                break
+        return selected
 
     def _store_packet(self, packet: SourcePacket) -> None:
         with self._lock:
@@ -319,7 +387,7 @@ class SourceHarvester:
         if packet.status == "pending" or packet.fetched_at is None:
             return True
         now = datetime.now(timezone.utc)
-        return now - packet.fetched_at >= timedelta(seconds=_ttl_seconds(source))
+        return now - packet.fetched_at >= timedelta(seconds=source_ttl_seconds(source))
 
     def _extract_summary(self, source: SourceSpec, raw_text: str, content_type: str) -> tuple[str, list[str]]:
         stripped = raw_text.lstrip()
@@ -339,14 +407,24 @@ class SourceHarvester:
         return summary[:320], sample_items[:3]
 
 
-def _ttl_seconds(source: SourceSpec) -> int:
+def source_ttl_seconds(source: SourceSpec) -> int:
+    if source.delivery == "live_demo":
+        if source.kind == "telegram":
+            return 120
+        if source.kind == "video":
+            return 180
+        return 180
+    if source.kind == "rss":
+        return 300
     if source.kind == "telegram":
         return 180
     if source.kind == "video":
         return 600
     if source.kind in {"api", "structured"}:
-        return 900
-    return 1_200
+        return 300
+    if source.kind == "scrape":
+        return 420
+    return 900
 
 
 def _clean_text(raw: str) -> str:

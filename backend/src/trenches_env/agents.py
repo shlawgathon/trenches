@@ -4,12 +4,14 @@ from dataclasses import dataclass
 from typing import Literal
 
 AgentId = Literal["us", "israel", "iran", "hezbollah", "gulf", "oversight"]
+ModelSize = Literal["large", "medium-large", "medium"]
 
 
 @dataclass(frozen=True)
 class AgentProfile:
     display_name: str
     role: str
+    model_size: ModelSize
     intelligence_focus: tuple[str, ...]
     baseline_private_intel: tuple[str, ...]
 
@@ -28,6 +30,7 @@ AGENT_PROFILES: dict[AgentId, AgentProfile] = {
     "us": AgentProfile(
         display_name="US / CENTCOM",
         role="Alliance management, sanctions, domestic stability",
+        model_size="large",
         intelligence_focus=("polls", "markets", "alliances", "shipping"),
         baseline_private_intel=(
             "Domestic approval is sensitive to prolonged escalation.",
@@ -37,6 +40,7 @@ AGENT_PROFILES: dict[AgentId, AgentProfile] = {
     "israel": AgentProfile(
         display_name="Israel / IDF",
         role="Border defense, strike planning, proxy disruption",
+        model_size="medium-large",
         intelligence_focus=("northern front", "sirens", "proxy movement", "air defense"),
         baseline_private_intel=(
             "Border warning posture remains elevated in the north.",
@@ -46,6 +50,7 @@ AGENT_PROFILES: dict[AgentId, AgentProfile] = {
     "iran": AgentProfile(
         display_name="Iran / IRGC",
         role="Asymmetric retaliation, proxy coordination, survival",
+        model_size="medium-large",
         intelligence_focus=("proxy network", "oil chokepoints", "internal losses", "deception"),
         baseline_private_intel=(
             "Proxy coordination is most effective when attribution stays ambiguous.",
@@ -55,6 +60,7 @@ AGENT_PROFILES: dict[AgentId, AgentProfile] = {
     "hezbollah": AgentProfile(
         display_name="Hezbollah",
         role="Asymmetric swarming, opportunistic escalation",
+        model_size="medium",
         intelligence_focus=("border gaps", "morale", "small-unit pressure", "drone windows"),
         baseline_private_intel=(
             "Small, frequent attacks are harder to pre-empt than large waves.",
@@ -64,6 +70,7 @@ AGENT_PROFILES: dict[AgentId, AgentProfile] = {
     "gulf": AgentProfile(
         display_name="Gulf Coalition",
         role="Market hedging, shipping security, selective alignment",
+        model_size="medium",
         intelligence_focus=("oil", "shipping", "capital flows", "neutrality"),
         baseline_private_intel=(
             "Energy shock containment matters more than direct battlefield gains.",
@@ -73,6 +80,7 @@ AGENT_PROFILES: dict[AgentId, AgentProfile] = {
     "oversight": AgentProfile(
         display_name="Fleet Oversight",
         role="Risk scoring, intervention, trace auditing",
+        model_size="medium-large",
         intelligence_focus=("global risk", "misalignment", "cascades", "de-escalation"),
         baseline_private_intel=(
             "Misread incentives are the strongest predictor of runaway escalation.",

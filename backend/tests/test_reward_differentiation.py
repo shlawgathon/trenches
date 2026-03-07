@@ -1,5 +1,8 @@
+import pytest
+
 from trenches_env.env import FogOfWarDiplomacyEnv
 from trenches_env.models import AgentAction, EpisodeMetadata
+from trenches_env.rl import AGENT_ACTION_ALIGNMENT, AGENT_ACTION_IMPACTS, AGENT_ALLOWED_ACTIONS, AGENT_STATE_ACTION_EFFECTS
 
 
 def test_actor_specific_actions_have_different_world_scales() -> None:
@@ -97,3 +100,89 @@ def test_observations_expose_doctrine_state_vectors() -> None:
     assert "homeland_security" in session.observations["israel"].strategic_state
     assert "trace_clarity" in session.observations["oversight"].strategic_state
     assert session.observations["hezbollah"].strategic_assets
+
+
+def test_observations_expose_prompts_sources_and_geolocated_assets() -> None:
+    env = FogOfWarDiplomacyEnv()
+    session = env.create_session(seed=7)
+
+    for agent_id, observation in session.observations.items():
+        assert observation.decision_prompt
+        assert observation.available_actions == list(AGENT_ALLOWED_ACTIONS[agent_id])
+        assert observation.available_data_sources
+        assert observation.strategic_assets
+        assert all(asset.get("latitude") is not None and asset.get("longitude") is not None for asset in observation.strategic_assets)
+        assert observation.available_data_sources[0].name in observation.decision_prompt
+        assert observation.strategic_assets[0]["name"] in observation.decision_prompt
+
+
+def test_strike_and_defend_update_asset_health_for_targeted_assets() -> None:
+    env = FogOfWarDiplomacyEnv()
+    world = env._initial_world()
+
+    env._apply_actions(
+        world,
+        {"iran": AgentAction(actor="iran", type="strike", target="gulf", summary="Strike Gulf export and chokepoint assets.")},
+    )
+
+    ras_tanura = next(asset for asset in world.asset_state["gulf"].values() if asset.name == "Ras Tanura")
+    hormuz = next(asset for asset in world.asset_state["gulf"].values() if asset.name == "Strait of Hormuz")
+
+    assert ras_tanura.health < 100.0
+    assert hormuz.health < 100.0
+    assert ras_tanura.status in {"degraded", "malfunctioning", "destroyed"}
+    assert "strike pressure" in (ras_tanura.last_change_reason or "")
+
+    env._apply_actions(
+        world,
+        {"gulf": AgentAction(actor="gulf", type="defend", target="gulf", summary="Harden and restore critical energy infrastructure.")},
+    )
+
+    assert ras_tanura.health > 58.0
+    assert hormuz.health > 58.0
+    assert "hardened critical assets" in (ras_tanura.last_change_reason or "")
+
+
+def test_each_allowed_action_has_entity_specific_response_tables() -> None:
+    for agent_id, allowed_actions in AGENT_ALLOWED_ACTIONS.items():
+        for action_type in allowed_actions:
+            assert action_type in AGENT_ACTION_IMPACTS[agent_id]
+            assert action_type in AGENT_ACTION_ALIGNMENT[agent_id]
+            assert action_type in AGENT_STATE_ACTION_EFFECTS[agent_id]
+
+
+def test_invalid_agent_specific_action_is_rejected() -> None:
+    env = FogOfWarDiplomacyEnv()
+    world = env._initial_world()
+
+    with pytest.raises(ValueError):
+        env._apply_actions(
+            world,
+            {"us": AgentAction(actor="us", type="oversight_review", summary="US should not perform oversight review.")},
+        )
+
+
+def test_rewards_include_direct_action_response_term() -> None:
+    env = FogOfWarDiplomacyEnv()
+    world = env._initial_world()
+    world.turn = 4
+    world.last_actions = [
+        AgentAction(actor="us", type="defend", summary="Defend shipping and harden force posture."),
+        AgentAction(actor="israel", type="strike", summary="Strike launch infrastructure in the north."),
+        AgentAction(actor="iran", type="deceive", summary="Mask proxy movement and preserve deterrence ambiguity."),
+        AgentAction(actor="hezbollah", type="mobilize", summary="Mobilize launch cells and replenish border depth."),
+        AgentAction(actor="gulf", type="negotiate", summary="Negotiate shipping guarantees and calm markets."),
+        AgentAction(actor="oversight", type="oversight_review", summary="Review escalation drift and restore trace clarity."),
+    ]
+    env._apply_actions(world, {action.actor: action for action in world.last_actions})
+
+    rewards = env._compute_rewards(
+        world,
+        EpisodeMetadata(training_stage="stage_1_dense", dense_rewards=True, sparse_rewards=False),
+    )
+
+    for reward in rewards.values():
+        assert "action_response" in reward.goal_terms
+
+    assert rewards["us"].goal_terms["action_response"] > 0
+    assert rewards["gulf"].goal_terms["action_response"] > rewards["israel"].goal_terms["action_response"]

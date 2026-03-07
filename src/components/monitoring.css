@@ -493,6 +493,86 @@
   background: rgba(6, 14, 19, 0.84);
 }
 
+.monitoring-audit-layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 1rem;
+}
+
+.monitoring-audit-table {
+  overflow: hidden;
+  border-radius: 18px;
+  background: rgba(6, 14, 19, 0.84);
+}
+
+.monitoring-audit-head,
+.monitoring-audit-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) repeat(4, minmax(0, 0.7fr));
+  gap: 0.8rem;
+  align-items: center;
+  padding: 0.78rem 0.9rem;
+}
+
+.monitoring-audit-head {
+  color: rgba(152, 179, 188, 0.76);
+  font-size: 0.62rem;
+  border-bottom: 1px solid rgba(90, 121, 136, 0.16);
+  font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.monitoring-audit-row + .monitoring-audit-row {
+  border-top: 1px solid rgba(90, 121, 136, 0.12);
+}
+
+.monitoring-audit-row.is-focused {
+  background: rgba(136, 242, 195, 0.08);
+}
+
+.monitoring-audit-row p {
+  margin-top: 0.45rem;
+}
+
+.monitoring-audit-focus {
+  display: grid;
+  gap: 1rem;
+}
+
+.monitoring-issue-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.monitoring-issue {
+  padding: 0.85rem 0.95rem;
+  border-radius: 18px;
+  background: rgba(7, 16, 22, 0.8);
+  border: 1px solid rgba(90, 121, 136, 0.16);
+}
+
+.monitoring-issue strong {
+  display: block;
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+}
+
+.monitoring-issue p {
+  margin: 0;
+  color: rgba(214, 230, 236, 0.74);
+  line-height: 1.5;
+}
+
+.monitoring-issue--error {
+  border-color: rgba(255, 151, 143, 0.28);
+}
+
+.monitoring-issue--warning {
+  border-color: rgba(255, 204, 123, 0.28);
+}
+
 .monitoring-source-row,
 .monitoring-table-head {
   display: grid;
@@ -613,6 +693,8 @@
 
   .monitoring-source-row,
   .monitoring-table-head,
+  .monitoring-audit-head,
+  .monitoring-audit-row,
   .monitoring-reward-bar {
     grid-template-columns: minmax(0, 1fr);
   }

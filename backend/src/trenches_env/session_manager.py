@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from trenches_env.rl import DEFAULT_TRAINING_STAGE
 from trenches_env.env import FogOfWarDiplomacyEnv
-from trenches_env.models import LiveControlRequest, SessionState, StepSessionRequest, StepSessionResponse
+from trenches_env.models import (
+    LiveControlRequest,
+    SessionState,
+    SourceMonitorReport,
+    StepSessionRequest,
+    StepSessionResponse,
+)
 
 
 class SessionManager:
@@ -39,7 +45,10 @@ class SessionManager:
 
     def get_session(self, session_id: str) -> SessionState:
         session = self._require_session(session_id)
-        refreshed = self.env.refresh_session_sources(session)
+        if session.live.enabled and session.live.auto_step:
+            refreshed = self.env.maybe_auto_step_live_session(session)
+        else:
+            refreshed = self.env.refresh_session_sources(session)
         self._sessions[session_id] = refreshed
         return refreshed
 
@@ -60,6 +69,12 @@ class SessionManager:
         refreshed = self.env.refresh_session_sources(current, force=force)
         self._sessions[session_id] = refreshed
         return refreshed
+
+    def source_monitor(self, session_id: str) -> SourceMonitorReport:
+        current = self._require_session(session_id)
+        refreshed = self.env.refresh_session_sources(current)
+        self._sessions[session_id] = refreshed
+        return self.env.source_monitor(refreshed)
 
     def _require_session(self, session_id: str) -> SessionState:
         session = self._sessions.get(session_id)

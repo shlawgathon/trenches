@@ -3,6 +3,7 @@ import type {
   CreateSessionRequest,
   LiveControlRequest,
   ResetSessionRequest,
+  SourceMonitorReport,
   SessionState,
   StepSessionRequest,
   StepSessionResponse,
@@ -29,6 +30,10 @@ export class SessionClient {
 
   async refreshSources(sessionId: string): Promise<SessionState> {
     return this.http.post<SessionState>(`/sessions/${sessionId}/sources/refresh`, {});
+  }
+
+  async getSourceMonitor(sessionId: string): Promise<SourceMonitorReport> {
+    return this.http.get<SourceMonitorReport>(`/sessions/${sessionId}/sources/monitor`);
   }
 
   async setLiveMode(sessionId: string, request: LiveControlRequest): Promise<SessionState> {

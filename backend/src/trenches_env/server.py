@@ -15,6 +15,7 @@ from trenches_env.models import (
     ResetEnvResponse,
     ResetSessionRequest,
     SessionState,
+    SourceMonitorReport,
     StepEnvRequest,
     StepEnvResponse,
     StepSessionRequest,
@@ -34,7 +35,7 @@ def create_app(session_manager: SessionManager | None = None) -> FastAPI:
     manager = session_manager or SessionManager(
         env=FogOfWarDiplomacyEnv(
             source_harvester=SourceHarvester(auto_start=True),
-        )
+        ).enable_source_warm_start()
     )
 
     @asynccontextmanager
@@ -60,7 +61,7 @@ def create_app(session_manager: SessionManager | None = None) -> FastAPI:
         lambda: TrenchesOpenEnvEnvironment(
             env=FogOfWarDiplomacyEnv(
                 source_harvester=SourceHarvester(auto_start=False),
-            )
+            ).enable_source_warm_start()
         )
     )
     if openenv_app is not None:
@@ -113,6 +114,13 @@ def create_app(session_manager: SessionManager | None = None) -> FastAPI:
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=f"Unknown session: {session_id}") from exc
 
+    @app.get("/sessions/{session_id}/sources/monitor", response_model=SourceMonitorReport)
+    async def source_monitor(session_id: str) -> SourceMonitorReport:
+        try:
+            return manager.source_monitor(session_id=session_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=f"Unknown session: {session_id}") from exc
+
     @app.post("/sessions/{session_id}/live", response_model=SessionState)
     async def set_live_mode(session_id: str, request: LiveControlRequest) -> SessionState:
         try:
@@ -128,6 +136,8 @@ def create_app(session_manager: SessionManager | None = None) -> FastAPI:
             return manager.step_session(session_id=session_id, request=request)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=f"Unknown session: {session_id}") from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.post("/reset", response_model=ResetEnvResponse)
     async def reset_env(request: ResetEnvRequest) -> ResetEnvResponse:
@@ -140,10 +150,13 @@ def create_app(session_manager: SessionManager | None = None) -> FastAPI:
 
     @app.post("/step", response_model=StepEnvResponse)
     async def step_env(request: StepEnvRequest) -> StepEnvResponse:
-        observations, rewards, terminated, truncated, info = runtime.step(
-            actions=request.actions,
-            external_signals=request.external_signals,
-        )
+        try:
+            observations, rewards, terminated, truncated, info = runtime.step(
+                actions=request.actions,
+                external_signals=request.external_signals,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
         return StepEnvResponse(
             observations=observations,
             rewards=rewards,

@@ -108,7 +108,58 @@ export type LiveSessionConfig = {
   poll_interval_ms: number;
   started_at?: string | null;
   last_source_sync_at?: string | null;
+  last_auto_step_at?: string | null;
   source_queue_sizes: Record<string, number>;
+  reacted_packet_fetched_at: Record<string, string>;
+};
+
+export type SourceMonitorIssue = {
+  severity: "warning" | "error";
+  message: string;
+};
+
+export type AgentSourceMonitor = {
+  agent_id: string;
+  display_name: string;
+  status: "healthy" | "degraded" | "blocked";
+  configured_training_sources: number;
+  configured_live_sources: number;
+  active_source_count: number;
+  ok_packet_count: number;
+  pending_packet_count: number;
+  error_packet_count: number;
+  available_training_packet_count: number;
+  available_live_packet_count: number;
+  delivered_training_brief_count: number;
+  delivered_live_brief_count: number;
+  missing_training_sources: string[];
+  missing_live_sources: string[];
+  unbundled_training_sources: string[];
+  unbundled_live_sources: string[];
+  missing_packet_sources: string[];
+  sources_without_probe_targets: string[];
+  stale_sources: string[];
+  error_sources: string[];
+  pending_sources: string[];
+  delivered_source_names: string[];
+  issues: SourceMonitorIssue[];
+};
+
+export type SourceMonitorSummary = {
+  healthy_agents: number;
+  degraded_agents: number;
+  blocked_agents: number;
+  active_source_count: number;
+  ok_packet_count: number;
+  delivered_source_brief_count: number;
+};
+
+export type SourceMonitorReport = {
+  session_id: string;
+  live_enabled: boolean;
+  generated_at: string;
+  summary: SourceMonitorSummary;
+  agents: AgentSourceMonitor[];
 };
 
 export type EpisodeMetadata = {
