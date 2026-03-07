@@ -58,6 +58,7 @@ export type RewardBreakdown = {
   escalation_penalty: number;
   market_gain: number;
   behavioral_consistency: number;
+  goal_terms: Record<string, number>;
   total: number;
 };
 
@@ -76,6 +77,7 @@ export type AgentObservation = {
   known_coalitions: string[];
   event_log: BlackSwanEvent[];
   entity_profile: Record<string, unknown>;
+  strategic_state: Record<string, number>;
   strategic_assets: Record<string, unknown>[];
   source_bundle: string[];
   training_source_bundle: string[];
@@ -90,6 +92,7 @@ export type WorldState = {
   tension_level: number;
   market_stress: number;
   oil_pressure: number;
+  actor_state: Record<string, Record<string, number>>;
   coalition_graph: Record<string, string[]>;
   active_events: BlackSwanEvent[];
   hidden_intents: Record<string, string>;

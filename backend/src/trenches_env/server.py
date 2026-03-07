@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+from typing import Any
+
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,13 +20,31 @@ from trenches_env.models import (
     StepSessionRequest,
     StepSessionResponse,
 )
-from trenches_env.openenv_adapter import OpenEnvAdapter
+from trenches_env.openenv_adapter import (
+    OPENENV_CORE_AVAILABLE,
+    OpenEnvAdapter,
+    TrenchesOpenEnvEnvironment,
+    create_openenv_fastapi_app,
+)
 from trenches_env.session_manager import SessionManager
 from trenches_env.source_ingestion import SourceHarvester
 
 
 def create_app(session_manager: SessionManager | None = None) -> FastAPI:
-    app = FastAPI(title="Trenches OpenEnv Backend", version="0.1.0")
+    manager = session_manager or SessionManager(
+        env=FogOfWarDiplomacyEnv(
+            source_harvester=SourceHarvester(auto_start=True),
+        )
+    )
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        try:
+            yield
+        finally:
+            manager.env.shutdown()
+
+    app = FastAPI(title="Trenches OpenEnv Backend", version="0.1.0", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
@@ -34,20 +55,29 @@ def create_app(session_manager: SessionManager | None = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    manager = session_manager or SessionManager(
-        env=FogOfWarDiplomacyEnv(
-            source_harvester=SourceHarvester(auto_start=True),
+    runtime = OpenEnvAdapter(session_manager=manager)
+    openenv_app = create_openenv_fastapi_app(
+        lambda: TrenchesOpenEnvEnvironment(
+            env=FogOfWarDiplomacyEnv(
+                source_harvester=SourceHarvester(auto_start=False),
+            )
         )
     )
-    runtime = OpenEnvAdapter(session_manager=manager)
-
-    @app.on_event("shutdown")
-    async def shutdown_source_harvester() -> None:
-        manager.env.shutdown()
+    if openenv_app is not None:
+        app.mount("/openenv", openenv_app)
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/capabilities")
+    async def capabilities() -> dict[str, Any]:
+        return {
+            "session_api": True,
+            "legacy_openenv_tuple_api": True,
+            "native_openenv_api": OPENENV_CORE_AVAILABLE,
+            "native_openenv_base_path": "/openenv" if OPENENV_CORE_AVAILABLE else None,
+        }
 
     @app.post("/sessions", response_model=SessionState)
     async def create_session(request: CreateSessionRequest) -> SessionState:

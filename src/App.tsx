@@ -1,10 +1,28 @@
 import { startTransition, useEffect, useMemo, useState } from "react";
 
 import { bootstrapPlatform } from "./app/bootstrap";
+import { CommandMap } from "./components/CommandMap";
+import { MonitoringDeck, type MonitoringAgentSnapshot } from "./components/MonitoringDeck";
+import { buildViewerMapState, type MapSelection } from "./lib/viewer-map";
 import type { PlatformRuntime } from "./lib/platform";
 import type { AgentAction, AgentObservation, SessionState } from "./lib/types";
 
 const AGENT_ORDER = ["us", "israel", "iran", "hezbollah", "gulf", "oversight"] as const;
+const AGENT_MODEL_META: Record<
+  (typeof AGENT_ORDER)[number],
+  {
+    family: string;
+    variant: string;
+    sizeLabel: string;
+  }
+> = {
+  us: { family: "Doctrine Policy", variant: "CENTCOM theater lead", sizeLabel: "large" },
+  israel: { family: "Doctrine Policy", variant: "IDF northern-front lead", sizeLabel: "medium-large" },
+  iran: { family: "Doctrine Policy", variant: "IRGC asymmetric lead", sizeLabel: "medium-large" },
+  hezbollah: { family: "Doctrine Policy", variant: "proxy pressure lead", sizeLabel: "medium" },
+  gulf: { family: "Doctrine Policy", variant: "shipping stability lead", sizeLabel: "medium" },
+  oversight: { family: "Meta Policy", variant: "risk and intervention lead", sizeLabel: "medium-large" },
+};
 
 function buildDefaultActions(): Record<string, AgentAction> {
   return {
@@ -24,31 +42,40 @@ function toLines(value: unknown): string[] {
   return [];
 }
 
-function toAssets(observation: AgentObservation): Array<{ name?: string; category?: string; notes?: string }> {
-  return observation.strategic_assets as Array<{ name?: string; category?: string; notes?: string }>;
+function toAssets(observation: AgentObservation) {
+  return observation.strategic_assets as Array<{
+    name?: string;
+    category?: string;
+    status?: string;
+    latitude?: number;
+    longitude?: number;
+    notes?: string;
+  }>;
 }
 
-function getTrainingSourceBundle(observation: AgentObservation | undefined): string[] {
-  if (!observation) {
-    return [];
+function getSourcePacketCounts(observation: AgentObservation | undefined) {
+  const packets = observation?.source_packets ?? [];
+  return {
+    ok: packets.filter((packet) => packet.status === "ok").length,
+    pending: packets.filter((packet) => packet.status === "pending").length,
+    error: packets.filter((packet) => packet.status === "error").length,
+    trainingCore: packets.filter((packet) => packet.delivery === "training_core").length,
+    liveDemo: packets.filter((packet) => packet.delivery === "live_demo").length,
+    total: packets.length,
+  };
+}
+
+function toConfidence(value: number | undefined) {
+  if (typeof value !== "number") {
+    return 0.5;
   }
-  if (observation.training_source_bundle.length > 0) {
-    return observation.training_source_bundle;
-  }
-  return observation.source_bundle;
-}
-
-function getLiveSourceBundle(observation: AgentObservation | undefined): string[] {
-  return observation?.live_source_bundle ?? [];
-}
-
-function getCollectedTrainingPackets(observation: AgentObservation | undefined) {
-  return observation?.training_source_packets ?? [];
+  return Math.max(0, Math.min(1, (value + 1) / 2));
 }
 
 export default function App() {
   const [runtime, setRuntime] = useState<PlatformRuntime | null>(null);
   const [session, setSession] = useState<SessionState | null>(null);
+  const [selectedMapEntity, setSelectedMapEntity] = useState<MapSelection>("all");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -99,6 +126,135 @@ export default function App() {
       { label: "Backend", value: runtime?.backendStatus ?? "unknown" },
     ];
   }, [runtime?.backendStatus, session]);
+
+  const viewerMapState = useMemo(() => {
+    if (!session) {
+      return null;
+    }
+    return buildViewerMapState(session);
+  }, [session]);
+
+  const commandMapEntities = useMemo(() => {
+    return viewerMapState?.entities ?? [];
+  }, [viewerMapState]);
+
+  const commandMapFeatures = useMemo(() => {
+    return viewerMapState?.features ?? [];
+  }, [viewerMapState]);
+
+  const commandMapLinks = useMemo(() => viewerMapState?.links ?? [], [viewerMapState]);
+
+  const commandMapWorldSummary = useMemo(() => {
+    if (!viewerMapState || !session) {
+      return null;
+    }
+    return {
+      ...viewerMapState.worldSummary,
+      activeEventCount: session.world.active_events.length,
+      lastUpdatedLabel: new Date(session.updated_at).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+  }, [session, viewerMapState]);
+
+  const monitoringAgents = useMemo<MonitoringAgentSnapshot[]>(() => {
+    if (!session) {
+      return [];
+    }
+
+    const entityLookup = new Map(commandMapEntities.map((entity) => [entity.id, entity]));
+    return AGENT_ORDER.map((agentId) => {
+      const observation = session.observations[agentId];
+      const reward = session.rewards[agentId];
+      const profile = (observation?.entity_profile ?? {}) as Record<string, unknown>;
+      const viewerEntity = entityLookup.get(agentId);
+      const recentActions = [...session.recent_traces]
+        .reverse()
+        .filter((trace) => trace.actions[agentId])
+        .slice(0, 8)
+        .map((trace) => {
+          const action = trace.actions[agentId];
+          return {
+            id: `${agentId}-${trace.turn}`,
+            turn: trace.turn,
+            createdAt: trace.created_at,
+            actor: action.actor,
+            type: action.type,
+            summary: action.summary,
+            target: action.target,
+            rewardTotal: trace.rewards[agentId]?.total ?? null,
+            tensionDelta: trace.tension_after - trace.tension_before,
+            oversightTriggered: trace.oversight.triggered,
+          };
+        });
+
+      return {
+        id: agentId,
+        displayName: typeof profile.display_name === "string" ? profile.display_name : agentId,
+        color: viewerEntity?.color,
+        accent: viewerEntity?.accent,
+        doctrine:
+          (profile.decision_doctrine as { escalation_bias?: string } | undefined)?.escalation_bias ??
+          (profile.military_posture as { style?: string } | undefined)?.style,
+        currentObjective: toLines(profile.strategic_objectives)[0] ?? "Objective pending",
+        postureLabel: (profile.military_posture as { style?: string } | undefined)?.style ?? "Doctrinal posture",
+        statusLabel: session.live.enabled ? "Streaming" : "Scenario",
+        lastDecisionAt: recentActions[0]?.createdAt ?? session.updated_at,
+        confidence: toConfidence(reward?.behavioral_consistency),
+        model: {
+          ...AGENT_MODEL_META[agentId],
+          contextWindow: "128K",
+          trainingStack: session.episode.algorithm_hints.post_training,
+        },
+        observation: {
+          perceivedTension: observation?.perceived_tension ?? null,
+          knownCoalitions: observation?.known_coalitions ?? [],
+          publicBrief: (observation?.public_brief ?? []).map((item) => ({
+            source: item.source,
+            summary: item.summary,
+            confidence: item.confidence,
+          })),
+          privateBrief: (observation?.private_brief ?? []).map((item) => ({
+            source: item.source,
+            summary: item.summary,
+            confidence: item.confidence,
+          })),
+          strategicAssets: (observation ? toAssets(observation) : []).map((asset) => ({
+            name: asset.name ?? "Unknown asset",
+            category: asset.category,
+            status: asset.status,
+            latitude: asset.latitude,
+            longitude: asset.longitude,
+            notes: asset.notes,
+          })),
+          sourcePackets: (observation?.source_packets ?? []).map((packet) => ({
+            sourceId: packet.source_id,
+            sourceName: packet.source_name,
+            delivery: packet.delivery,
+            status: packet.status,
+            kind: packet.kind,
+            fetchedAt: packet.fetched_at ?? null,
+          })),
+          sourcePacketCounts: getSourcePacketCounts(observation),
+          sourceBundle: observation?.source_bundle ?? [],
+          trainingSourceBundle: observation?.training_source_bundle ?? [],
+          liveSourceBundle: observation?.live_source_bundle ?? [],
+        },
+        reward: {
+          total: reward?.total ?? 0,
+          coalitionStability: reward?.coalition_stability,
+          escalationPenalty: reward?.escalation_penalty,
+          marketGain: reward?.market_gain,
+          behavioralConsistency: reward?.behavioral_consistency,
+          goalTerms: reward?.goal_terms ?? {},
+        },
+        recentActions,
+      };
+    });
+  }, [commandMapEntities, session]);
+
+  const selectedMonitoringAgent = selectedMapEntity === "all" ? null : selectedMapEntity;
 
   async function createFreshSession() {
     if (!runtime) {
@@ -234,11 +390,33 @@ export default function App() {
 
       {session && runtime ? (
         <>
+          {commandMapWorldSummary ? (
+            <CommandMap
+              entities={commandMapEntities}
+              features={commandMapFeatures}
+              links={commandMapLinks}
+              selectedEntity={selectedMapEntity}
+              onSelectEntity={(entityId) => setSelectedMapEntity(entityId as MapSelection)}
+              worldSummary={commandMapWorldSummary}
+            />
+          ) : null}
+
+          <MonitoringDeck
+            agents={monitoringAgents}
+            selectedAgentId={selectedMonitoringAgent}
+            onSelectAgent={(agentId) => setSelectedMapEntity(agentId as MapSelection)}
+            title="Model Supervision Deck"
+            eyebrow="Training and Inference Oversight"
+            headline="Black-box monitoring surface for reward pressure, source integrity, recent actions, and actor posture across the full regional simulation."
+            summary="This layer is for the human operator only. It sits beside the map and explains how each doctrine-specific model is reading the environment and being rewarded."
+            statusChip={session.live.enabled ? "Live post-training session" : "Scenario replay session"}
+          />
+
           <section className="panel-grid">
             <article className="panel panel-wide">
               <div className="panel-header">
-                <h2>Global Monitor</h2>
-                <span>{session.live.enabled ? "Live ingest armed" : "Static session"}</span>
+                <h2>World State Trace</h2>
+                <span>{session.live.enabled ? "Live intelligence sync armed" : "Scenario-only state"}</span>
               </div>
               <div className="world-stats">
                 <div>
@@ -254,8 +432,8 @@ export default function App() {
 
             <article className="panel">
               <div className="panel-header">
-                <h2>Live Source Plans</h2>
-                <span>Agent-specific and non-shared</span>
+                <h2>Source Plan Matrix</h2>
+                <span>Non-shared source stacks</span>
               </div>
               <div className="list-block">
                 {AGENT_ORDER.map((agentId) => (
@@ -266,87 +444,6 @@ export default function App() {
                 ))}
               </div>
             </article>
-          </section>
-
-          <section className="agents-grid">
-            {AGENT_ORDER.map((agentId) => {
-              const observation = session.observations[agentId];
-              const profile = observation?.entity_profile as Record<string, unknown> | undefined;
-              const objectives = toLines(profile?.strategic_objectives);
-              const assets = observation ? toAssets(observation) : [];
-              const trainingSources = getTrainingSourceBundle(observation);
-              const liveSources = getLiveSourceBundle(observation);
-              const collectedPackets = getCollectedTrainingPackets(observation);
-
-              return (
-                <article key={agentId} className="agent-card">
-                  <div className="panel-header">
-                    <h2>{profile?.display_name ? String(profile.display_name) : agentId}</h2>
-                    <span>{observation?.perceived_tension?.toFixed(1) ?? "0.0"} perceived tension</span>
-                  </div>
-
-                  <div className="agent-block">
-                    <label>Training Core Sources</label>
-                    <ul>
-                      {trainingSources.map((source) => (
-                        <li key={source}>{source}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="agent-block">
-                    <label>Live / Demo Sources</label>
-                    <ul>
-                      {liveSources.length > 0 ? (
-                        liveSources.map((source) => <li key={source}>{source}</li>)
-                      ) : (
-                        <li>None configured</li>
-                      )}
-                    </ul>
-                  </div>
-
-                  <div className="agent-block">
-                    <label>Strategic Objectives</label>
-                    <ul>
-                      {objectives.slice(0, 4).map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="agent-block">
-                    <label>Strategic Assets</label>
-                    <ul>
-                      {assets.slice(0, 5).map((asset) => (
-                        <li key={`${asset.name}-${asset.category}`}>
-                          {asset.name ?? "Unknown"} {asset.category ? `(${asset.category})` : ""}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="agent-block">
-                    <label>Private Brief</label>
-                    <ul>
-                      {(observation?.private_brief ?? []).map((brief) => (
-                        <li key={`${brief.source}-${brief.summary}`}>{brief.summary}</li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="agent-block">
-                    <label>Collected Source Snapshots</label>
-                    <ul>
-                      {collectedPackets.slice(0, 3).map((packet) => (
-                        <li key={packet.source_id}>
-                          {packet.source_name}: {packet.summary || packet.status}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </article>
-              );
-            })}
           </section>
         </>
       ) : null}

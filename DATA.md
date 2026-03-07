@@ -63,11 +63,14 @@ Training core:
 - GPSJam Levant View
 - The Defender Dome
 - Yedioth News
-- BBC Middle East
 - The Times of Israel
 - Levant Theater Posture
 - Israel Frontier Base Layer
 - Eastern Med Navigational Warnings
+- Northern Border Incident Tracker
+- Northern Strike Heat
+- Syrian Transfer Corridor Watch
+- Northern Air Defense Readiness
 
 Live/demo:
 
@@ -75,9 +78,6 @@ Live/demo:
 - i24NEWS Live
 - Jerusalem Webcam
 - Tel Aviv Webcam
-- Al Jazeera English Live
-- Al Hadath Live
-- Asharq News Live
 
 ## Iran
 
@@ -126,18 +126,18 @@ Training core:
 - OSINTdefender
 - OSIntOps News
 - OSINT Live
-- Guardian Middle East
-- Al Jazeera Arabic
 - Lebanon Humanitarian Summary
 - Lebanon Unrest Events
 - Lebanon Internet Outages
 - Lebanon Climate Anomalies
 - Lebanon Coast Navigational Warnings
+- Blue Line Incident Tracker
+- South Lebanon Strike Heat
+- Bekaa Transit Corridor Watch
 
 Live/demo:
 
 - Beirut MTV Lebanon Webcam
-- Rudaw Live
 
 ## Gulf Coalition
 

@@ -77,6 +77,7 @@ class RewardBreakdown(BaseModel):
     escalation_penalty: float = 0.0
     market_gain: float = 0.0
     behavioral_consistency: float = 0.0
+    goal_terms: dict[str, float] = Field(default_factory=dict)
     total: float = 0.0
 
 
@@ -95,6 +96,7 @@ class AgentObservation(BaseModel):
     known_coalitions: list[str] = Field(default_factory=list)
     event_log: list[BlackSwanEvent] = Field(default_factory=list)
     entity_profile: dict[str, Any] = Field(default_factory=dict)
+    strategic_state: dict[str, float] = Field(default_factory=dict)
     strategic_assets: list[dict[str, Any]] = Field(default_factory=list)
     source_bundle: list[str] = Field(default_factory=list)
     training_source_bundle: list[str] = Field(default_factory=list)
@@ -109,6 +111,7 @@ class WorldState(BaseModel):
     tension_level: float = 50.0
     market_stress: float = 30.0
     oil_pressure: float = 40.0
+    actor_state: dict[str, dict[str, float]] = Field(default_factory=dict)
     coalition_graph: dict[str, list[str]] = Field(default_factory=dict)
     active_events: list[BlackSwanEvent] = Field(default_factory=list)
     hidden_intents: dict[str, str] = Field(default_factory=dict)

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-07T02:35:01.325Z",
+  "generatedAt": "2026-03-07T18:37:38.021Z",
   "sourceCount": 120,
   "sources": [
     {
@@ -615,25 +615,6 @@
       "rationale": "Israeli breaking-news lane with local reaction and casualty reporting."
     },
     {
-      "id": "israel-bbc-middle-east",
-      "agentId": "israel",
-      "delivery": "training_core",
-      "name": "BBC Middle East",
-      "kind": "rss",
-      "endpoint": {
-        "kind": "url",
-        "url": "https://feeds.bbci.co.uk/news/world/middle_east/rss.xml"
-      },
-      "auth": "none",
-      "allowlistStatus": "allowed",
-      "tags": [
-        "israel",
-        "regional",
-        "wire"
-      ],
-      "rationale": "External regional framing of Israeli operations and responses."
-    },
-    {
       "id": "israel-times-of-israel",
       "agentId": "israel",
       "delivery": "training_core",
@@ -713,61 +694,84 @@
       "rationale": "Detects maritime safety and exclusion-zone changes around the Eastern Mediterranean."
     },
     {
-      "id": "israel-aljazeera-english-live",
+      "id": "israel-northern-border-incidents",
       "agentId": "israel",
-      "delivery": "live_demo",
-      "name": "Al Jazeera English Live",
-      "kind": "video",
+      "delivery": "training_core",
+      "name": "Northern Border Incident Tracker",
+      "kind": "structured",
       "endpoint": {
-        "kind": "video",
-        "channel": "@AlJazeeraEnglish"
+        "kind": "worldmonitor",
+        "rpc": "conflict/v1/list-acled-events",
+        "selector": "south-lebanon-galilee"
       },
       "auth": "none",
-      "allowlistStatus": "not_applicable",
+      "allowlistStatus": "external",
       "tags": [
         "israel",
-        "live",
-        "regional-media"
+        "north-border",
+        "conflict-events"
       ],
-      "rationale": "Regional broadcast framing of Israeli military moves during live sessions."
+      "rationale": "Structured launch, infiltration, and strike-event lane for the Lebanon-Galilee border fight."
     },
     {
-      "id": "israel-al-hadath-live",
+      "id": "israel-northern-strike-heat",
       "agentId": "israel",
-      "delivery": "live_demo",
-      "name": "Al Hadath Live",
-      "kind": "video",
+      "delivery": "training_core",
+      "name": "Northern Strike Heat",
+      "kind": "structured",
       "endpoint": {
-        "kind": "video",
-        "channel": "@AlHadath"
+        "kind": "worldmonitor",
+        "rpc": "wildfire/v1/list-fire-detections",
+        "selector": "north-israel-lebanon"
       },
       "auth": "none",
-      "allowlistStatus": "not_applicable",
+      "allowlistStatus": "external",
       "tags": [
         "israel",
-        "live",
-        "regional-media"
+        "thermal",
+        "strike-verification"
       ],
-      "rationale": "Arabic breaking coverage useful for monitoring regional reaction to Israeli actions."
+      "rationale": "Thermal proxy for launch areas, strike aftermath, and persistent fire activity on the northern front."
     },
     {
-      "id": "israel-asharq-news-live",
+      "id": "israel-syrian-transfer-watch",
       "agentId": "israel",
-      "delivery": "live_demo",
-      "name": "Asharq News Live",
-      "kind": "video",
+      "delivery": "training_core",
+      "name": "Syrian Transfer Corridor Watch",
+      "kind": "structured",
       "endpoint": {
-        "kind": "video",
-        "channel": "@asharqnews"
+        "kind": "worldmonitor",
+        "rpc": "conflict/v1/list-acled-events",
+        "selector": "syria-transfer-corridor"
       },
       "auth": "none",
-      "allowlistStatus": "not_applicable",
+      "allowlistStatus": "external",
       "tags": [
         "israel",
-        "live",
-        "regional-media"
+        "syria",
+        "weapons-transfer"
       ],
-      "rationale": "Gulf-facing regional lens on Israeli escalation and diplomacy."
+      "rationale": "Tracks corridor activity tied to Iranian reinforcement, air-defense movement, and precision-weapon transfer."
+    },
+    {
+      "id": "israel-northern-air-defense",
+      "agentId": "israel",
+      "delivery": "training_core",
+      "name": "Northern Air Defense Readiness",
+      "kind": "api",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "military/v1/get-theater-posture",
+        "selector": "israel-air-defense"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "israel",
+        "air-defense",
+        "readiness"
+      ],
+      "rationale": "Operational posture layer for interceptor coverage, warning quality, and defensive readiness in the north."
     },
     {
       "id": "iran-vahid-online",
@@ -1385,44 +1389,6 @@
       "rationale": "Low-latency conflict snapshots across the wider resistance theater."
     },
     {
-      "id": "hezbollah-guardian-middle-east",
-      "agentId": "hezbollah",
-      "delivery": "training_core",
-      "name": "Guardian Middle East",
-      "kind": "rss",
-      "endpoint": {
-        "kind": "url",
-        "url": "https://www.theguardian.com/world/middleeast/rss"
-      },
-      "auth": "none",
-      "allowlistStatus": "allowed",
-      "tags": [
-        "hezbollah",
-        "regional",
-        "analysis"
-      ],
-      "rationale": "External regional reporting with Lebanese and Syrian theater coverage."
-    },
-    {
-      "id": "hezbollah-al-jazeera-arabic",
-      "agentId": "hezbollah",
-      "delivery": "training_core",
-      "name": "Al Jazeera Arabic",
-      "kind": "rss",
-      "endpoint": {
-        "kind": "url",
-        "url": "https://www.aljazeera.net/aljazeerarss/a7c186be-1adb-4b11-a982-4783e765316e/4e17ecdc-8fb9-40de-a5d6-d00f72384a51"
-      },
-      "auth": "none",
-      "allowlistStatus": "external",
-      "tags": [
-        "hezbollah",
-        "arabic",
-        "regional"
-      ],
-      "rationale": "Arabic-language regional news lane aligned with the Hezbollah information environment."
-    },
-    {
       "id": "hezbollah-humanitarian-summary",
       "agentId": "hezbollah",
       "delivery": "training_core",
@@ -1523,23 +1489,64 @@
       "rationale": "Coastal maritime-warning layer relevant to Beirut and southern Lebanese littoral activity."
     },
     {
-      "id": "hezbollah-rudaw-live",
+      "id": "hezbollah-blue-line-incidents",
       "agentId": "hezbollah",
-      "delivery": "live_demo",
-      "name": "Rudaw Live",
-      "kind": "video",
+      "delivery": "training_core",
+      "name": "Blue Line Incident Tracker",
+      "kind": "structured",
       "endpoint": {
-        "kind": "video",
-        "channel": "@rudaw"
+        "kind": "worldmonitor",
+        "rpc": "conflict/v1/list-acled-events",
+        "selector": "blue-line"
       },
       "auth": "none",
-      "allowlistStatus": "not_applicable",
+      "allowlistStatus": "external",
       "tags": [
         "hezbollah",
-        "live",
-        "regional-media"
+        "blue-line",
+        "conflict-events"
       ],
-      "rationale": "Regional Kurdish/Levant live coverage for cross-border developments."
+      "rationale": "Structured incident feed for launch, raid, and interdiction patterns along the Blue Line."
+    },
+    {
+      "id": "hezbollah-south-lebanon-strike-heat",
+      "agentId": "hezbollah",
+      "delivery": "training_core",
+      "name": "South Lebanon Strike Heat",
+      "kind": "structured",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "wildfire/v1/list-fire-detections",
+        "selector": "south-lebanon"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "hezbollah",
+        "thermal",
+        "strike-verification"
+      ],
+      "rationale": "Thermal strike-verification layer for launch areas, bombardment zones, and fire persistence in south Lebanon."
+    },
+    {
+      "id": "hezbollah-bekaa-transit-watch",
+      "agentId": "hezbollah",
+      "delivery": "training_core",
+      "name": "Bekaa Transit Corridor Watch",
+      "kind": "structured",
+      "endpoint": {
+        "kind": "worldmonitor",
+        "rpc": "conflict/v1/list-acled-events",
+        "selector": "bekaa-syria-corridor"
+      },
+      "auth": "none",
+      "allowlistStatus": "external",
+      "tags": [
+        "hezbollah",
+        "bekaa",
+        "logistics-corridor"
+      ],
+      "rationale": "Tracks corridor disruptions, interdiction, and sustainment movement between the Bekaa and Syria."
     },
     {
       "id": "gulf-arabian-business",

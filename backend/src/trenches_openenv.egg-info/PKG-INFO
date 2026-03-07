@@ -7,6 +7,7 @@ Description-Content-Type: text/markdown
 Requires-Dist: fastapi<1.0.0,>=0.115.0
 Requires-Dist: httpx<1.0.0,>=0.27.0
 Requires-Dist: numpy<3.0.0,>=1.26.0
+Requires-Dist: openenv-core[core]<0.3.0,>=0.2.1
 Requires-Dist: pydantic<3.0.0,>=2.8.0
 Requires-Dist: uvicorn[standard]<1.0.0,>=0.30.0
 Provides-Extra: dev
@@ -14,13 +15,17 @@ Requires-Dist: pytest<9.0.0,>=8.3.0; extra == "dev"
 
 # Trenches Backend
 
-This directory contains the initial Python scaffolding for the OpenEnv-style
-session backend. It is intentionally lightweight and leaves the real OpenEnv
-package integration as a follow-up once the dependency/version is pinned.
+This directory contains the Python backend for the Trenches simulator.
+
+It now exposes two layers:
+
+- the existing session-oriented FastAPI API used by the React dashboard
+- a native OpenEnv-compatible environment mounted under `/openenv` when `openenv-core` is installed
 
 Planned responsibilities:
 
 - Hold in-memory crisis sessions.
 - Expose `create`, `reset`, `step`, and `state` HTTP endpoints.
 - Model the fog-of-war world state and per-agent observations.
+- Provide a native OpenEnv boundary with scalar rewards for one active training agent while retaining full per-agent state internally.
 - Provide extension points for World Monitor ingestion and RL training hooks.

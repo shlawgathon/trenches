@@ -27,12 +27,233 @@
       "lat": 33.1128,
       "lon": 35.1397,
       "notes": "Coastal pressure and observation node."
+    },
+    {
+      "name": "Litani Depth Belt",
+      "category": "depth-zone",
+      "lat": 33.328,
+      "lon": 35.39,
+      "notes": "Dispersal and concealment depth between border launch areas and interior routes."
+    },
+    {
+      "name": "Qusayr-Syria Transit Gateway",
+      "category": "corridor-node",
+      "lat": 34.5077,
+      "lon": 36.5797,
+      "notes": "Representative replenishment and cross-border transit node tied to Syrian access."
     }
   ],
   "watchpoints": [
     "South Lebanon launch belt",
     "Bekaa logistics routes",
     "Blue Line flashpoints",
-    "Israeli northern command tempo"
+    "Israeli northern command tempo",
+    "Litani dispersal depth",
+    "Qusayr-Syria replenishment access"
+  ],
+  "fronts": [
+    {
+      "name": "Southern Launch Belt",
+      "type": "rocket-drone-front",
+      "priority": "critical",
+      "anchor_lat": 33.145,
+      "anchor_lon": 35.39,
+      "operational_focus": [
+        "launch survivability",
+        "attritional fire",
+        "border pressure",
+        "interceptor depletion"
+      ],
+      "notes": "Primary deterrent front where pressure on northern Israel is generated and sustained."
+    },
+    {
+      "name": "Bekaa Logistics Depth",
+      "type": "logistics-corridor",
+      "priority": "high",
+      "anchor_lat": 34.0,
+      "anchor_lon": 36.23,
+      "operational_focus": [
+        "munitions movement",
+        "communications continuity",
+        "reconstitution under air pressure"
+      ],
+      "notes": "Interior sustainment layer that keeps the launch belt viable after interdiction."
+    },
+    {
+      "name": "Beirut Political Core",
+      "type": "command-political",
+      "priority": "high",
+      "anchor_lat": 33.8547,
+      "anchor_lon": 35.4838,
+      "operational_focus": [
+        "command continuity",
+        "political relevance",
+        "messaging resilience"
+      ],
+      "notes": "Influence and command layer whose survivability shapes domestic legitimacy."
+    },
+    {
+      "name": "Syrian Transit Corridor",
+      "type": "cross-border-corridor",
+      "priority": "medium",
+      "anchor_lat": 34.45,
+      "anchor_lon": 36.55,
+      "operational_focus": [
+        "replenishment access",
+        "personnel movement",
+        "strategic depth"
+      ],
+      "notes": "External sustainment lane that matters when local launch areas are heavily degraded."
+    }
+  ],
+  "infrastructure": [
+    {
+      "name": "Southern launch-cell network",
+      "category": "launch-network",
+      "anchor_lat": 33.16,
+      "anchor_lon": 35.41,
+      "criticality": "critical",
+      "functions": [
+        "rocket storage",
+        "drone launch dispersal",
+        "cross-border pressure generation"
+      ],
+      "vulnerabilities": [
+        "persistent ISR",
+        "high-tempo precision strikes",
+        "civilian-area exposure"
+      ]
+    },
+    {
+      "name": "Bekaa sustainment backbone",
+      "category": "logistics-network",
+      "anchor_lat": 34.02,
+      "anchor_lon": 36.22,
+      "criticality": "high",
+      "functions": [
+        "munitions flow",
+        "communications continuity",
+        "personnel movement"
+      ],
+      "vulnerabilities": [
+        "corridor interdiction",
+        "air-defense suppression",
+        "route closures into Syria"
+      ]
+    },
+    {
+      "name": "Dahiyeh command-and-influence mesh",
+      "category": "command-network",
+      "anchor_lat": 33.8547,
+      "anchor_lon": 35.4838,
+      "criticality": "high",
+      "functions": [
+        "political coordination",
+        "command signaling",
+        "narrative control"
+      ],
+      "vulnerabilities": [
+        "communications disruption",
+        "domestic backlash",
+        "visible strike damage"
+      ]
+    }
+  ],
+  "strategic_sites": [
+    {
+      "name": "Dahiyeh political-command core",
+      "category": "command-system",
+      "anchor_lat": 33.8547,
+      "anchor_lon": 35.4838,
+      "importance": "critical"
+    },
+    {
+      "name": "Blue Line launch arc",
+      "category": "launch-zone",
+      "anchor_lat": 33.16,
+      "anchor_lon": 35.41,
+      "importance": "critical"
+    },
+    {
+      "name": "Bekaa reserve depth",
+      "category": "reserve-depth",
+      "anchor_lat": 34.0,
+      "anchor_lon": 36.23,
+      "importance": "high"
+    }
+  ],
+  "alliance_anchors": [
+    {
+      "partner": "Iran",
+      "location": "Baalbek / Bekaa Axis",
+      "function": "material support, strategic guidance, and deterrence framing"
+    },
+    {
+      "partner": "Syrian corridor",
+      "location": "Qusayr-Syria Transit Gateway",
+      "function": "replenishment depth and cross-border sustainment"
+    }
+  ],
+  "chokepoints": [
+    {
+      "name": "Blue Line launch belt",
+      "lat": 33.18,
+      "lon": 35.42,
+      "importance": "critical",
+      "desired_state": "survivable enough for recurring launch pressure"
+    },
+    {
+      "name": "Bekaa-Syria transit arc",
+      "lat": 34.22,
+      "lon": 36.45,
+      "importance": "high",
+      "desired_state": "porous enough for sustainment, concealment, and movement"
+    },
+    {
+      "name": "Beirut southern-suburb political core",
+      "lat": 33.8547,
+      "lon": 35.4838,
+      "importance": "high",
+      "desired_state": "retained as a command and legitimacy anchor"
+    },
+    {
+      "name": "Litani depth belt",
+      "lat": 33.33,
+      "lon": 35.39,
+      "importance": "medium",
+      "desired_state": "usable as a dispersal and recovery zone"
+    }
+  ],
+  "geospatial_anchors": [
+    {
+      "name": "South Lebanon launch belt",
+      "lat": 33.16,
+      "lon": 35.41,
+      "role": "persistent launch and border-pressure zone"
+    },
+    {
+      "name": "Bekaa logistics arc",
+      "lat": 34.02,
+      "lon": 36.22,
+      "role": "interior sustainment and force-preservation corridor"
+    },
+    {
+      "name": "Beirut southern political core",
+      "lat": 33.8547,
+      "lon": 35.4838,
+      "role": "command continuity and political relevance"
+    },
+    {
+      "name": "Syrian replenishment corridor",
+      "lat": 34.45,
+      "lon": 36.55,
+      "role": "external resupply and strategic depth"
+    },
+    {
+      "name": "Litani depth belt",
+      "lat": 33.33,
+      "lon": 35.39,
+      "role": "concealment, dispersal, and recovery depth"
+    }
   ]
 }

@@ -1,14 +1,14 @@
 :root {
-  --bg: #061014;
-  --panel: #0d1b22;
-  --panel-strong: #13242d;
-  --line: #21353f;
-  --text: #e4f2ed;
-  --muted: #8ca29c;
-  --accent: #8de3c4;
-  --warn: #f5c96c;
-  --error: #ff8b7f;
-  --shadow: 0 18px 60px rgba(0, 0, 0, 0.28);
+  --bg: #02070a;
+  --panel: rgba(7, 14, 18, 0.92);
+  --panel-strong: rgba(10, 20, 25, 0.98);
+  --line: rgba(97, 131, 145, 0.22);
+  --text: #e6f1f5;
+  --muted: #8ba4af;
+  --accent: #92efcb;
+  --warn: #f1c56d;
+  --error: #ff857d;
+  --shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
 }
 
 * {
@@ -18,11 +18,30 @@
 body {
   margin: 0;
   background:
-    radial-gradient(circle at top left, rgba(141, 227, 196, 0.12), transparent 30%),
-    radial-gradient(circle at top right, rgba(245, 201, 108, 0.08), transparent 24%),
-    linear-gradient(180deg, #071015 0%, #04080b 100%);
+    radial-gradient(circle at top left, rgba(146, 239, 203, 0.08), transparent 22%),
+    radial-gradient(circle at top right, rgba(75, 151, 178, 0.06), transparent 18%),
+    linear-gradient(180deg, #03080b 0%, #010305 100%);
   color: var(--text);
   font-family: "Avenir Next", "Segoe UI", sans-serif;
+  min-height: 100vh;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.014) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(120, 180, 196, 0.04), transparent 18%);
+  background-size:
+    100% 3px,
+    120px 120px,
+    100% 100%;
+  opacity: 0.34;
+  mix-blend-mode: screen;
+  z-index: 0;
 }
 
 button {
@@ -30,9 +49,12 @@ button {
   background: var(--panel-strong);
   color: var(--text);
   padding: 0.85rem 1rem;
-  border-radius: 999px;
+  border-radius: 14px;
   cursor: pointer;
   font: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.78rem;
 }
 
 button:disabled {
@@ -50,9 +72,11 @@ label,
 }
 
 .shell {
-  max-width: 1600px;
+  position: relative;
+  z-index: 1;
+  max-width: 1720px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1.5rem 1.5rem 3rem;
 }
 
 .hero {
@@ -65,7 +89,8 @@ label,
 .hero h1 {
   margin: 0 0 0.75rem;
   font-size: clamp(2rem, 4vw, 4rem);
-  line-height: 0.95;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
 }
 
 .eyebrow {
@@ -85,16 +110,19 @@ label,
 .panel,
 .agent-card,
 .banner {
-  background: rgba(13, 27, 34, 0.9);
+  background: var(--panel);
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
 }
 
 .status-card {
   padding: 1.25rem;
-  border-radius: 24px;
+  border-radius: 20px;
   display: grid;
   gap: 0.35rem;
+  background:
+    linear-gradient(135deg, rgba(146, 239, 203, 0.05), transparent 44%),
+    var(--panel);
 }
 
 .status-card span {
@@ -117,7 +145,7 @@ label,
 
 .banner {
   padding: 1rem 1.2rem;
-  border-radius: 18px;
+  border-radius: 14px;
   margin-bottom: 1rem;
 }
 
@@ -134,8 +162,11 @@ label,
 }
 
 .metric {
-  border-radius: 18px;
+  border-radius: 16px;
   padding: 1rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018) 0%, transparent 100%),
+    var(--panel);
 }
 
 .metric span {
@@ -159,7 +190,7 @@ label,
 
 .panel,
 .agent-card {
-  border-radius: 24px;
+  border-radius: 18px;
   padding: 1.1rem 1.15rem;
 }
 
@@ -235,6 +266,13 @@ label,
 .agent-card {
   display: grid;
   gap: 0.9rem;
+}
+
+.agent-card.is-focused {
+  border-color: rgba(141, 227, 196, 0.58);
+  box-shadow:
+    0 22px 70px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(141, 227, 196, 0.18);
 }
 
 .agent-block ul {

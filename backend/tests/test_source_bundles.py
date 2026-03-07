@@ -1,10 +1,12 @@
 from trenches_env.source_bundles import AGENT_LIVE_SOURCE_BUNDLES, AGENT_TRAINING_SOURCE_BUNDLES
 
 
-def test_each_agent_has_at_least_twenty_unique_sources() -> None:
+def test_each_agent_has_distinct_training_and_live_sources() -> None:
     for agent_id, training_sources in AGENT_TRAINING_SOURCE_BUNDLES.items():
         live_sources = AGENT_LIVE_SOURCE_BUNDLES.get(agent_id, [])
-        combined_sources = training_sources + live_sources
 
-        assert len(combined_sources) >= 20
-        assert len(combined_sources) == len(set(combined_sources))
+        assert len(training_sources) >= 6
+        assert len(live_sources) >= 1
+        assert len(training_sources) == len(set(training_sources))
+        assert len(live_sources) == len(set(live_sources))
+        assert set(training_sources).isdisjoint(live_sources)
