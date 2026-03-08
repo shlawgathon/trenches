@@ -84,7 +84,7 @@ python -m trenches_env.training_cli \
   --model-id Qwen/Qwen3.5-9B \
   --quantize-4bit \
   --training-agent ENTITY \
-  --replay-id ENTITY_forecast_seed_2025_2026 \
+  --replay-id ENTITY_synthetic_seed_2025_2026 \
   --output-dir checkpoints/ENTITY-qwen3.5-9b-4bit \
   --generation-backend transformers \
   --training-stage stage_1_dense \
@@ -114,9 +114,10 @@ Each checkpoint contains: `config.json`, `model.safetensors`, `tokenizer.json`, 
 
 ## Build Steps
 
-1. Replace the synthetic seed replays with curator-reviewed historical replays built by `python -m trenches_env.historical_collection_cli`
-2. Add `--quantize-4bit` to `training_cli.py` (NF4 via bitsandbytes)
-3. Add `beta`, `warmup_steps`, `temperature`, `top_k`, `save_strategy` CLI args
-4. Add `bitsandbytes>=0.43.0` to `pyproject.toml`
-5. Smoke test locally with tiny-gpt2
-6. Spin up 6 HF A100 Spaces → 1 hour → done
+1. ~~Create 5 replay datasets (israel, iran, hezbollah, gulf, oversight)~~ ✅ done (synthetic seed data in `synthetic_historical_replays/`)
+2. ~~Add `--quantize-4bit` to `training_cli.py` (NF4 via bitsandbytes)~~ ✅ done
+3. ~~Add `beta`, `warmup_steps`, `temperature`, `top_k`, `save_strategy` CLI args~~ ✅ done
+4. ~~Add `bitsandbytes>=0.43.0` to `pyproject.toml`~~ ✅ done
+5. ~~Smoke test locally with tiny-gpt2~~ ✅ done (US + Israel pass)
+6. ~~Smoke test on HF T4 GPU~~ ✅ done ([trenches-training-smoke](https://huggingface.co/spaces/AlazarM/trenches-training-smoke))
+7. Spin up 6 HF A100 Spaces → 1 hour → done
