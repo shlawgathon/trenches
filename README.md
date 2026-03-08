@@ -1,3 +1,12 @@
+---
+title: Trenches
+emoji: 🌍
+colorFrom: red
+colorTo: gray
+sdk: docker
+app_port: 7860
+---
+
 # Trenches
 
 A multi-agent crisis simulator built on [OpenEnv](https://github.com/openenv-ai/openenv). LLM agents navigate a fog-of-war geopolitical scenario — negotiating coalitions, managing deception, and responding to live global events — while a dedicated oversight agent monitors for dangerous escalation.
