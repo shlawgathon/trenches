@@ -8,7 +8,7 @@ from huggingface_hub import HfApi, SpaceHardware
 
 USER = "AlazarM"
 TEMPLATE_DIR = Path(__file__).resolve().parents[1] / "hf_spaces" / "training-space-template"
-COMMIT = "285c09365cfed8db81f45fa7268bbe334f7a8ce5"
+GIT_REF = "main"
 TOKEN = Path.home().joinpath(".cache/huggingface/token").read_text().strip()
 API = HfApi(token=TOKEN)
 
@@ -23,7 +23,7 @@ SPACES = [
 
 COMMON_VARS = {
     "GIT_REPO_URL": "https://github.com/shlawgathon/trenches.git",
-    "GIT_REF": COMMIT,
+    "GIT_REF": GIT_REF,
     "MODEL_ID": "Qwen/Qwen3-8B",
     "GENERATION_BACKEND": "vllm",
     "TRAINING_STAGE": "stage_1_dense",

@@ -85,10 +85,11 @@ def train() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        run_and_stream(["git", "clone", "--depth", "1", git_repo_url, str(repo_dir)])
-        if git_ref != "main":
-            run_and_stream(["git", "fetch", "--depth", "1", "origin", git_ref], cwd=repo_dir)
-            run_and_stream(["git", "checkout", "-q", "FETCH_HEAD"], cwd=repo_dir)
+        clone_cmd = ["git", "clone", "--depth", "1"]
+        if git_ref:
+            clone_cmd.extend(["--branch", git_ref, "--single-branch"])
+        clone_cmd.extend([git_repo_url, str(repo_dir)])
+        run_and_stream(clone_cmd)
 
         python_bin = workroot / ".venv" / "bin" / "python"
         set_status("running", f"Installing training stack for {entity}")
