@@ -36,7 +36,8 @@ DEFAULT_ENTITY_ORDER = ("us", "israel", "iran", "hezbollah", "gulf", "oversight"
 DEFAULT_REPLAY_SUFFIX = "_2025_events"
 DEFAULT_BACKEND_PORT = 8000
 DEFAULT_VLLM_SERVER_PORT = 8001
-MODAL_GPU_FALLBACKS = ["B200:2", "H200:2", "H100:2", "A100-80GB:2", "L40S:2"]
+MODAL_GPU_FALLBACKS = ["H200:2", "H100:2", "A100-80GB:2", "L40S:2"]
+SUPPORTED_TRL_VLLM_VERSION = "0.10.2"
 
 
 def _discover_local_replays() -> dict[str, str]:
@@ -76,7 +77,7 @@ training_image = (
     .apt_install("git")
     .env({"PYTHONPATH": str(REMOTE_BACKEND_SRC_DIR)})
     .pip_install_from_pyproject(str(LOCAL_BACKEND_DIR / "pyproject.toml"), optional_dependencies=["train"])
-    .pip_install("vllm==0.12.0")
+    .pip_install(f"vllm=={SUPPORTED_TRL_VLLM_VERSION}")
     .add_local_dir(
         str(LOCAL_BACKEND_PACKAGE_DIR),
         remote_path=str(REMOTE_BACKEND_SRC_DIR / "trenches_env"),
