@@ -63,15 +63,15 @@ The current backend already has:
 - a structured `Prediction` schema
 - prediction storage and scoring in session state
 - replay mode driven by historical event timestamps
-- a bundled seed replay dataset for a first `us` proof run
+- a bundled set of 6 synthetic seed replay datasets (in `synthetic_historical_replays/`)
 - a replay-aware TRL/OpenEnv CLI training loop
+- a historical data collection pipeline (GDELT → replay JSON)
 
 ## What Is Missing
 
 The backend does not yet have:
 
-- a six-agent training runner
-- a larger curated truth dataset beyond the bundled seed replay
+- a larger curated truth dataset beyond the bundled synthetic seed replays
 - a proper evaluation report for prediction quality
 - baselines and train/eval split reporting
 
@@ -196,10 +196,14 @@ After the first working replay-training loop:
 
 Current status:
 
-- first working historical replay loop implemented for `us`
+- all 6 synthetic seed replay datasets created and bundled (in `synthetic_historical_replays/`)
+- base model: `Qwen/Qwen3-8B` (shared across all entities, no quantization)
 - OpenEnv step accepts separate `action` and `prediction`
 - forecast reward is blended into entity reward on replay steps
 - TRL CLI training path is implemented and smoke-tested end to end
-- multi-entity scaling and evaluation still pending
+- local smoke tests pass for US + Israel entities (tiny-gpt2)
+- HF GPU smoke test passed on T4 ([trenches-training-smoke](https://huggingface.co/spaces/AlazarM/trenches-training-smoke))
+- historical data collection pipeline implemented (GDELT → replay JSON)
+- multi-entity scaling to A100 and evaluation still pending
 
 This file should be updated as the forecasting/replay training system is built.

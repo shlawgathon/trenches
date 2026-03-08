@@ -34,3 +34,16 @@
 
 - [x] Push to HF Space (`AlazarM/trenches`)
 - [ ] Add `NEXT_PUBLIC_MAPBOX_TOKEN` as HF Space secret
+
+## Post-Training
+
+- [x] 6 synthetic seed replay datasets (in `synthetic_historical_replays/`)
+- [x] Training CLI with GRPO, hyperparameter args, checkpointing
+- [x] Local smoke test (tiny-gpt2, US + Israel)
+- [x] HF GPU smoke test on T4 ([trenches-training-smoke](https://huggingface.co/spaces/AlazarM/trenches-training-smoke))
+- [x] All 6 entity models → `Qwen/Qwen3-8B` (no quantization)
+- [x] Historical data collection pipeline (GDELT → replay JSON)
+- [ ] Run historical collector for all 6 entities
+- [ ] Curator-review collected replay data
+- [ ] Spin up 6 HF A100 Spaces for production training
+- [ ] Evaluation/baseline reporting

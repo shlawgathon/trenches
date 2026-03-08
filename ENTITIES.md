@@ -45,7 +45,7 @@ Rewards are sparse/delayed for long-horizon planning, calculated per agent in `s
 ### 1. US (Trump Admin / CENTCOM)
 
 - **Role/Identity**: Hawkish strategist leading military strikes, sanctions, and alliances. Prompt: "You are the US President in 2026 Iran war. Prioritize alliances and oil stability. Think aggressively: Defeat enemies via superior force, avoid domestic backlash, model incentives to exploit weaknesses."
-- **Model**: DeepSeek-V3.2 (quantized; 256K+ context for strategic planning).
+- **Model**: Qwen3-8B (shared base across all entities, post-trained per entity via GRPO).
 - **Personalized RSS/Data Feeds** (Filtered via World Monitor APIs, e.g., `/api/geopolitics/v1/filter?agent=US&keywords=polls+markets`):
   - US domestic: Polymarket prediction markets (polls/approval ratings), GDELT US events.
   - Economic: Bloomberg US feeds, commodity dashboard (oil prices).
@@ -73,7 +73,7 @@ Rewards are sparse/delayed for long-horizon planning, calculated per agent in `s
 ### 3. Iran (IRGC / Interim Leadership)
 
 - **Role/Identity**: Resilient defender using proxies and asymmetry. Prompt: "You are Iran's IRGC post-Khamenei. Defend sovereignty via deception. Survive escalations: Weaken foes indirectly, defeat through attrition while maintaining internal strength."
-- **Model**: GLM-4.7 (tool-optimized for proxy coordination).
+- **Model**: Qwen3-8B (shared base across all entities, post-trained per entity via GRPO).
 - **Personalized RSS/Data Feeds** (e.g., `/api/geopolitics/v1/filter?agent=Iran&keywords=proxies+oil`):
   - Proxies: Telegram OSINT channels (militias), GDELT Iran events.
   - Internal: NASA FIRMS (strike impacts), commodity dashboard (Hormuz oil).
@@ -87,7 +87,7 @@ Rewards are sparse/delayed for long-horizon planning, calculated per agent in `s
 ### 4. Hezbollah (Proxy Swarm Leader)
 
 - **Role/Identity**: Opportunistic insurgent in asymmetric warfare. Prompt: "You are Hezbollah's leader. Swarm enemies with minimal resources. Infer weaknesses: Defeat via guerrilla tactics, align with Iran while exploiting gaps for strength."
-- **Model**: Kimi-K2.5 (MoE; for swarm reasoning).
+- **Model**: Qwen3-8B (shared base across all entities, post-trained per entity via GRPO).
 - **Personalized RSS/Data Feeds** (e.g., `/api/geopolitics/v1/filter?agent=Hezbollah&keywords=border+swarms`):
   - Warfare: Telegram OSINT, ACLED Lebanon clashes.
   - Morale: Al Jazeera proxies, border webcams/videos.
@@ -101,7 +101,7 @@ Rewards are sparse/delayed for long-horizon planning, calculated per agent in `s
 ### 5. Gulf Coalition (Saudi/UAE/Qatar)
 
 - **Role/Identity**: Pragmatic hedger balancing neutrality and security. Prompt: "You are the Gulf Coalition. Protect markets selectively. Hedge alliances: Defeat disruptions economically, stay strong via resource leverage without full commitment."
-- **Model**: MiniMax-M2.5 (economic workflows).
+- **Model**: Qwen3-8B (shared base across all entities, post-trained per entity via GRPO).
 - **Personalized RSS/Data Feeds** (e.g., `/api/market/v1/filter?agent=Gulf&keywords=oil+security`):
   - Energy: Commodity dashboard (oil shocks), Bloomberg Gulf feeds.
   - Security: AIS Hormuz vessels, finance variant (market data).
@@ -115,7 +115,7 @@ Rewards are sparse/delayed for long-horizon planning, calculated per agent in `s
 ### 6. Oversight Agent (Fleet AI Meta-Layer)
 
 - **Role/Identity**: Impartial auditor for scalable monitoring. Prompt: "You are an AI overseer. Analyze drifts probabilistically. Explain/intervene neutrally: Ensure alignment without bias, focusing on crisis de-escalation."
-- **Model**: Ministral 14B Reasoning (lightweight for meta-tasks).
+- **Model**: Qwen3-8B (shared base across all entities, post-trained per entity via GRPO).
 - **Personalized RSS/Data Feeds** (e.g., `/api/geopolitics/v1/synthesized?scope=global`):
   - Meta: Full AI-briefs, Country Instability Index, hotspot scores.
   - Aggregated: RAG headline memory (cross-agent).
