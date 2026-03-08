@@ -8,7 +8,7 @@ from huggingface_hub import HfApi, SpaceHardware
 
 USER = "AlazarM"
 TEMPLATE_DIR = Path(__file__).resolve().parents[1] / "hf_spaces" / "training-space-template"
-COMMIT = "4af70b58420a0215c3c64fff4f91c7e981f91d04"
+COMMIT = "285c09365cfed8db81f45fa7268bbe334f7a8ce5"
 TOKEN = Path.home().joinpath(".cache/huggingface/token").read_text().strip()
 API = HfApi(token=TOKEN)
 
