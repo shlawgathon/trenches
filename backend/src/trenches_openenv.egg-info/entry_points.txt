@@ -1,2 +1,3 @@
 [console_scripts]
 trenches-api = trenches_env.server:run
+trenches-train = trenches_env.training_cli:main

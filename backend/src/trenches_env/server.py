@@ -135,9 +135,12 @@ def create_app(session_manager: SessionManager | None = None) -> FastAPI:
     async def create_session(request: CreateSessionRequest) -> SessionState:
         return manager.create_session(
             seed=request.seed,
+            training_agent=request.training_agent,
             training_stage=request.training_stage,
             max_turns=request.max_turns,
             scenario_id=request.scenario_id,
+            replay_id=request.replay_id,
+            replay_start_index=request.replay_start_index,
         )
 
     @app.post("/sessions/{session_id}/reset", response_model=SessionState)
@@ -146,9 +149,12 @@ def create_app(session_manager: SessionManager | None = None) -> FastAPI:
             return manager.reset_session(
                 session_id=session_id,
                 seed=request.seed,
+                training_agent=request.training_agent,
                 training_stage=request.training_stage,
                 max_turns=request.max_turns,
                 scenario_id=request.scenario_id,
+                replay_id=request.replay_id,
+                replay_start_index=request.replay_start_index,
             )
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=f"Unknown session: {session_id}") from exc
@@ -235,6 +241,8 @@ def create_app(session_manager: SessionManager | None = None) -> FastAPI:
             training_stage=request.training_stage,
             max_turns=request.max_turns,
             scenario_id=request.scenario_id,
+            replay_id=request.replay_id,
+            replay_start_index=request.replay_start_index,
         )
         return ResetEnvResponse(observations=observations, info=info)
 
@@ -243,6 +251,7 @@ def create_app(session_manager: SessionManager | None = None) -> FastAPI:
         try:
             observations, rewards, terminated, truncated, info = runtime.step(
                 actions=request.actions,
+                predictions=request.predictions,
                 external_signals=request.external_signals,
             )
         except ValueError as exc:

@@ -7,6 +7,11 @@ from uuid import uuid4
 
 from trenches_env.agents import AGENT_IDS, AGENT_PROFILES
 from trenches_env.entity_knowledge import load_entity_pack
+from trenches_env.historical_replay import (
+    get_historical_replay,
+    severity_distance,
+    severity_score,
+)
 from trenches_env.model_runtime import build_entity_model_bindings
 from trenches_env.models import (
     ActionLogEntry,
@@ -20,12 +25,16 @@ from trenches_env.models import (
     EpisodeMetadata,
     EntityModelBinding,
     ExternalSignal,
+    HistoricalEvent,
+    HistoricalReplayState,
     IntelSnippet,
     LatentEvent,
     LatentEventNarrative,
     LiveControlRequest,
     ObservationProjection,
     OversightIntervention,
+    Prediction,
+    PredictionAssessment,
     ProviderDiagnosticsResponse,
     ReactionActorOutcome,
     ReactionLogEntry,
@@ -116,6 +125,7 @@ MAX_TRAINING_SOURCE_BRIEFS = 2
 MAX_LIVE_SOURCE_BRIEFS = 2
 MAX_AUTO_REACTION_SIGNALS = 8
 MIN_LIVE_AUTO_STEP_MS = 1_000
+FORECAST_REWARD_BLEND = 0.35
 LOW_FIDELITY_SOURCE_KINDS = {"telegram", "scrape", "video"}
 SOURCE_KIND_BASE_RELIABILITY = {
     "structured": 0.8,
@@ -300,16 +310,30 @@ class FogOfWarDiplomacyEnv:
         self,
         seed: int | None = None,
         session_id: str | None = None,
+        training_agent: str = "us",
         training_stage: str = DEFAULT_TRAINING_STAGE,
         max_turns: int | None = None,
         scenario_id: str | None = None,
+        replay_id: str | None = None,
+        replay_start_index: int | None = None,
     ) -> SessionState:
         resolved_session_id = session_id or str(uuid4())
         self._seed(seed)
         scenario = get_scenario_definition(scenario_id)
         world = self._initial_world()
         self._apply_scenario(world, scenario)
-        episode = self._build_episode_metadata(training_stage=training_stage, max_turns=max_turns, scenario=scenario)
+        historical_replay = self._initialize_historical_replay(
+            world=world,
+            training_agent=training_agent,
+            replay_id=replay_id,
+            replay_start_index=replay_start_index,
+        )
+        episode = self._build_episode_metadata(
+            training_stage=training_stage,
+            max_turns=max_turns,
+            scenario=scenario,
+            historical_replay=historical_replay,
+        )
         if self._source_warm_start_enabled:
             self._source_harvester.warm_start_agents(
                 include_live=False,
@@ -317,7 +341,12 @@ class FogOfWarDiplomacyEnv:
                 max_live_sources=0,
             )
         belief_state = self._initialize_belief_state(world, episode)
-        observations = self._build_observations(world, episode, belief_state=belief_state)
+        observations = self._build_observations(
+            world,
+            episode,
+            belief_state=belief_state,
+            historical_replay=historical_replay,
+        )
         rewards = {agent_id: RewardBreakdown() for agent_id in AGENT_IDS}
         session = SessionState(
             session_id=resolved_session_id,
@@ -326,6 +355,7 @@ class FogOfWarDiplomacyEnv:
             observations=observations,
             belief_state=belief_state,
             rewards=rewards,
+            historical_replay=historical_replay,
             model_bindings=self._build_model_bindings(),
             episode=episode,
         )
@@ -338,16 +368,22 @@ class FogOfWarDiplomacyEnv:
         self,
         session_id: str,
         seed: int | None = None,
+        training_agent: str = "us",
         training_stage: str = DEFAULT_TRAINING_STAGE,
         max_turns: int | None = None,
         scenario_id: str | None = None,
+        replay_id: str | None = None,
+        replay_start_index: int | None = None,
     ) -> SessionState:
         return self.create_session(
             seed=seed,
             session_id=session_id,
+            training_agent=training_agent,
             training_stage=training_stage,
             max_turns=max_turns,
             scenario_id=scenario_id,
+            replay_id=replay_id,
+            replay_start_index=replay_start_index,
         )
 
     def configure_live_session(self, session: SessionState, request: LiveControlRequest) -> SessionState:
@@ -409,8 +445,13 @@ class FogOfWarDiplomacyEnv:
         latent_event_ids = [
             event.event_id for event in next_session.world.latent_events if event.event_id not in prior_latent_event_ids
         ]
-
+        revealed_event, prediction_assessments = self._advance_historical_replay(
+            next_session,
+            request.predictions,
+        )
         next_session.rewards = self._compute_rewards(world=next_session.world, episode=next_session.episode)
+        if prediction_assessments:
+            self._apply_forecast_rewards(next_session.rewards, prediction_assessments)
         next_session.model_bindings = self._build_model_bindings()
         next_session.belief_state = self._update_belief_state(next_session)
         next_session.observations = self._build_observations(
@@ -418,6 +459,7 @@ class FogOfWarDiplomacyEnv:
             next_session.episode,
             include_live_sources=next_session.live.enabled,
             belief_state=next_session.belief_state,
+            historical_replay=next_session.historical_replay,
         )
         next_session.recent_traces.append(
             StepTrace(
@@ -425,6 +467,9 @@ class FogOfWarDiplomacyEnv:
                 tension_before=before_tension,
                 tension_after=next_session.world.tension_level,
                 actions=resolved_actions,
+                predictions=request.predictions,
+                prediction_assessments=prediction_assessments,
+                revealed_event=revealed_event,
                 rewards=next_session.rewards,
                 oversight=oversight,
             )
@@ -449,7 +494,15 @@ class FogOfWarDiplomacyEnv:
         return StepSessionResponse(
             session=next_session,
             oversight=oversight,
-            done=next_session.world.turn >= next_session.episode.max_turns or next_session.world.tension_level >= 95.0,
+            done=(
+                next_session.world.turn >= next_session.episode.max_turns
+                or next_session.world.tension_level >= 95.0
+                or (
+                    next_session.historical_replay.enabled
+                    and next_session.historical_replay.current_event_index
+                    >= len(next_session.historical_replay.ground_truth_timeline) - 1
+                )
+            ),
         )
 
     def refresh_session_sources(self, session: SessionState, force: bool = False) -> SessionState:
@@ -465,6 +518,7 @@ class FogOfWarDiplomacyEnv:
             updated.episode,
             include_live_sources=updated.live.enabled,
             belief_state=updated.belief_state,
+            historical_replay=updated.historical_replay,
         )
         last_sync_at = self._source_harvester.last_sync_at()
         if last_sync_at is not None:
@@ -1126,9 +1180,14 @@ class FogOfWarDiplomacyEnv:
         max_turns: int | None,
         *,
         scenario: ScenarioDefinition,
+        historical_replay: HistoricalReplayState | None = None,
     ) -> EpisodeMetadata:
         stage_config = TRAINING_STAGE_CONFIGS[training_stage]
         resolved_max_turns = max_turns or DEFAULT_MAX_TURNS
+        replay_event_count = len((historical_replay or HistoricalReplayState()).ground_truth_timeline)
+        if historical_replay is not None and historical_replay.enabled:
+            remaining_events = max(1, replay_event_count - historical_replay.start_event_index - 1)
+            resolved_max_turns = min(resolved_max_turns, remaining_events)
         return EpisodeMetadata(
             max_turns=resolved_max_turns,
             training_stage=training_stage,
@@ -1141,7 +1200,263 @@ class FogOfWarDiplomacyEnv:
             fog_of_war=stage_config["fog_of_war"],
             oversight_enabled=stage_config["oversight_enabled"],
             live_mode_capable=stage_config["live_mode_capable"],
+            replay_mode=historical_replay is not None and historical_replay.enabled,
+            replay_id=historical_replay.replay_id if historical_replay is not None and historical_replay.enabled else None,
+            replay_event_count=replay_event_count,
         )
+
+    def _initialize_historical_replay(
+        self,
+        *,
+        world: WorldState,
+        training_agent: str,
+        replay_id: str | None,
+        replay_start_index: int | None,
+    ) -> HistoricalReplayState:
+        if replay_id is None:
+            return HistoricalReplayState()
+
+        resolved_replay_id = replay_id
+        replay = get_historical_replay(resolved_replay_id)
+        if len(replay.events) < 2:
+            raise ValueError(f"Replay {resolved_replay_id} must contain at least two events.")
+
+        max_start_index = len(replay.events) - 2
+        if replay_start_index is None:
+            start_index = self._rng.randint(0, max_start_index)
+        else:
+            if replay_start_index < 0 or replay_start_index > max_start_index:
+                raise ValueError(
+                    f"Replay start index {replay_start_index} is outside the valid range 0-{max_start_index}."
+                )
+            start_index = replay_start_index
+
+        state = HistoricalReplayState(
+            enabled=True,
+            replay_id=replay.replay_id,
+            replay_name=replay.name,
+            training_agent=training_agent,
+            start_event_index=start_index,
+            current_event_index=start_index,
+            ground_truth_timeline=[event.model_copy(deep=True) for event in replay.events],
+        )
+        initial_event = state.ground_truth_timeline[start_index].model_copy(deep=True)
+        self._apply_historical_event(world, initial_event)
+        state.visible_event_ids.append(initial_event.event_id)
+        state.last_revealed_event = initial_event
+        return state
+
+    def _advance_historical_replay(
+        self,
+        session: SessionState,
+        predictions: dict[str, Prediction],
+    ) -> tuple[HistoricalEvent | None, dict[str, PredictionAssessment]]:
+        replay = session.historical_replay
+        if not replay.enabled:
+            return None, {}
+
+        normalized_predictions = self._normalize_predictions(session, predictions)
+        if normalized_predictions:
+            session.prediction_log.extend(normalized_predictions.values())
+
+        next_index = replay.current_event_index + 1
+        if next_index >= len(replay.ground_truth_timeline):
+            return None, {}
+
+        revealed_event = replay.ground_truth_timeline[next_index].model_copy(deep=True)
+        assessments = {
+            agent_id: self._score_prediction(prediction=prediction, event=revealed_event)
+            for agent_id, prediction in normalized_predictions.items()
+        }
+
+        replay.current_event_index = next_index
+        replay.visible_event_ids.append(revealed_event.event_id)
+        replay.last_revealed_event = revealed_event
+        self._apply_historical_event(session.world, revealed_event)
+
+        if assessments:
+            session.prediction_assessments.extend(assessments.values())
+
+        return revealed_event, assessments
+
+    def _apply_historical_event(self, world: WorldState, event: HistoricalEvent) -> None:
+        world.tension_level = self._clamp_percent(world.tension_level + event.impact.tension_delta)
+        world.market_stress = self._clamp_percent(world.market_stress + event.impact.market_stress_delta)
+        world.oil_pressure = self._clamp_percent(world.oil_pressure + event.impact.oil_pressure_delta)
+
+        for agent_id, metric_deltas in event.impact.actor_metric_deltas.items():
+            for metric, delta in metric_deltas.items():
+                self._bump_actor_metric(world, agent_id, metric, delta)
+
+        affected_agents = self._historical_event_affected_agents(event)
+        self._register_latent_event(
+            world,
+            LatentEvent(
+                event_id=f"historical-{event.event_id}",
+                topic=event.topic,
+                status="active",
+                severity=severity_score(event.severity),
+                visibility="public",
+                reliability=0.96 if event.confirmed else 0.72,
+                origin=f"historical:{event.source_type}",
+                affected_agents=affected_agents,
+                started_at_turn=world.turn,
+                last_updated_turn=world.turn,
+                decay_rate=0.04,
+                narratives=[
+                    LatentEventNarrative(
+                        framing="baseline",
+                        summary=self._clip_summary(event.public_summary or event.summary),
+                        confidence=0.9 if event.confirmed else 0.68,
+                        public=True,
+                    ),
+                    LatentEventNarrative(
+                        framing="concealed",
+                        summary=self._clip_summary(event.summary),
+                        confidence=0.82 if event.confirmed else 0.6,
+                        public=False,
+                    ),
+                ],
+            ),
+            spawn_links=False,
+        )
+        self._resync_public_events(world)
+        self._resync_public_actor_state(world)
+
+    @staticmethod
+    def _historical_event_affected_agents(event: HistoricalEvent) -> list[str]:
+        affected = [
+            agent_id
+            for agent_id in [*event.actors, *event.targets]
+            if agent_id in AGENT_IDS
+        ]
+        return sorted(set(affected))
+
+    def _normalize_predictions(
+        self,
+        session: SessionState,
+        predictions: dict[str, Prediction],
+    ) -> dict[str, Prediction]:
+        normalized: dict[str, Prediction] = {}
+        for agent_id, prediction in predictions.items():
+            if prediction.agent_id != agent_id:
+                raise ValueError(
+                    f"Prediction agent mismatch: payload agent={prediction.agent_id}, slot={agent_id}"
+                )
+            if prediction.time_horizon_turns < 1:
+                raise ValueError("Prediction time_horizon_turns must be at least 1.")
+            normalized[agent_id] = prediction.model_copy(
+                update={
+                    "turn": max(0, session.world.turn - 1),
+                    "timestamp": (
+                        session.historical_replay.last_revealed_event.timestamp
+                        if session.historical_replay.enabled and session.historical_replay.last_revealed_event is not None
+                        else prediction.timestamp
+                    ),
+                },
+                deep=True,
+            )
+        return normalized
+
+    def _score_prediction(self, *, prediction: Prediction, event: HistoricalEvent) -> PredictionAssessment:
+        topic_score = 1.0 if prediction.topic == event.topic else -0.4
+        actor_score = (
+            1.0
+            if prediction.predicted_actor and prediction.predicted_actor in event.actors
+            else (-0.2 if prediction.predicted_actor is None else -0.5)
+        )
+        target_score = (
+            1.0
+            if prediction.predicted_target and prediction.predicted_target in event.targets
+            else (-0.15 if prediction.predicted_target is None else -0.45)
+        )
+        timing_score = self._clamp_unit(1.0 - abs(prediction.time_horizon_turns - 1) * 0.6)
+        severity_match_distance = severity_distance(prediction.expected_severity, event.severity)
+        severity_alignment = {0: 1.0, 1: 0.35, 2: -0.2, 3: -0.5}.get(severity_match_distance, -0.5)
+
+        correctness = max(
+            0.0,
+            min(
+                1.0,
+                (
+                    0.38 * max(topic_score, 0.0)
+                    + 0.22 * max(actor_score, 0.0)
+                    + 0.16 * max(target_score, 0.0)
+                    + 0.12 * max(timing_score, 0.0)
+                    + 0.12 * max(severity_alignment, 0.0)
+                ),
+            ),
+        )
+        calibration = self._clamp_unit(1.0 - abs(prediction.confidence - correctness) * 2.0)
+
+        vague_penalty = 0.0
+        if prediction.predicted_actor is None and prediction.predicted_target is None:
+            vague_penalty -= 0.18
+        if len(prediction.summary.strip()) < 24:
+            vague_penalty -= 0.12
+
+        contradiction_penalty = 0.0
+        if topic_score < 0.0 and actor_score < 0.0 and prediction.confidence >= 0.55:
+            contradiction_penalty = -0.22
+
+        confident_false_penalty = 0.0
+        if correctness < 0.25 and prediction.confidence >= 0.7:
+            confident_false_penalty = -0.32
+
+        total = self._clamp_unit(
+            0.28 * topic_score
+            + 0.18 * actor_score
+            + 0.14 * target_score
+            + 0.12 * timing_score
+            + 0.16 * severity_alignment
+            + 0.12 * calibration
+            + vague_penalty
+            + contradiction_penalty
+            + confident_false_penalty
+        )
+
+        return PredictionAssessment(
+            prediction_id=prediction.prediction_id,
+            agent_id=prediction.agent_id,
+            turn=prediction.turn,
+            evaluated_event_id=event.event_id,
+            evaluated_event_summary=event.summary,
+            topic_score=round(topic_score, 3),
+            actor_score=round(actor_score, 3),
+            target_score=round(target_score, 3),
+            timing_score=round(timing_score, 3),
+            severity_score=round(severity_alignment, 3),
+            confidence_calibration=round(calibration, 3),
+            vague_penalty=round(vague_penalty, 3),
+            contradiction_penalty=round(contradiction_penalty, 3),
+            confident_false_penalty=round(confident_false_penalty, 3),
+            total=round(total, 3),
+        )
+
+    def _apply_forecast_rewards(
+        self,
+        rewards: dict[str, RewardBreakdown],
+        assessments: dict[str, PredictionAssessment],
+    ) -> None:
+        for agent_id, assessment in assessments.items():
+            reward = rewards.get(agent_id, RewardBreakdown())
+            reward.forecast_terms = {
+                "topic": assessment.topic_score,
+                "actor": assessment.actor_score,
+                "target": assessment.target_score,
+                "timing": assessment.timing_score,
+                "severity": assessment.severity_score,
+                "confidence_calibration": assessment.confidence_calibration,
+                "vague_penalty": assessment.vague_penalty,
+                "contradiction_penalty": assessment.contradiction_penalty,
+                "confident_false_penalty": assessment.confident_false_penalty,
+            }
+            reward.forecast_total = assessment.total
+            reward.total = round(
+                self._clamp_unit(reward.total + FORECAST_REWARD_BLEND * assessment.total),
+                3,
+            )
+            rewards[agent_id] = reward
 
     def _apply_scenario(self, world: WorldState, scenario: ScenarioDefinition) -> None:
         for field_name, value in scenario.world_overrides.items():
@@ -1986,6 +2301,7 @@ class FogOfWarDiplomacyEnv:
         *,
         include_live_sources: bool = False,
         belief_state: dict[str, AgentBeliefState] | None = None,
+        historical_replay: HistoricalReplayState | None = None,
     ) -> dict[str, AgentObservation]:
         observations: dict[str, AgentObservation] = {}
         public_events = [event for event in world.active_events if event.public][-MAX_PUBLIC_BRIEF_ITEMS:]
@@ -2077,6 +2393,7 @@ class FogOfWarDiplomacyEnv:
                 confidence_sum=float(training_projection["confidence_sum"]) + float(live_projection["confidence_sum"]),
             )
             asset_alerts = self._build_asset_alerts(projected_assets)
+            historical_brief = self._build_historical_brief(historical_replay)
             decision_prompt = self._build_decision_prompt(
                 agent_id=agent_id,
                 entity_profile=entity_profile,
@@ -2085,6 +2402,7 @@ class FogOfWarDiplomacyEnv:
                 live_enabled=include_live_sources,
                 projection=projection,
                 belief_state=beliefs,
+                historical_replay=historical_replay,
             )
 
             observations[agent_id] = AgentObservation(
@@ -2108,6 +2426,7 @@ class FogOfWarDiplomacyEnv:
                 source_packets=training_source_packets + live_source_packets,
                 training_source_packets=training_source_packets,
                 live_source_packets=live_source_packets,
+                historical_brief=historical_brief,
                 projection=projection,
             )
         return observations
@@ -2232,6 +2551,25 @@ class FogOfWarDiplomacyEnv:
             "confidence_sum": round(confidence_sum, 3),
             "contradiction_topics": sorted(contradiction_topics),
         }
+
+    def _build_historical_brief(self, historical_replay: HistoricalReplayState | None) -> list[str]:
+        if historical_replay is None or not historical_replay.enabled:
+            return []
+
+        visible_events = historical_replay.ground_truth_timeline[: historical_replay.current_event_index + 1]
+        lines = [
+            (
+                f"{event.timestamp.date().isoformat()} {event.topic}: "
+                f"{self._clip_summary(event.public_summary or event.summary, 110)}"
+            )
+            for event in visible_events[-3:]
+        ]
+        if visible_events:
+            lines.append(
+                "Visible replay history ends at "
+                f"{visible_events[-1].timestamp.isoformat()}. Predict the most likely next event over the next turn."
+            )
+        return lines
 
     @staticmethod
     def _clip_summary(summary: str, limit: int = MAX_INTEL_SUMMARY_CHARS) -> str:
@@ -2962,6 +3300,7 @@ class FogOfWarDiplomacyEnv:
         live_enabled: bool,
         projection: ObservationProjection,
         belief_state: AgentBeliefState,
+        historical_replay: HistoricalReplayState | None,
     ) -> str:
         profile = AGENT_PROFILES[agent_id]
         source_limit, asset_limit = ASSET_DECISION_SOURCE_LIMITS[profile.model_size]
@@ -3017,6 +3356,12 @@ class FogOfWarDiplomacyEnv:
         if belief_state.beliefs:
             prompt_sections.append(
                 "Belief memory:\n" + "\n".join(f"- {belief.summary}" for belief in belief_state.beliefs[:3])
+            )
+        if historical_replay is not None and historical_replay.enabled:
+            prompt_sections.append(
+                f"Historical replay mode is active for {historical_replay.replay_name}. "
+                "You only know the visible timeline shown in the historical brief. "
+                "Choose one action and forecast the next event without using future information."
             )
         prompt_sections.append(f"Allowed actions: {', '.join(AGENT_ALLOWED_ACTIONS.get(agent_id, ()))}.")
         prompt_sections.append("Data sources available to you:\n" + ("\n".join(source_lines) if source_lines else "- None configured."))

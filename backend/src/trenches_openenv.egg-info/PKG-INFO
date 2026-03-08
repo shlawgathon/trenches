@@ -12,6 +12,11 @@ Requires-Dist: pydantic<3.0.0,>=2.8.0
 Requires-Dist: uvicorn[standard]<1.0.0,>=0.30.0
 Provides-Extra: dev
 Requires-Dist: pytest<9.0.0,>=8.3.0; extra == "dev"
+Provides-Extra: train
+Requires-Dist: accelerate<2.0.0,>=1.0.0; extra == "train"
+Requires-Dist: datasets<4.0.0,>=3.0.0; extra == "train"
+Requires-Dist: transformers<5.0.0,>=4.55.0; extra == "train"
+Requires-Dist: trl<0.26.0,>=0.25.0; extra == "train"
 
 # Trenches Backend
 
@@ -21,6 +26,36 @@ It now exposes two layers:
 
 - the existing session-oriented FastAPI API used by the React dashboard
 - a native OpenEnv-compatible environment mounted under `/openenv` when `openenv-core` is installed
+
+The backend does not serve frontend assets and is intended to stay frontend-stack agnostic. Any web client
+(Next.js, Vite, Bun, mobile, or a thin dashboard proxy) should be able to consume the same HTTP contract.
+
+CORS is configurable so frontend migrations do not require backend code changes:
+
+- `TRENCHES_CORS_ALLOW_ORIGINS=https://app.example.com,https://ops.example.com`
+- `TRENCHES_CORS_ALLOW_ORIGIN_REGEX=https://.*\\.example\\.com`
+- `TRENCHES_CORS_ALLOW_CREDENTIALS=true|false`
+
+If no CORS env vars are set, the backend allows local development origins on `localhost` / `127.0.0.1` for any port.
+
+Entity-model provider bindings are also configurable per agent. The backend does not fake provider readiness:
+if a provider/model is not configured, the runtime reports `heuristic_fallback` explicitly in session state and
+`/capabilities`.
+
+Supported env patterns:
+
+- `TRENCHES_MODEL_PROVIDER=openai|anthropic|openrouter|ollama|vllm|custom`
+- `TRENCHES_MODEL_NAME=<provider model id>`
+- `TRENCHES_MODEL_BASE_URL=<custom base url>`
+- `TRENCHES_MODEL_API_KEY_ENV=<name of env var holding the secret>`
+- `TRENCHES_MODEL_SUPPORTS_TOOL_CALLS=true|false`
+- `TRENCHES_MODEL_SUPPORTS_STRUCTURED_OUTPUT=true|false`
+
+Per-entity overrides use the uppercase agent suffix, for example:
+
+- `TRENCHES_MODEL_PROVIDER_US=openai`
+- `TRENCHES_MODEL_NAME_US=gpt-4.1`
+- `TRENCHES_MODEL_API_KEY_ENV_US=OPENAI_API_KEY`
 
 Relevant OpenEnv pieces in this package:
 

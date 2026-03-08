@@ -1,8 +1,9 @@
 import pytest
 
-from trenches_env.models import AgentAction, ExternalSignal
+from trenches_env.models import AgentAction, ExternalSignal, Prediction
 from trenches_env.openenv_client import TrenchesEnvClient
 from trenches_env.openenv_adapter import (
+    OPENENV_CORE_AVAILABLE,
     OpenEnvAdapter,
     TrenchesOpenEnvAction,
     TrenchesOpenEnvEnvironment,
@@ -150,6 +151,53 @@ def test_openenv_autofills_missing_agents_with_shared_policy() -> None:
     runtime.close()
 
 
+def test_historical_replay_step_records_prediction_and_scores_forecast() -> None:
+    runtime = TrenchesOpenEnvEnvironment()
+    observation = runtime.reset(
+        seed=11,
+        training_agent="us",
+        training_stage="stage_1_dense",
+        max_turns=4,
+        replay_id="us_forecast_seed_2025_2026",
+        replay_start_index=0,
+    )
+
+    assert observation.historical_replay.enabled is True
+    assert observation.historical_replay.current_event_index == 0
+    assert observation.agent_observation.historical_brief
+
+    next_observation = runtime.step(
+        TrenchesOpenEnvAction(
+            action=AgentAction(
+                actor="us",
+                type="negotiate",
+                target="gulf",
+                summary="Reassure Gulf partners and reinforce shipping protection.",
+            ),
+            prediction=Prediction(
+                agent_id="us",
+                topic="shipping",
+                predicted_actor="us",
+                predicted_target="shipping_lanes",
+                time_horizon_turns=1,
+                expected_severity="medium",
+                confidence=0.74,
+                summary="The next visible event is likely a US maritime reassurance move.",
+                rationale="Washington is likely to answer shipping pressure with a visible assurance posture.",
+            ),
+        )
+    )
+
+    assert next_observation.revealed_event is not None
+    assert next_observation.revealed_event.event_id == "evt-2025-02-us-maritime-posture"
+    assert next_observation.reward_breakdown.forecast_total > 0.0
+    assert next_observation.prediction_assessments["us"].evaluated_event_id == "evt-2025-02-us-maritime-posture"
+    assert runtime.state.session is not None
+    assert runtime.state.session.prediction_log[-1].agent_id == "us"
+    assert runtime.state.session.prediction_assessments[-1].total > 0.0
+    runtime.close()
+
+
 def test_trenches_openenv_environment_rejects_unknown_training_agent() -> None:
     runtime = TrenchesOpenEnvEnvironment()
 
@@ -160,7 +208,10 @@ def test_trenches_openenv_environment_rejects_unknown_training_agent() -> None:
 def test_native_openenv_fastapi_app_can_be_created() -> None:
     app = create_openenv_fastapi_app()
 
-    assert app is not None
+    if OPENENV_CORE_AVAILABLE:
+        assert app is not None
+    else:
+        assert app is None
 
 
 def test_typed_openenv_client_class_is_declared() -> None:

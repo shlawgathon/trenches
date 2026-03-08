@@ -11,7 +11,11 @@ from trenches_env.models import (
     AgentAction,
     AgentObservation,
     ExternalSignal,
+    HistoricalEvent,
+    HistoricalReplayState,
     OversightIntervention,
+    Prediction,
+    PredictionAssessment,
     RewardBreakdown,
     SessionState,
     StepSessionRequest,
@@ -77,6 +81,8 @@ class TrenchesOpenEnvAction(OpenEnvActionBase):
 
     action: AgentAction | None = None
     actions: dict[str, AgentAction] = Field(default_factory=dict)
+    prediction: Prediction | None = None
+    predictions: dict[str, Prediction] = Field(default_factory=dict)
     external_signals: list[ExternalSignal] = Field(default_factory=list)
     autofill_missing_with_policy: bool = True
     autofill_missing_with_hold: bool = True
@@ -91,6 +97,9 @@ class TrenchesOpenEnvObservation(OpenEnvObservationBase):
     joint_observations: dict[str, AgentObservation] = Field(default_factory=dict)
     reward_breakdown: RewardBreakdown = Field(default_factory=RewardBreakdown)
     oversight: OversightIntervention = Field(default_factory=OversightIntervention)
+    historical_replay: HistoricalReplayState = Field(default_factory=HistoricalReplayState)
+    revealed_event: HistoricalEvent | None = None
+    prediction_assessments: dict[str, PredictionAssessment] = Field(default_factory=dict)
     done_reason: str | None = None
 
 
@@ -151,6 +160,8 @@ class TrenchesOpenEnvEnvironment(OpenEnvEnvironmentBase):
         training_stage: TrainingStage = DEFAULT_TRAINING_STAGE,
         max_turns: int | None = None,
         scenario_id: str | None = None,
+        replay_id: str | None = None,
+        replay_start_index: int | None = None,
         include_joint_observations: bool = False,
         **_: Any,
     ) -> TrenchesOpenEnvObservation:
@@ -160,9 +171,12 @@ class TrenchesOpenEnvEnvironment(OpenEnvEnvironmentBase):
         self._session = self._env.create_session(
             seed=seed,
             session_id=episode_id,
+            training_agent=self._training_agent,
             training_stage=training_stage,
             max_turns=max_turns,
             scenario_id=scenario_id,
+            replay_id=replay_id,
+            replay_start_index=replay_start_index,
         )
         return self._build_observation(self._session)
 
@@ -175,6 +189,7 @@ class TrenchesOpenEnvEnvironment(OpenEnvEnvironmentBase):
             self._session,
             StepSessionRequest(
                 actions=joint_actions,
+                predictions=self._resolve_joint_predictions(action),
                 external_signals=action.external_signals,
             ),
         )
@@ -192,6 +207,13 @@ class TrenchesOpenEnvEnvironment(OpenEnvEnvironmentBase):
             done_reason = "tension_threshold"
         elif session.world.turn >= session.episode.max_turns:
             done_reason = "max_turns"
+        elif (
+            session.historical_replay.enabled
+            and session.historical_replay.current_event_index >= len(session.historical_replay.ground_truth_timeline) - 1
+        ):
+            done_reason = "replay_complete"
+
+        recent_trace = session.recent_traces[-1] if session.recent_traces else None
 
         return TrenchesOpenEnvObservation(
             session_id=session.session_id,
@@ -204,6 +226,9 @@ class TrenchesOpenEnvEnvironment(OpenEnvEnvironmentBase):
             done=done_reason is not None,
             reward_breakdown=reward_breakdown,
             oversight=self._last_oversight,
+            historical_replay=session.historical_replay,
+            revealed_event=recent_trace.revealed_event if recent_trace is not None else session.historical_replay.last_revealed_event,
+            prediction_assessments=recent_trace.prediction_assessments if recent_trace is not None else {},
             done_reason=done_reason,
         )
 
@@ -233,6 +258,12 @@ class TrenchesOpenEnvEnvironment(OpenEnvEnvironmentBase):
                 )
 
         return joint_actions
+
+    def _resolve_joint_predictions(self, action: TrenchesOpenEnvAction) -> dict[str, Prediction]:
+        joint_predictions = dict(action.predictions)
+        if action.prediction is not None:
+            joint_predictions[action.prediction.agent_id] = action.prediction
+        return joint_predictions
 
     @staticmethod
     def _validate_training_agent(training_agent: str) -> str:
@@ -266,15 +297,21 @@ class OpenEnvAdapter:
     def reset(
         self,
         seed: int | None = None,
+        training_agent: str = "us",
         training_stage: TrainingStage = DEFAULT_TRAINING_STAGE,
         max_turns: int | None = None,
         scenario_id: str | None = None,
+        replay_id: str | None = None,
+        replay_start_index: int | None = None,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         session = self.session_manager.create_session(
             seed=seed,
+            training_agent=training_agent,
             training_stage=training_stage,
             max_turns=max_turns,
             scenario_id=scenario_id,
+            replay_id=replay_id,
+            replay_start_index=replay_start_index,
         )
         self._current_session_id = session.session_id
         return session.observations, self._build_info(session=session, oversight=OversightIntervention())
@@ -282,6 +319,7 @@ class OpenEnvAdapter:
     def step(
         self,
         actions: dict[str, Any],
+        predictions: dict[str, Prediction] | None = None,
         external_signals: list[ExternalSignal] | None = None,
     ) -> tuple[dict[str, Any], dict[str, Any], bool, bool, dict[str, Any]]:
         if self._current_session_id is None:
@@ -291,12 +329,16 @@ class OpenEnvAdapter:
             self._current_session_id,
             StepSessionRequest(
                 actions=actions,
+                predictions=predictions or {},
                 external_signals=external_signals or [],
             ),
         )
         session = result.session
         terminated = session.world.tension_level >= 95.0
-        truncated = session.world.turn >= session.episode.max_turns
+        truncated = session.world.turn >= session.episode.max_turns or (
+            session.historical_replay.enabled
+            and session.historical_replay.current_event_index >= len(session.historical_replay.ground_truth_timeline) - 1
+        )
         return (
             session.observations,
             session.rewards,
@@ -321,4 +363,6 @@ class OpenEnvAdapter:
             "episode": session.episode.model_dump(mode="json"),
             "oversight": oversight.model_dump(mode="json"),
             "live": session.live.model_dump(mode="json"),
+            "historical_replay": session.historical_replay.model_dump(mode="json"),
+            "prediction_assessments": [assessment.model_dump(mode="json") for assessment in session.prediction_assessments[-5:]],
         }

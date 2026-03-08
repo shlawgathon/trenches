@@ -7,3 +7,9 @@ uvicorn[standard]<1.0.0,>=0.30.0
 
 [dev]
 pytest<9.0.0,>=8.3.0
+
+[train]
+accelerate<2.0.0,>=1.0.0
+datasets<4.0.0,>=3.0.0
+transformers<5.0.0,>=4.55.0
+trl<0.26.0,>=0.25.0

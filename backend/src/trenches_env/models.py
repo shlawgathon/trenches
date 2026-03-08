@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any, Literal
+from uuid import uuid4
 
 from pydantic import BaseModel, Field
 from trenches_env.rl import ALGORITHM_HINTS, DEFAULT_MAX_TURNS, DEFAULT_TRAINING_STAGE
@@ -19,6 +20,7 @@ ActionType = Literal[
 ]
 
 TrainingStage = Literal["stage_1_dense", "stage_2_partial", "stage_3_sparse"]
+EventSeverity = Literal["low", "medium", "high", "critical"]
 SourcePacketStatus = Literal["pending", "ok", "error"]
 SourceMonitorStatus = Literal["healthy", "degraded", "blocked"]
 SourceMonitorIssueSeverity = Literal["warning", "error"]
@@ -127,12 +129,83 @@ class AgentAction(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class HistoricalEventImpact(BaseModel):
+    tension_delta: float = 0.0
+    market_stress_delta: float = 0.0
+    oil_pressure_delta: float = 0.0
+    actor_metric_deltas: dict[str, dict[str, float]] = Field(default_factory=dict)
+
+
+class HistoricalEvent(BaseModel):
+    event_id: str
+    timestamp: datetime
+    topic: str
+    region: str
+    actors: list[str] = Field(default_factory=list)
+    targets: list[str] = Field(default_factory=list)
+    severity: EventSeverity = "medium"
+    summary: str
+    source_type: str
+    confirmed: bool = True
+    tags: list[str] = Field(default_factory=list)
+    public_summary: str | None = None
+    impact: HistoricalEventImpact = Field(default_factory=HistoricalEventImpact)
+
+
+class Prediction(BaseModel):
+    prediction_id: str = Field(default_factory=lambda: str(uuid4()))
+    agent_id: str
+    turn: int = 0
+    timestamp: datetime = Field(default_factory=utc_now)
+    topic: str
+    predicted_actor: str | None = None
+    predicted_target: str | None = None
+    time_horizon_turns: int = 1
+    expected_severity: EventSeverity = "medium"
+    confidence: float = 0.5
+    summary: str
+    rationale: str = ""
+    target_event_id: str | None = None
+
+
+class PredictionAssessment(BaseModel):
+    prediction_id: str
+    agent_id: str
+    turn: int
+    evaluated_event_id: str
+    evaluated_event_summary: str
+    topic_score: float = 0.0
+    actor_score: float = 0.0
+    target_score: float = 0.0
+    timing_score: float = 0.0
+    severity_score: float = 0.0
+    confidence_calibration: float = 0.0
+    vague_penalty: float = 0.0
+    contradiction_penalty: float = 0.0
+    confident_false_penalty: float = 0.0
+    total: float = 0.0
+
+
+class HistoricalReplayState(BaseModel):
+    enabled: bool = False
+    replay_id: str = ""
+    replay_name: str = ""
+    training_agent: str = "us"
+    start_event_index: int = 0
+    current_event_index: int = 0
+    visible_event_ids: list[str] = Field(default_factory=list)
+    ground_truth_timeline: list[HistoricalEvent] = Field(default_factory=list)
+    last_revealed_event: HistoricalEvent | None = None
+
+
 class RewardBreakdown(BaseModel):
     coalition_stability: float = 0.0
     escalation_penalty: float = 0.0
     market_gain: float = 0.0
     behavioral_consistency: float = 0.0
     goal_terms: dict[str, float] = Field(default_factory=dict)
+    forecast_terms: dict[str, float] = Field(default_factory=dict)
+    forecast_total: float = 0.0
     total: float = 0.0
 
 
@@ -215,6 +288,7 @@ class AgentObservation(BaseModel):
     source_packets: list[SourcePacket] = Field(default_factory=list)
     training_source_packets: list[SourcePacket] = Field(default_factory=list)
     live_source_packets: list[SourcePacket] = Field(default_factory=list)
+    historical_brief: list[str] = Field(default_factory=list)
     projection: ObservationProjection = Field(default_factory=ObservationProjection)
 
 
@@ -262,6 +336,9 @@ class EpisodeMetadata(BaseModel):
     credit_assignment: str = "CTDE"
     live_mode_capable: bool = True
     live_mode_inference_only: bool = True
+    replay_mode: bool = False
+    replay_id: str | None = None
+    replay_event_count: int = 0
 
 
 class StepTrace(BaseModel):
@@ -269,6 +346,9 @@ class StepTrace(BaseModel):
     tension_before: float
     tension_after: float
     actions: dict[str, AgentAction] = Field(default_factory=dict)
+    predictions: dict[str, Prediction] = Field(default_factory=dict)
+    prediction_assessments: dict[str, PredictionAssessment] = Field(default_factory=dict)
+    revealed_event: HistoricalEvent | None = None
     rewards: dict[str, RewardBreakdown] = Field(default_factory=dict)
     oversight: OversightIntervention
     created_at: datetime = Field(default_factory=utc_now)
@@ -317,6 +397,9 @@ class SessionState(BaseModel):
     observations: dict[str, AgentObservation] = Field(default_factory=dict)
     belief_state: dict[str, AgentBeliefState] = Field(default_factory=dict)
     rewards: dict[str, RewardBreakdown] = Field(default_factory=dict)
+    historical_replay: HistoricalReplayState = Field(default_factory=HistoricalReplayState)
+    prediction_log: list[Prediction] = Field(default_factory=list)
+    prediction_assessments: list[PredictionAssessment] = Field(default_factory=list)
     model_bindings: dict[str, EntityModelBinding] = Field(default_factory=dict)
     episode: EpisodeMetadata = Field(default_factory=EpisodeMetadata)
     recent_traces: list[StepTrace] = Field(default_factory=list)
@@ -378,16 +461,22 @@ class SourceMonitorReport(BaseModel):
 
 class CreateSessionRequest(BaseModel):
     seed: int | None = None
+    training_agent: str = "us"
     training_stage: TrainingStage = DEFAULT_TRAINING_STAGE
     max_turns: int | None = None
     scenario_id: str | None = None
+    replay_id: str | None = None
+    replay_start_index: int | None = None
 
 
 class ResetSessionRequest(BaseModel):
     seed: int | None = None
+    training_agent: str = "us"
     training_stage: TrainingStage = DEFAULT_TRAINING_STAGE
     max_turns: int | None = None
     scenario_id: str | None = None
+    replay_id: str | None = None
+    replay_start_index: int | None = None
 
 
 class LiveControlRequest(BaseModel):
@@ -398,6 +487,7 @@ class LiveControlRequest(BaseModel):
 
 class StepSessionRequest(BaseModel):
     actions: dict[str, AgentAction] = Field(default_factory=dict)
+    predictions: dict[str, Prediction] = Field(default_factory=dict)
     external_signals: list[ExternalSignal] = Field(default_factory=list)
 
 
@@ -448,6 +538,8 @@ class ResetEnvRequest(BaseModel):
     training_stage: TrainingStage = DEFAULT_TRAINING_STAGE
     max_turns: int | None = None
     scenario_id: str | None = None
+    replay_id: str | None = None
+    replay_start_index: int | None = None
 
 
 class ResetEnvResponse(BaseModel):
@@ -457,6 +549,7 @@ class ResetEnvResponse(BaseModel):
 
 class StepEnvRequest(BaseModel):
     actions: dict[str, AgentAction] = Field(default_factory=dict)
+    predictions: dict[str, Prediction] = Field(default_factory=dict)
     external_signals: list[ExternalSignal] = Field(default_factory=list)
 
 

@@ -60,20 +60,20 @@ The current backend already has:
 - belief state
 - source projection
 - scenario and benchmark support
-- a minimal TRL/OpenEnv training example
+- a structured `Prediction` schema
+- prediction storage and scoring in session state
+- replay mode driven by historical event timestamps
+- a bundled seed replay dataset for a first `us` proof run
+- a replay-aware TRL/OpenEnv CLI training loop
 
 ## What Is Missing
 
 The backend does not yet have:
 
-- a historical replay dataset for 2025-2026
-- a `Prediction` schema
-- prediction storage per turn
-- replay mode driven by real timestamps
-- prediction-to-truth matching
-- forecast reward terms
 - a six-agent training runner
+- a larger curated truth dataset beyond the bundled seed replay
 - a proper evaluation report for prediction quality
+- baselines and train/eval split reporting
 
 ## Planned Implementation Order
 
@@ -196,7 +196,10 @@ After the first working replay-training loop:
 
 Current status:
 
-- planning only
-- not implemented yet
+- first working historical replay loop implemented for `us`
+- OpenEnv step accepts separate `action` and `prediction`
+- forecast reward is blended into entity reward on replay steps
+- TRL CLI training path is implemented and smoke-tested end to end
+- multi-entity scaling and evaluation still pending
 
 This file should be updated as the forecasting/replay training system is built.

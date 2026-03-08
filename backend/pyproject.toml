@@ -21,9 +21,16 @@ dependencies = [
 dev = [
   "pytest>=8.3.0,<9.0.0",
 ]
+train = [
+  "accelerate>=1.0.0,<2.0.0",
+  "datasets>=3.0.0,<4.0.0",
+  "transformers>=4.55.0,<5.0.0",
+  "trl>=0.25.0,<0.26.0",
+]
 
 [project.scripts]
 trenches-api = "trenches_env.server:run"
+trenches-train = "trenches_env.training_cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -32,7 +39,7 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-trenches_env = ["source_manifest.json"]
+trenches_env = ["source_manifest.json", "historical_replays/*.json"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

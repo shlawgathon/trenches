@@ -45,6 +45,38 @@ Relevant OpenEnv pieces in this package:
 - `trenches_env.openenv_adapter.TrenchesOpenEnvState`
 - `trenches_env.openenv_client.TrenchesEnvClient`
 
+Historical replay training pieces:
+
+- `trenches_env.models.Prediction`
+- `trenches_env.models.HistoricalEvent`
+- `trenches_env.models.HistoricalReplayState`
+- `trenches_env.training_cli`
+
+The backend now supports replay-aware forecast training:
+
+- `reset(..., replay_id=...)` starts from a visible historical context event
+- `step(...)` accepts separate `action` and `prediction`
+- the next ground-truth event is revealed on the same OpenEnv step
+- reward blends the entity action reward with forecast scoring terms
+
+Bundled bootstrap replay:
+
+- `us_forecast_seed_2025_2026`
+
+CLI training entrypoint:
+
+```bash
+trenches-train \
+  --training-agent us \
+  --replay-id us_forecast_seed_2025_2026 \
+  --generation-backend transformers
+```
+
+The CLI supports two rollout backends:
+
+- `transformers` for portable local smoke runs
+- `vllm` for the documented colocated OpenEnv + TRL path on a GPU box
+
 Planned responsibilities:
 
 - Hold in-memory crisis sessions.

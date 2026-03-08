@@ -1,0 +1,242 @@
+{
+  "replay_id": "us_forecast_seed_2025_2026",
+  "name": "US Forecast Seed Replay 2025-2026",
+  "description": "Bootstrap replay window for proving the OpenEnv historical forecast training loop before swapping in a larger curated truth set.",
+  "training_agent": "us",
+  "events": [
+    {
+      "event_id": "evt-2025-01-shipping-alert",
+      "timestamp": "2025-01-12T09:00:00Z",
+      "topic": "shipping",
+      "region": "gulf",
+      "actors": ["iran", "gulf"],
+      "targets": ["shipping_lanes"],
+      "severity": "medium",
+      "summary": "Commercial shipping insurers flag elevated Gulf transit risk after a cluster of harassment reports near Hormuz.",
+      "public_summary": "Commercial transit risk rises after harassment reports near Hormuz.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["shipping", "hormuz", "insurance"],
+      "impact": {
+        "tension_delta": 4.0,
+        "market_stress_delta": 5.0,
+        "oil_pressure_delta": 7.0,
+        "actor_metric_deltas": {
+          "us": {"shipping_security": -4.0, "regional_access": -1.5},
+          "gulf": {"shipping_continuity": -5.0, "investor_confidence": -3.0},
+          "iran": {"hormuz_leverage": 2.5}
+        }
+      }
+    },
+    {
+      "event_id": "evt-2025-02-us-maritime-posture",
+      "timestamp": "2025-02-03T14:00:00Z",
+      "topic": "shipping",
+      "region": "gulf",
+      "actors": ["us"],
+      "targets": ["shipping_lanes"],
+      "severity": "medium",
+      "summary": "The United States announces a reinforced maritime protection posture and deconfliction messaging with Gulf partners.",
+      "public_summary": "Washington reinforces maritime protection and deconfliction messaging with Gulf partners.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["us", "shipping", "gulf", "deconfliction"],
+      "impact": {
+        "tension_delta": -2.0,
+        "market_stress_delta": -3.0,
+        "oil_pressure_delta": -2.0,
+        "actor_metric_deltas": {
+          "us": {"shipping_security": 4.0, "regional_access": 2.0},
+          "gulf": {"shipping_continuity": 3.0, "diplomatic_flexibility": 2.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-2025-03-border-volley",
+      "timestamp": "2025-03-18T18:30:00Z",
+      "topic": "border",
+      "region": "levant",
+      "actors": ["hezbollah", "israel"],
+      "targets": ["northern_front"],
+      "severity": "high",
+      "summary": "A renewed cross-border volley drives a sharp rise in northern-front alerting and reserve strain.",
+      "public_summary": "Cross-border fire intensifies along the northern front.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["border", "rockets", "northern_front"],
+      "impact": {
+        "tension_delta": 8.0,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {
+          "israel": {"homeland_security": -5.5, "reserve_endurance": -3.5},
+          "hezbollah": {"resistance_credibility": 3.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-2025-04-us-sanctions-package",
+      "timestamp": "2025-04-22T12:00:00Z",
+      "topic": "domestic",
+      "region": "iran",
+      "actors": ["us"],
+      "targets": ["iran"],
+      "severity": "medium",
+      "summary": "Washington rolls out a coordinated sanctions package aimed at procurement and logistics channels linked to proxy sustainment.",
+      "public_summary": "A coordinated sanctions package targets proxy-linked procurement and logistics channels.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["sanctions", "iran", "logistics"],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 1.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {
+          "iran": {"regime_stability": -3.0, "proxy_corridor": -3.5},
+          "us": {"domestic_support": 1.5, "force_posture": 0.5}
+        }
+      }
+    },
+    {
+      "event_id": "evt-2025-06-backchannel-diplomacy",
+      "timestamp": "2025-06-09T10:00:00Z",
+      "topic": "diplomacy",
+      "region": "gulf",
+      "actors": ["us", "gulf", "iran"],
+      "targets": ["shipping_lanes"],
+      "severity": "low",
+      "summary": "Backchannel diplomacy produces a short-lived reduction in maritime rhetoric and a modest insurance reprieve.",
+      "public_summary": "Backchannel diplomacy produces a temporary reduction in maritime tension.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["diplomacy", "shipping", "backchannel"],
+      "impact": {
+        "tension_delta": -5.0,
+        "market_stress_delta": -4.0,
+        "oil_pressure_delta": -3.0,
+        "actor_metric_deltas": {
+          "us": {"regional_access": 2.0, "shipping_security": 1.5},
+          "gulf": {"diplomatic_flexibility": 3.5, "investor_confidence": 2.5},
+          "iran": {"hormuz_leverage": -1.5}
+        }
+      }
+    },
+    {
+      "event_id": "evt-2025-08-corridor-strike-chain",
+      "timestamp": "2025-08-17T03:00:00Z",
+      "topic": "corridor",
+      "region": "syria",
+      "actors": ["israel", "iran"],
+      "targets": ["proxy_corridor"],
+      "severity": "high",
+      "summary": "A strike chain against corridor logistics nodes creates fresh pressure on proxy sustainment and raises retaliation risk.",
+      "public_summary": "Logistics nodes in the corridor are hit, raising retaliation risk.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["corridor", "logistics", "retaliation"],
+      "impact": {
+        "tension_delta": 7.0,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 1.0,
+        "actor_metric_deltas": {
+          "iran": {"proxy_corridor": -4.5, "deterrence_credibility": -1.5},
+          "israel": {"northern_deterrence": 2.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-2025-10-hormuz-threat-cycle",
+      "timestamp": "2025-10-28T16:45:00Z",
+      "topic": "shipping",
+      "region": "gulf",
+      "actors": ["iran"],
+      "targets": ["shipping_lanes"],
+      "severity": "high",
+      "summary": "A renewed threat cycle around Hormuz pushes tanker risk premia higher and reopens coalition burden-sharing debates.",
+      "public_summary": "Renewed threat signaling around Hormuz pushes tanker risk premia higher.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["shipping", "hormuz", "tanker"],
+      "impact": {
+        "tension_delta": 6.0,
+        "market_stress_delta": 5.5,
+        "oil_pressure_delta": 8.0,
+        "actor_metric_deltas": {
+          "us": {"shipping_security": -4.0, "force_posture": -1.0},
+          "gulf": {"shipping_continuity": -5.5, "investor_confidence": -3.5},
+          "iran": {"hormuz_leverage": 3.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-2025-12-us-coalition-assurance",
+      "timestamp": "2025-12-11T11:20:00Z",
+      "topic": "diplomacy",
+      "region": "gulf",
+      "actors": ["us", "gulf"],
+      "targets": ["shipping_lanes"],
+      "severity": "medium",
+      "summary": "A coalition assurance package improves maritime confidence while stopping short of a maximal response.",
+      "public_summary": "A coalition assurance package stabilizes maritime confidence without a maximal response.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["coalition", "assurance", "shipping"],
+      "impact": {
+        "tension_delta": -3.0,
+        "market_stress_delta": -4.0,
+        "oil_pressure_delta": -2.5,
+        "actor_metric_deltas": {
+          "us": {"regional_access": 3.0, "shipping_security": 2.5},
+          "gulf": {"shipping_continuity": 3.0, "investor_confidence": 2.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-2026-01-cyber-disruption-wave",
+      "timestamp": "2026-01-19T08:15:00Z",
+      "topic": "cyber",
+      "region": "gulf",
+      "actors": ["iran"],
+      "targets": ["energy_networks"],
+      "severity": "medium",
+      "summary": "A cyber disruption wave hits Gulf-linked infrastructure operators and briefly dents investor confidence.",
+      "public_summary": "A cyber disruption wave hits Gulf-linked infrastructure operators.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["cyber", "infrastructure", "gulf"],
+      "impact": {
+        "tension_delta": 3.5,
+        "market_stress_delta": 4.0,
+        "oil_pressure_delta": 2.0,
+        "actor_metric_deltas": {
+          "gulf": {"infrastructure_security": -4.5, "investor_confidence": -3.0},
+          "oversight": {"trace_clarity": -2.0},
+          "iran": {"deterrence_credibility": 1.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-2026-02-us-oversight-review",
+      "timestamp": "2026-02-24T13:10:00Z",
+      "topic": "diplomacy",
+      "region": "us",
+      "actors": ["us", "oversight"],
+      "targets": ["coalition_process"],
+      "severity": "low",
+      "summary": "A formal review cycle tightens escalation controls and improves trace clarity across coalition decision support.",
+      "public_summary": "A formal review cycle tightens escalation controls and traceability.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["oversight", "trace", "escalation_controls"],
+      "impact": {
+        "tension_delta": -2.5,
+        "market_stress_delta": -1.0,
+        "oil_pressure_delta": -0.5,
+        "actor_metric_deltas": {
+          "oversight": {"runaway_risk": 3.0, "trace_clarity": 4.0},
+          "us": {"domestic_support": 1.0, "regional_access": 1.0}
+        }
+      }
+    }
+  ]
+}

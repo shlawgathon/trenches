@@ -60,16 +60,22 @@ class SessionManager:
     def create_session(
         self,
         seed: int | None = None,
+        training_agent: str = "us",
         training_stage: str = DEFAULT_TRAINING_STAGE,
         max_turns: int | None = None,
         scenario_id: str | None = None,
+        replay_id: str | None = None,
+        replay_start_index: int | None = None,
     ) -> SessionState:
         with self._lock:
             session = self.env.create_session(
                 seed=seed,
+                training_agent=training_agent,
                 training_stage=training_stage,
                 max_turns=max_turns,
                 scenario_id=scenario_id,
+                replay_id=replay_id,
+                replay_start_index=replay_start_index,
             )
             self._sessions[session.session_id] = session
             return session
@@ -78,18 +84,24 @@ class SessionManager:
         self,
         session_id: str,
         seed: int | None = None,
+        training_agent: str = "us",
         training_stage: str = DEFAULT_TRAINING_STAGE,
         max_turns: int | None = None,
         scenario_id: str | None = None,
+        replay_id: str | None = None,
+        replay_start_index: int | None = None,
     ) -> SessionState:
         with self._lock:
             self._require_session(session_id)
             session = self.env.reset_session(
                 session_id=session_id,
                 seed=seed,
+                training_agent=training_agent,
                 training_stage=training_stage,
                 max_turns=max_turns,
                 scenario_id=scenario_id,
+                replay_id=replay_id,
+                replay_start_index=replay_start_index,
             )
             self._sessions[session_id] = session
             return session
