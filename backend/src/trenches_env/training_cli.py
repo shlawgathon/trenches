@@ -219,13 +219,42 @@ def _resolve_model_device(model: Any) -> Any:
 
 
 def _can_use_vllm(torch_module: Any) -> bool:
-    if not hasattr(torch_module, "cuda") or not torch_module.cuda.is_available():
+    if not _cuda_available(torch_module):
         return False
     try:
         import vllm  # noqa: F401
     except ModuleNotFoundError:
         return False
     return True
+
+
+def _cuda_available(torch_module: Any) -> bool:
+    return bool(hasattr(torch_module, "cuda") and torch_module.cuda.is_available())
+
+
+def _mps_available(torch_module: Any) -> bool:
+    backends = getattr(torch_module, "backends", None)
+    mps = getattr(backends, "mps", None)
+    return bool(mps is not None and mps.is_available())
+
+
+def _resolve_optimizer(requested_optim: str, torch_module: Any) -> str:
+    if requested_optim != "auto":
+        return requested_optim
+    if _cuda_available(torch_module):
+        return "adamw_torch_fused"
+    return "adamw_torch"
+
+
+def _resolve_model_load_kwargs(torch_module: Any) -> dict[str, Any]:
+    if _cuda_available(torch_module):
+        return {
+            "torch_dtype": torch_module.bfloat16,
+            "device_map": {"": 0},
+        }
+    return {
+        "torch_dtype": torch_module.float32,
+    }
 
 
 def _generate_rollout_completions_transformers(
@@ -450,7 +479,7 @@ def main() -> None:
     parser.add_argument("--top-p", type=float, default=0.95, help="Top-p sampling")
     parser.add_argument(
         "--optim",
-        default="adamw_torch_fused",
+        default="auto",
         help="Optimizer passed through to GRPOConfig (for example adamw_bnb_8bit).",
     )
     parser.add_argument("--save-strategy", default="no", choices=["no", "steps", "epoch"], help="Checkpoint save strategy")
@@ -500,6 +529,7 @@ def main() -> None:
         generation_backend = "vllm" if generate_rollout_completions is not None and _can_use_vllm(torch) else "transformers"
     if generation_backend == "vllm" and generate_rollout_completions is None:
         raise RuntimeError("The selected vLLM backend requires `trl.experimental.openenv.generate_rollout_completions`.")
+    args.optim = _resolve_optimizer(args.optim, torch)
 
     _launch_backend(
         args.port,
@@ -513,6 +543,8 @@ def main() -> None:
     from transformers import AutoModelForCausalLM
     peft_config = None
     if args.quantize_4bit:
+        if not _cuda_available(torch):
+            raise RuntimeError("4-bit quantization requires a CUDA GPU.")
         from transformers import BitsAndBytesConfig
         try:
             from peft import LoraConfig, TaskType
@@ -547,16 +579,14 @@ def main() -> None:
             f"targets={args.lora_target_modules})"
         )
     else:
-        print(f"Loading {args.model_id} in bfloat16")
+        load_kwargs = _resolve_model_load_kwargs(torch)
+        runtime_device = "cuda" if _cuda_available(torch) else "mps" if _mps_available(torch) else "cpu"
+        print(f"Loading {args.model_id} for {runtime_device}")
         # IMPORTANT: Do NOT use device_map="auto" here. Accelerate's auto device
         # map wraps modules with dispatch hooks that break vLLM sleep mode's
         # buffer.data.copy_() during wake_up. Using device_map={"":0} places
         # everything on GPU 0 without dispatch hooks.
-        model_ref = AutoModelForCausalLM.from_pretrained(
-            args.model_id,
-            torch_dtype=torch.bfloat16,
-            device_map={"": 0},
-        )
+        model_ref = AutoModelForCausalLM.from_pretrained(args.model_id, **load_kwargs)
 
     # Auto-detect vLLM GPU memory utilization.
     # vLLM's init check requires: total_gpu * utilization <= free_memory_at_init.
@@ -713,7 +743,7 @@ def main() -> None:
         "save_steps": args.save_steps,
         "gradient_checkpointing": True,
     }
-    if not args.quantize_4bit:
+    if not args.quantize_4bit and _cuda_available(torch):
         training_kwargs["bf16"] = True
     if generation_backend == "vllm":
         training_kwargs["vllm_mode"] = args.vllm_mode

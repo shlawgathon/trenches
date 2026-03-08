@@ -33,6 +33,7 @@ DEFAULT_ENTITY_ORDER = ("us", "israel", "iran", "hezbollah", "gulf", "oversight"
 DEFAULT_REPLAY_SUFFIX = "_2025_events"
 DEFAULT_BACKEND_PORT = 8000
 DEFAULT_VLLM_SERVER_PORT = 8001
+MODAL_GPU_FALLBACKS = ["B200:2", "H200:2", "H100:2", "A100-80GB:2", "L40S:2"]
 
 
 def _discover_local_replays() -> dict[str, str]:
@@ -149,7 +150,7 @@ def _build_training_command(
         "--top-p",
         "0.95",
         "--optim",
-        "adamw_torch_fused",
+        "auto",
         "--max-prompt-length",
         str(max_prompt_length),
         "--max-completion-length",
@@ -279,7 +280,7 @@ def _run_training(
 
 @app.function(
     image=training_image,
-    gpu="H200:2",
+    gpu=MODAL_GPU_FALLBACKS,
     timeout=60 * 60 * 4,
     volumes={str(CHECKPOINTS_DIR): checkpoints_volume},
 )
@@ -301,7 +302,7 @@ def train(
 
 @app.function(
     image=training_image,
-    gpu="H200:2",
+    gpu=MODAL_GPU_FALLBACKS,
     timeout=60 * 60 * 2,
     volumes={str(CHECKPOINTS_DIR): checkpoints_volume},
 )
@@ -309,6 +310,7 @@ def smoke(entity: str = "us", replay_id: str | None = None) -> None:
     _run_training(
         entity=entity,
         replay_id=replay_id,
+        model_id=DEFAULT_MODEL_ID,
         max_steps=1,
         train_size=4,
         num_generations=2,
