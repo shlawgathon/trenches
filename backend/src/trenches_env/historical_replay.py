@@ -29,14 +29,24 @@ SEVERITY_ORDER: tuple[EventSeverity, ...] = ("low", "medium", "high", "critical"
 
 @lru_cache(maxsize=1)
 def _load_replays() -> dict[str, HistoricalReplayDefinition]:
-    replay_dir = files("trenches_env").joinpath("historical_replays")
+    # Scan both dirs: historical_replays/ (curated real data) and
+    # synthetic_historical_replays/ (synthetic seed data for smoke-testing).
+    replay_dirs = [
+        files("trenches_env").joinpath("historical_replays"),
+        files("trenches_env").joinpath("synthetic_historical_replays"),
+    ]
     replays: dict[str, HistoricalReplayDefinition] = {}
-    for child in replay_dir.iterdir():
-        if child.suffix != ".json":
+    for replay_dir in replay_dirs:
+        try:
+            children = list(replay_dir.iterdir())
+        except (FileNotFoundError, TypeError):
             continue
-        payload = json.loads(child.read_text(encoding="utf-8"))
-        replay = HistoricalReplayDefinition.model_validate(payload)
-        replays[replay.replay_id] = replay
+        for child in children:
+            if not str(child).endswith(".json"):
+                continue
+            payload = json.loads(child.read_text(encoding="utf-8"))
+            replay = HistoricalReplayDefinition.model_validate(payload)
+            replays[replay.replay_id] = replay
     return replays
 
 
