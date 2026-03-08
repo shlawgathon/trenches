@@ -648,7 +648,15 @@ def main() -> None:
 
             prompt_ids.append(list(rollout_output["prompt_ids"]))
             completion_ids.append(list(rollout_output["completion_ids"]))
-            logprobs.append([float(value) for value in rollout_output["logprobs"]])
+            raw_logprobs = rollout_output["logprobs"]
+            # vLLM server mode may return nested lists — flatten if needed
+            flat_logprobs = []
+            for lp in raw_logprobs:
+                if isinstance(lp, (list, tuple)):
+                    flat_logprobs.extend(float(v) for v in lp)
+                else:
+                    flat_logprobs.append(float(lp))
+            logprobs.append(flat_logprobs)
             step_reward = step_result.reward if step_result.reward is not None else 0.0
             step_obs = step_result.observation
             forecast_total = step_obs.reward_breakdown.forecast_total if step_obs.reward_breakdown is not None else 0.0
