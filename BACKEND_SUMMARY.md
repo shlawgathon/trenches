@@ -41,6 +41,23 @@ Current behavior:
 - if that fails or returns an invalid action, the backend falls back explicitly to heuristic policy
 - action metadata records whether the action came from `provider_inference` or `heuristic_fallback`
 
+Supported provider names now include:
+
+- `openai`
+- `anthropic`
+- `openrouter`
+- `huggingface`
+- `ollama`
+- `vllm`
+- `custom`
+
+Hugging Face notes:
+
+- `huggingface` uses the HF router chat-completions endpoint
+- if `api_key_env` is not set, the backend defaults to `HF_TOKEN`
+- if `TRENCHES_HF_ROUTING_POLICY` is set to `fastest`, `cheapest`, or `preferred`, the backend appends that routing suffix to HF model names that do not already include one
+- the recommended deployment pattern is to store `HF_TOKEN` as a secret, not in repo files
+
 ## Main Endpoints
 
 Server file:

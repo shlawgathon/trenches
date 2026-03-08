@@ -13,7 +13,7 @@ _OBSERVATION_TOOLS = [
     "inspect_sources",
     "emit_action",
 ]
-_KNOWN_PROVIDERS: set[str] = {"none", "openai", "anthropic", "openrouter", "ollama", "vllm", "custom"}
+_KNOWN_PROVIDERS: set[str] = {"none", "openai", "anthropic", "openrouter", "huggingface", "ollama", "vllm", "custom"}
 
 
 def _env_value(base_name: str, agent_id: str) -> str | None:
@@ -41,6 +41,8 @@ def build_entity_model_bindings() -> dict[str, EntityModelBinding]:
         model_name = (_env_value("TRENCHES_MODEL_NAME", agent_id) or "").strip()
         base_url = (_env_value("TRENCHES_MODEL_BASE_URL", agent_id) or "").strip() or None
         api_key_env = (_env_value("TRENCHES_MODEL_API_KEY_ENV", agent_id) or "").strip() or None
+        if provider == "huggingface" and api_key_env is None:
+            api_key_env = "HF_TOKEN"
         configured = provider != "none" and bool(model_name)
         supports_tool_calls = _parse_bool(_env_value("TRENCHES_MODEL_SUPPORTS_TOOL_CALLS", agent_id), default=configured)
         supports_structured_output = _parse_bool(
@@ -53,6 +55,8 @@ def build_entity_model_bindings() -> dict[str, EntityModelBinding]:
             notes.append("Provider binding is not configured; heuristic fallback remains active.")
         if configured and api_key_env is None and provider not in {"ollama", "vllm"}:
             notes.append("No API key environment variable declared for this provider binding.")
+        if configured and provider == "huggingface" and api_key_env == "HF_TOKEN":
+            notes.append("Hugging Face bindings default to HF_TOKEN unless overridden per entity.")
         if configured and not supports_tool_calls:
             notes.append("Provider is configured without tool-calling support; action selection must stay text-only.")
 

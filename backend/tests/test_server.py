@@ -82,9 +82,8 @@ def test_server_exposes_scenarios_and_benchmark_endpoints() -> None:
 
 
 def test_capabilities_expose_model_provider_bindings(monkeypatch) -> None:
-    monkeypatch.setenv("TRENCHES_MODEL_PROVIDER_US", "openai")
-    monkeypatch.setenv("TRENCHES_MODEL_NAME_US", "gpt-4.1")
-    monkeypatch.setenv("TRENCHES_MODEL_API_KEY_ENV_US", "OPENAI_API_KEY")
+    monkeypatch.setenv("TRENCHES_MODEL_PROVIDER_US", "huggingface")
+    monkeypatch.setenv("TRENCHES_MODEL_NAME_US", "openai/gpt-oss-120b")
     app = create_app(session_manager=build_manager())
     client = TestClient(app)
 
@@ -93,6 +92,8 @@ def test_capabilities_expose_model_provider_bindings(monkeypatch) -> None:
     capabilities = response.json()
     assert capabilities["model_bindings"]["us"]["configured"] is True
     assert capabilities["model_bindings"]["us"]["decision_mode"] == "provider_ready"
+    assert capabilities["model_bindings"]["us"]["provider"] == "huggingface"
+    assert capabilities["model_bindings"]["us"]["api_key_env"] == "HF_TOKEN"
     assert "negotiate" in capabilities["model_bindings"]["us"]["action_tools"]
 
 

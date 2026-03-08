@@ -18,14 +18,16 @@ from trenches_env.models import (
 )
 from trenches_env.rl import AGENT_ALLOWED_ACTIONS
 
-_OPENAI_COMPATIBLE_PROVIDERS = {"openai", "openrouter", "ollama", "vllm", "custom"}
+_OPENAI_COMPATIBLE_PROVIDERS = {"openai", "openrouter", "huggingface", "ollama", "vllm", "custom"}
 _DEFAULT_BASE_URLS = {
     "openai": "https://api.openai.com/v1",
     "openrouter": "https://openrouter.ai/api/v1",
+    "huggingface": "https://router.huggingface.co/v1",
     "ollama": "http://127.0.0.1:11434/v1",
     "vllm": "http://127.0.0.1:8000/v1",
 }
 _RETRYABLE_STATUS_CODES = {408, 409, 425, 429, 500, 502, 503, 504}
+_HF_ROUTING_POLICIES = {"fastest", "cheapest", "preferred"}
 
 
 class ProviderDecisionError(RuntimeError):
@@ -153,7 +155,7 @@ class ProviderDecisionRuntime:
             headers.setdefault("X-Title", "Trenches")
 
         body: dict[str, Any] = {
-            "model": binding.model_name,
+            "model": self._resolved_model_name(binding),
             "temperature": 0.1,
             "messages": self._messages(request),
         }
@@ -187,6 +189,15 @@ class ProviderDecisionRuntime:
         if not isinstance(content, str) or not content.strip():
             raise ProviderDecisionError("provider returned empty message content")
         return self._parse_json_payload(content)
+
+    @staticmethod
+    def _resolved_model_name(binding: EntityModelBinding) -> str:
+        if binding.provider != "huggingface":
+            return binding.model_name
+        policy = (os.getenv("TRENCHES_HF_ROUTING_POLICY") or "fastest").strip().lower()
+        if ":" in binding.model_name or policy not in _HF_ROUTING_POLICIES:
+            return binding.model_name
+        return f"{binding.model_name}:{policy}"
 
     def _request_anthropic(self, request: ProviderDecisionRequest) -> dict[str, Any]:
         binding = request.binding

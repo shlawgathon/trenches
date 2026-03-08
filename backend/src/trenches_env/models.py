@@ -24,7 +24,7 @@ SourceMonitorStatus = Literal["healthy", "degraded", "blocked"]
 SourceMonitorIssueSeverity = Literal["warning", "error"]
 AssetConditionStatus = Literal["operational", "degraded", "malfunctioning", "destroyed"]
 DecisionMode = Literal["heuristic_fallback", "provider_ready", "provider_inference"]
-ModelProviderName = Literal["none", "openai", "anthropic", "openrouter", "ollama", "vllm", "custom"]
+ModelProviderName = Literal["none", "openai", "anthropic", "openrouter", "huggingface", "ollama", "vllm", "custom"]
 
 
 def utc_now() -> datetime:

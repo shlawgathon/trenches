@@ -249,3 +249,69 @@ def test_provider_runtime_diagnostics_capture_terminal_failure(monkeypatch) -> N
     assert us_diagnostics.last_error is not None
     assert "provider returned HTTP 503" in us_diagnostics.last_error
     assert us_diagnostics.last_error_at is not None
+
+
+def test_huggingface_provider_uses_router_endpoint_and_hf_token(monkeypatch) -> None:
+    monkeypatch.setenv("TRENCHES_MODEL_PROVIDER_US", "huggingface")
+    monkeypatch.setenv("TRENCHES_MODEL_NAME_US", "openai/gpt-oss-120b")
+    monkeypatch.setenv("HF_TOKEN", "hf-test-token")
+    monkeypatch.delenv("TRENCHES_MODEL_API_KEY_ENV_US", raising=False)
+    monkeypatch.delenv("TRENCHES_HF_ROUTING_POLICY", raising=False)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.host == "router.huggingface.co"
+        assert request.url.path.endswith("/chat/completions")
+        assert request.headers["Authorization"] == "Bearer hf-test-token"
+        payload = json.loads(request.content.decode("utf-8"))
+        assert payload["model"] == "openai/gpt-oss-120b:fastest"
+        assert payload["tool_choice"]["function"]["name"] == "emit_action"
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "tool_calls": [
+                                {
+                                    "function": {
+                                        "name": "emit_action",
+                                        "arguments": json.dumps(
+                                            {
+                                                "type": "intel_query",
+                                                "summary": "Query more shipping-route intelligence before changing posture.",
+                                            }
+                                        ),
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+        )
+
+    runtime = ProviderDecisionRuntime(client=httpx.Client(transport=httpx.MockTransport(handler)))
+    env = FogOfWarDiplomacyEnv(
+        source_harvester=SourceHarvester(auto_start=False),
+        provider_runtime=runtime,
+    )
+    session = env.create_session(seed=7)
+
+    actions = env.resolve_policy_actions(
+        session,
+        [
+            ExternalSignal(
+                source="test-feed",
+                headline="Shipping risk rises near Hormuz.",
+                region="gulf",
+                tags=["shipping", "oil"],
+                severity=0.4,
+            )
+        ],
+        agent_ids=["us"],
+    )
+
+    assert session.model_bindings["us"].provider == "huggingface"
+    assert session.model_bindings["us"].api_key_env == "HF_TOKEN"
+    assert actions["us"].type == "intel_query"
+    assert actions["us"].metadata["provider"] == "huggingface"
