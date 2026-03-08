@@ -164,6 +164,7 @@ def test_historical_replay_step_records_prediction_and_scores_forecast() -> None
 
     assert observation.historical_replay.enabled is True
     assert observation.historical_replay.current_event_index == 0
+    assert observation.historical_replay.ground_truth_timeline == []
     assert observation.agent_observation.historical_brief
 
     next_observation = runtime.step(
@@ -190,9 +191,11 @@ def test_historical_replay_step_records_prediction_and_scores_forecast() -> None
 
     assert next_observation.revealed_event is not None
     assert next_observation.revealed_event.event_id == "evt-2025-02-us-maritime-posture"
+    assert next_observation.historical_replay.ground_truth_timeline == []
     assert next_observation.reward_breakdown.forecast_total > 0.0
     assert next_observation.prediction_assessments["us"].evaluated_event_id == "evt-2025-02-us-maritime-posture"
     assert runtime.state.session is not None
+    assert len(runtime.state.session.historical_replay.ground_truth_timeline) == 10
     assert runtime.state.session.prediction_log[-1].agent_id == "us"
     assert runtime.state.session.prediction_assessments[-1].total > 0.0
     runtime.close()

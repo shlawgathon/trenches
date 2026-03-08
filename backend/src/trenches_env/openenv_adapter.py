@@ -226,7 +226,7 @@ class TrenchesOpenEnvEnvironment(OpenEnvEnvironmentBase):
             done=done_reason is not None,
             reward_breakdown=reward_breakdown,
             oversight=self._last_oversight,
-            historical_replay=session.historical_replay,
+            historical_replay=self._public_historical_replay(session.historical_replay),
             revealed_event=recent_trace.revealed_event if recent_trace is not None else session.historical_replay.last_revealed_event,
             prediction_assessments=recent_trace.prediction_assessments if recent_trace is not None else {},
             done_reason=done_reason,
@@ -270,6 +270,17 @@ class TrenchesOpenEnvEnvironment(OpenEnvEnvironmentBase):
         if training_agent not in AGENT_IDS:
             raise ValueError(f"Unknown training_agent: {training_agent}")
         return training_agent
+
+    @staticmethod
+    def _public_historical_replay(historical_replay: HistoricalReplayState) -> HistoricalReplayState:
+        if not historical_replay.enabled:
+            return historical_replay.model_copy(deep=True)
+        return historical_replay.model_copy(
+            update={
+                "ground_truth_timeline": [],
+            },
+            deep=True,
+        )
 
 
 def create_openenv_fastapi_app(

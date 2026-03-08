@@ -298,6 +298,7 @@ def _preview_rollouts(
     replay_id: str,
     training_stage: str,
     samples: int,
+    max_prompt_length: int,
     max_completion_length: int,
 ) -> None:
     import torch
@@ -318,7 +319,16 @@ def _preview_rollouts(
             training_agent,
             observation,
         )
-        inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+        model_max_length = getattr(tokenizer, "model_max_length", None)
+        if not isinstance(model_max_length, int) or model_max_length <= 0 or model_max_length > 1_000_000:
+            model_max_length = max_prompt_length
+        preview_prompt_length = min(max_prompt_length, model_max_length)
+        inputs = tokenizer(
+            prompt,
+            return_tensors="pt",
+            truncation=True,
+            max_length=preview_prompt_length,
+        ).to(model.device)
         with torch.no_grad():
             output = model.generate(
                 **inputs,
@@ -530,6 +540,7 @@ def main() -> None:
             replay_id=args.replay_id,
             training_stage=args.training_stage,
             samples=args.preview_samples,
+            max_prompt_length=args.max_prompt_length,
             max_completion_length=args.max_completion_length,
         )
 

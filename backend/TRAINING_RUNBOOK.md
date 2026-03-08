@@ -219,6 +219,33 @@ What to expect:
 
 This exact path has already been smoke-tested in this repo.
 
+## Real Replay Smoke Run
+
+Once you have collected real replay data under `backend/src/trenches_env/historical_replays/`,
+you can run the same tiny smoke pass against a real replay id.
+
+Example:
+
+```bash
+backend/.venv/bin/python -m trenches_env.training_cli \
+  --model-id sshleifer/tiny-gpt2 \
+  --generation-backend transformers \
+  --training-agent us \
+  --training-stage stage_1_dense \
+  --replay-id us_2025_events \
+  --train-size 4 \
+  --max-steps 1 \
+  --num-generations 2 \
+  --max-prompt-length 512 \
+  --max-completion-length 48 \
+  --per-device-train-batch-size 1 \
+  --gradient-accumulation-steps 1 \
+  --output-dir backend/tmp-real-smoke-us \
+  --preview-samples 1
+```
+
+This repo has now been smoke-tested successfully on the real `us_2025_events` replay.
+
 ## Better Local Run
 
 Once the smoke test works, switch to a stronger public instruct model.
@@ -279,7 +306,10 @@ Notes:
 
 ## Running Another Entity Later
 
-The trainer already supports `--training-agent`, but only the bundled `us` replay is packaged right now.
+The trainer already supports `--training-agent`, and replay ids are loaded from both:
+
+- `backend/src/trenches_env/historical_replays/` for curated real data
+- `backend/src/trenches_env/synthetic_historical_replays/` for synthetic seed data
 
 The future pattern for the other five entities is:
 
@@ -292,11 +322,48 @@ Example shape:
 ```bash
 backend/.venv/bin/python -m trenches_env.training_cli \
   --training-agent israel \
-  --replay-id israel_synthetic_seed_2025_2026 \
+  --replay-id israel_2025_events \
   --output-dir backend/israel-run
 ```
 
-That command shape is correct, but the `israel` replay file does not exist yet.
+If you want the synthetic smoke path instead, switch the replay id back to
+`israel_synthetic_seed_2025_2026`.
+
+## Reusing Or Deploying A Saved Checkpoint
+
+Each completed run writes a standard Hugging Face checkpoint layout to `--output-dir`,
+including at minimum:
+
+- `config.json`
+- `model.safetensors`
+- `tokenizer.json`
+- `tokenizer_config.json`
+- `generation_config.json`
+
+Two verified reuse paths:
+
+1. Continue training from the saved directory by passing it back as `--model-id`
+2. Load it directly with `transformers.AutoModelForCausalLM.from_pretrained(...)`
+
+Example continue-training command:
+
+```bash
+backend/.venv/bin/python -m trenches_env.training_cli \
+  --model-id /Users/xiao/trenches/backend/tmp-real-smoke-us \
+  --generation-backend transformers \
+  --training-agent us \
+  --training-stage stage_1_dense \
+  --replay-id us_2025_events \
+  --train-size 2 \
+  --max-steps 1 \
+  --num-generations 2 \
+  --output-dir backend/tmp-real-smoke-us-reuse \
+  --no-preview
+```
+
+Because the output is a standard HF checkpoint, it is also compatible with normal
+deployment packaging flows such as `transformers` inference or a vLLM/Hugging Face-serving setup
+that accepts a local model directory.
 
 ## How To Verify The Environment Signal
 

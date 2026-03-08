@@ -51,7 +51,7 @@ flowchart TD
 
 | What                              | Where                                                    | Notes                                                                                                                                                                  |
 | --------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Base model (source)**           | HuggingFace Hub                                          | Downloaded at training start via `AutoTokenizer.from_pretrained(model_id)` + `GRPOTrainer(model=model_id)`                                                             |
+| **Base model (source)**           | HuggingFace Hub or a local checkpoint directory          | Loaded at training start via `AutoTokenizer.from_pretrained(model_id)` + `GRPOTrainer(model=model_id)`                                                                 |
 | **HF cache (downloaded weights)** | `~/.cache/huggingface/hub/`                              | Automatic HF cache, reused across runs                                                                                                                                 |
 | **Trained checkpoint (output)**   | `--output-dir` flag                                      | Default: `trl-openenv-historical-replay/`. Examples: `backend/tmp-training-run/`, `backend/us-qwen-replay-run/`, `backend/us-vllm-replay-run/`                         |
 | **Replay dataset**                | `backend/src/trenches_env/synthetic_historical_replays/` | Bundled JSON files (e.g. `us_synthetic_seed_2025_2026.json`). ⚠️ **All 6 replays are currently synthetic seed data** — replace with curated truth sets for production. |
@@ -106,6 +106,8 @@ python -m trenches_env.historical_collection_cli --training-agent us --window 20
 ```
 
 That collector writes replay JSON in the same schema as the bundled seed files plus raw article audit JSONL for review.
+
+Saved output directories are reusable as future `--model-id` inputs and can be served with standard Hugging Face-compatible deployment tooling.
 
 ## Data Sources During Post-Training
 
