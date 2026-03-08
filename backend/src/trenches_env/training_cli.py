@@ -534,31 +534,38 @@ def main() -> None:
 
     # Auto-detect vLLM GPU memory utilization.
     # After loading the policy model, measure free memory and estimate how much
-    # will remain after the reference model (≈ same size) is loaded by GRPOTrainer.
+    # will remain after the reference model is loaded by GRPOTrainer.
     # vLLM's init check requires: total_gpu * utilization <= free_memory_at_init.
+    #
+    # Real-world observation on A100-80GB with Qwen3-8B (bf16):
+    #   - Policy model uses ~15.7 GiB
+    #   - Ref model + CUDA overhead uses ~30.8 GiB (≈ 2× policy, due to
+    #     accelerate device_map, CUDA context, allocator caching, fragmentation)
+    #   - Free after both: ~32.8 / 79.3 GiB
+    # So we conservatively estimate ref + overhead ≈ 2× policy footprint.
     if generation_backend == "vllm" and torch.cuda.is_available():
         free_bytes, total_bytes = torch.cuda.mem_get_info(0)
         free_gib = free_bytes / (1024 ** 3)
         total_gib = total_bytes / (1024 ** 3)
         used_gib = total_gib - free_gib
-        # GRPOTrainer will clone ~1 more copy (reference model) before vLLM init
-        estimated_free_after_ref = free_gib - used_gib  # rough: ref ≈ policy size
-        estimated_free_after_ref = max(estimated_free_after_ref, free_gib * 0.5)  # floor
+        # Ref model + CUDA overhead typically uses ~2x the policy footprint
+        estimated_free_after_ref = max(free_gib - used_gib * 2, free_gib * 0.3)
 
         if args.vllm_gpu_memory_utilization <= 0:
-            # Auto-detect: use 90% of estimated post-ref free memory
-            auto_util = round((estimated_free_after_ref * 0.90) / total_gib, 2)
-            auto_util = max(0.15, min(auto_util, 0.90))
+            # Auto-detect: use 80% of estimated post-ref free memory for safety
+            auto_util = round((estimated_free_after_ref * 0.80) / total_gib, 2)
+            auto_util = max(0.15, min(auto_util, 0.80))
             args.vllm_gpu_memory_utilization = auto_util
             print(
                 f"Auto-detected vllm_gpu_memory_utilization={auto_util} "
                 f"(GPU: {total_gib:.1f} GiB total, {free_gib:.1f} GiB free after policy, "
-                f"~{estimated_free_after_ref:.1f} GiB estimated free after ref model)"
+                f"used_by_policy={used_gib:.1f} GiB, "
+                f"~{estimated_free_after_ref:.1f} GiB estimated free after ref+overhead)"
             )
         else:
-            max_safe = round(estimated_free_after_ref / total_gib, 2)
+            max_safe = round((estimated_free_after_ref * 0.80) / total_gib, 2)
             if args.vllm_gpu_memory_utilization > max_safe:
-                clamped = max(0.15, max_safe - 0.02)
+                clamped = max(0.15, max_safe)
                 print(
                     f"WARNING: vllm_gpu_memory_utilization={args.vllm_gpu_memory_utilization} "
                     f"exceeds estimated safe max {max_safe} — clamping to {clamped} "
