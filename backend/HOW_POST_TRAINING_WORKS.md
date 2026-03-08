@@ -107,15 +107,15 @@ total_reward:    +1.37  → fed back to GRPO
 
 ## Where Each Piece Comes From
 
-| Data              | Source File                 | What It Provides                                                          |
-| ----------------- | --------------------------- | ------------------------------------------------------------------------- |
-| Replay events     | `historical_replays/*.json` | 10 historical events (timestamp, topic, actors, severity, impact)         |
-| Intel briefings   | `source_manifest.json`      | Public + private brief items                                              |
-| Agent identity    | `agents.py`                 | Role, intel focus, private intel baseline                                 |
-| Reward config     | `rl.py`                     | Allowed actions, action alignment scores, state baselines, metric targets |
-| Environment logic | `env.py`                    | Builds observation, applies actions, scores predictions, computes rewards |
-| Training loop     | `training_cli.py`           | Connects model ↔ environment via GRPO rollouts                            |
-| OpenEnv boundary  | `openenv_adapter.py`        | reset/step interface between TRL and the simulator                        |
+| Data              | Source File                           | What It Provides                                                          |
+| ----------------- | ------------------------------------- | ------------------------------------------------------------------------- |
+| Replay events     | `synthetic_historical_replays/*.json` | 10 synthetic events (timestamp, topic, actors, severity, impact)          |
+| Intel briefings   | `source_manifest.json`                | Public + private brief items                                              |
+| Agent identity    | `agents.py`                           | Role, intel focus, private intel baseline                                 |
+| Reward config     | `rl.py`                               | Allowed actions, action alignment scores, state baselines, metric targets |
+| Environment logic | `env.py`                              | Builds observation, applies actions, scores predictions, computes rewards |
+| Training loop     | `training_cli.py`                     | Connects model ↔ environment via GRPO rollouts                            |
+| OpenEnv boundary  | `openenv_adapter.py`                  | reset/step interface between TRL and the simulator                        |
 
 ## Key Numbers
 

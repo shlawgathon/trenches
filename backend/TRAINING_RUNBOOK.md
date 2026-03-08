@@ -39,9 +39,9 @@ Implemented now:
 
 Not implemented yet:
 
-- all six replay datasets
 - evaluation/baseline reporting across all entities
 - UI training controls
+- production (non-synthetic) replay datasets
 
 ## Requirements
 
@@ -199,7 +199,7 @@ Example shape:
 ```bash
 backend/.venv/bin/python -m trenches_env.training_cli \
   --training-agent israel \
-  --replay-id israel_forecast_seed_2025_2026 \
+  --replay-id israel_synthetic_seed_2025_2026 \
   --output-dir backend/israel-run
 ```
 
@@ -231,7 +231,7 @@ Core training files:
 - `backend/src/trenches_env/env.py`
 - `backend/src/trenches_env/models.py`
 - `backend/src/trenches_env/historical_replay.py`
-- `backend/src/trenches_env/historical_replays/us_synthetic_seed_2025_2026.json`
+- `backend/src/trenches_env/synthetic_historical_replays/us_synthetic_seed_2025_2026.json`
 
 ## Troubleshooting
 

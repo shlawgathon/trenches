@@ -27,7 +27,7 @@ flowchart TD
 
     subgraph ENV["OpenEnv Environment Boundary"]
         L --> M["FogOfWarDiplomacyEnv<br/>env.py"]
-        M -->|"Load replay"| N["Historical Replay Data<br/>historical_replays/<br/>us_synthetic_seed_2025_2026.json"]
+        M -->|"Load replay"| N["Replay Data<br/>synthetic_historical_replays/<br/>us_synthetic_seed_2025_2026.json"]
         M -->|"Apply action in sim"| O["Advance World State"]
         M -->|"Reveal next event"| P["Compare prediction<br/>vs actual event"]
         P --> Q["Compute Blended Reward<br/>action_reward + forecast_reward"]
@@ -49,12 +49,12 @@ flowchart TD
 
 ## Model Storage Locations
 
-| What                              | Where                                          | Notes                                                                                                                                                                  |
-| --------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Base model (source)**           | HuggingFace Hub                                | Downloaded at training start via `AutoTokenizer.from_pretrained(model_id)` + `GRPOTrainer(model=model_id)`                                                             |
-| **HF cache (downloaded weights)** | `~/.cache/huggingface/hub/`                    | Automatic HF cache, reused across runs                                                                                                                                 |
-| **Trained checkpoint (output)**   | `--output-dir` flag                            | Default: `trl-openenv-historical-replay/`. Examples: `backend/tmp-training-run/`, `backend/us-qwen-replay-run/`, `backend/us-vllm-replay-run/`                         |
-| **Replay dataset**                | `backend/src/trenches_env/historical_replays/` | Bundled JSON files (e.g. `us_synthetic_seed_2025_2026.json`). ⚠️ **All 6 replays are currently synthetic seed data** — replace with curated truth sets for production. |
+| What                              | Where                                                    | Notes                                                                                                                                                                  |
+| --------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Base model (source)**           | HuggingFace Hub                                          | Downloaded at training start via `AutoTokenizer.from_pretrained(model_id)` + `GRPOTrainer(model=model_id)`                                                             |
+| **HF cache (downloaded weights)** | `~/.cache/huggingface/hub/`                              | Automatic HF cache, reused across runs                                                                                                                                 |
+| **Trained checkpoint (output)**   | `--output-dir` flag                                      | Default: `trl-openenv-historical-replay/`. Examples: `backend/tmp-training-run/`, `backend/us-qwen-replay-run/`, `backend/us-vllm-replay-run/`                         |
+| **Replay dataset**                | `backend/src/trenches_env/synthetic_historical_replays/` | Bundled JSON files (e.g. `us_synthetic_seed_2025_2026.json`). ⚠️ **All 6 replays are currently synthetic seed data** — replace with curated truth sets for production. |
 
 ## Per-Entity Model Pattern
 
@@ -106,7 +106,7 @@ All data is bundled in the repo. No external API calls during post-training.
 ```mermaid
 flowchart LR
     subgraph Bundled["All in backend/src/trenches_env/"]
-        REPLAY["historical_replays/*.json<br/>10 historical events per entity<br/>(timestamps, topics, actors, severity, impacts)"]
+        REPLAY["synthetic_historical_replays/*.json<br/>10 synthetic events per entity<br/>(timestamps, topics, actors, severity, impacts)"]
         MANIFEST["source_manifest.json<br/>63KB intel briefings<br/>(public + private)"]
         AGENTS["agents.py<br/>6 agent profiles<br/>(role, intel focus, private intel)"]
         RL["rl.py<br/>Reward configs, allowed actions,<br/>strategic state baselines"]
