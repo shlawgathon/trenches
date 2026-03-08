@@ -99,6 +99,33 @@ flowchart LR
 
 > ✅ = implemented · 🔲 = planned
 
+## Data Sources During Post-Training
+
+All data is bundled in the repo. No external API calls during post-training.
+
+```mermaid
+flowchart LR
+    subgraph Bundled["All in backend/src/trenches_env/"]
+        REPLAY["historical_replays/*.json<br/>10 historical events per entity<br/>(timestamps, topics, actors, severity, impacts)"]
+        MANIFEST["source_manifest.json<br/>63KB intel briefings<br/>(public + private)"]
+        AGENTS["agents.py<br/>6 agent profiles<br/>(role, intel focus, private intel)"]
+        RL["rl.py<br/>Reward configs, allowed actions,<br/>strategic state baselines"]
+    end
+
+    REPLAY -->|"Replay timeline"| ENV["env.py builds<br/>observation"]
+    MANIFEST -->|"Intel briefings"| ENV
+    AGENTS -->|"Agent identity"| ENV
+    RL -->|"Reward + actions"| ENV
+
+    ENV --> PROMPT["Model sees:<br/>• decision prompt<br/>• historical brief<br/>• public/private brief<br/>• strategic state<br/>• allowed actions"]
+
+    PROMPT --> MODEL["Model outputs JSON<br/>{action, prediction}"]
+    MODEL --> SCORE["env.py scores:<br/>action reward + forecast reward<br/>→ GRPO update"]
+
+    style Bundled fill:#0f3460,stroke:#533483,color:#fff
+    style SCORE fill:#e94560,stroke:#fff,color:#fff
+```
+
 ## Dual-Output Per Step
 
 Each training step requires the model to produce **two outputs**:
