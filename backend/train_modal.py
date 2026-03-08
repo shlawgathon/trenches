@@ -164,6 +164,7 @@ def _build_training_command(
         "0.95",
         "--optim",
         "auto",
+        "--quantize-4bit",
         "--max-prompt-length",
         str(max_prompt_length),
         "--max-completion-length",
