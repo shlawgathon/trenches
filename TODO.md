@@ -15,7 +15,7 @@
 
 ## UI / Frontend
 
-- [ ] **Event timeline with time control** — scrubber bar (like a video editor) for navigating, rewinding, and branching the simulation
+- [x] **Event timeline with time control** — scrubber bar (like a video editor) for navigating, rewinding, and branching the simulation
   - **Scrubber bar** at the bottom: drag to jump to any turn/timestamp, play/pause, rewind, fast-forward
   - Two event types on the timeline: **predictions** (agent forecasts) and **actuals** (confirmed real events)
   - Predictions that matched actual outcomes are visually linked; incorrect ones shown faded
@@ -25,6 +25,9 @@
   - Filterable by agent, event type, and time range
   - Feeds into the reward system — correct predictions on the timeline = positive RL signal
 
+- [x] **Theater map with pulse nodes** — geographic canvas with per-agent activity pulse intensity and click-through context/action history.
+- [x] **Inter-agent tension matrix** — N×N heatmap from cool blue to red for bilateral hostility at a glance.
+- [x] **Simulation version tree (git-style)** — branch/fork views for what-if exploration with rewind-to-turn controls.
 - [x] Merge tension/stats pills into top bar
 - [x] Disable text selection on floating panels
 - [x] Remove Mapbox logo

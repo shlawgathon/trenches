@@ -48,5 +48,5 @@ export function getMapboxToken(): string {
   if (typeof clientToken === "string") {
     return clientToken;
   }
-  return process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
+  return process.env.NEXT_PUBLIC_MAPBOX_TOKEN || process.env.NEXT_PUBLIC_MAP_KEY || process.env.MAP_KEY || "";
 }
