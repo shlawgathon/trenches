@@ -1,4 +1,6 @@
-"""Trenches GRPO training on Modal with vLLM server mode.
+"""Trenches GRPO training on Modal with vLLM colocate mode.
+
+Uses a single H200 (141GB VRAM) per entity — enough for policy + ref + vLLM + optimizer.
 
 Usage:
     # Smoke test (single entity, 1 step):
@@ -16,7 +18,6 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 import modal
@@ -32,6 +33,7 @@ GIT_REF = "main"
 training_image = (
     modal.Image.debian_slim(python_version="3.12")
     .apt_install("git")
+    .env({"IMAGE_VERSION": "3"})  # bump to force rebuild when main changes
     .run_commands(
         f"git clone --depth 1 --branch {GIT_REF} --single-branch {GIT_REPO_URL} /opt/trenches",
         "uv pip install --system -e '/opt/trenches/backend[train]'",
@@ -67,24 +69,6 @@ ENTITIES = [
 ]
 
 
-def _wait_for_vllm_server(host: str = "localhost", port: int = 8000, timeout: int = 300) -> None:
-    """Block until the vLLM server is healthy."""
-    import urllib.request
-    import urllib.error
-
-    deadline = time.time() + timeout
-    url = f"http://{host}:{port}/health/"
-    while time.time() < deadline:
-        try:
-            req = urllib.request.urlopen(url, timeout=2)
-            if req.status == 200:
-                print(f"vLLM server healthy at {url}")
-                return
-        except (urllib.error.URLError, ConnectionError, OSError):
-            time.sleep(2)
-    raise RuntimeError(f"vLLM server did not start within {timeout}s")
-
-
 def _run_training(
     entity: str,
     replay_id: str,
@@ -95,35 +79,22 @@ def _run_training(
     max_prompt_length: int = 1536,
     max_completion_length: int = 256,
 ) -> None:
-    """Launch vLLM server on GPU 0, training on GPU 1."""
-    vllm_port = 8001  # Avoid conflict with training_cli healthcheck on 8000
+    """Run GRPO training with vLLM colocate mode on a single GPU."""
     output_dir = CHECKPOINTS_DIR / f"{entity}-qwen3-8b"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # ---- Start vLLM server on GPU 0 ----
-    vllm_env = os.environ.copy()
-    vllm_env["CUDA_VISIBLE_DEVICES"] = "0"
-    print(f"Starting vLLM server for {model_id} on GPU 0 (port {vllm_port})")
-    vllm_proc = subprocess.Popen(
-        ["trl", "vllm-serve", "--model", model_id, "--port", str(vllm_port)],
-        env=vllm_env,
-        stdout=sys.stdout,
-        stderr=sys.stderr,
-    )
-
-    _wait_for_vllm_server(port=vllm_port)
-
-    # ---- Run training on GPU 1 ----
-    train_env = os.environ.copy()
-    train_env["CUDA_VISIBLE_DEVICES"] = "1"
-    train_env["TRENCHES_DISABLE_RSS"] = "1"
+    # Required env vars for single-process colocate mode
+    os.environ["RANK"] = "0"
+    os.environ["LOCAL_RANK"] = "0"
+    os.environ["WORLD_SIZE"] = "1"
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "12355"
+    os.environ["TRENCHES_DISABLE_RSS"] = "1"
 
     train_cmd = [
         sys.executable, "-m", "trenches_env.training_cli",
         "--model-id", model_id,
         "--generation-backend", "vllm",
-        "--vllm-mode", "server",
-        "--vllm-server-port", str(vllm_port),
         "--training-agent", entity,
         "--training-stage", "stage_1_dense",
         "--replay-id", replay_id,
@@ -147,18 +118,13 @@ def _run_training(
         "--preview-samples", "3",
     ]
 
-    print(f"Starting training for {entity} on GPU 1")
+    print(f"Starting GRPO training for {entity} (colocate mode, single GPU)")
     result = subprocess.run(
         train_cmd,
-        env=train_env,
         cwd="/opt/trenches",
         stdout=sys.stdout,
         stderr=sys.stderr,
     )
-
-    # Clean up vLLM server
-    vllm_proc.terminate()
-    vllm_proc.wait(timeout=10)
 
     if result.returncode != 0:
         raise RuntimeError(f"Training failed for {entity} with exit code {result.returncode}")
@@ -172,7 +138,7 @@ def _run_training(
 # ---------------------------------------------------------------------------
 @app.function(
     image=training_image,
-    gpu="A100-80GB:2",
+    gpu="H200",
     timeout=60 * 60 * 4,  # 4 hours max
     volumes={str(CHECKPOINTS_DIR): checkpoints_volume},
 )
@@ -183,7 +149,7 @@ def train(
     train_size: int = 256,
     num_generations: int = 16,
 ) -> None:
-    """Train a single entity with vLLM server mode (2 GPUs)."""
+    """Train a single entity with vLLM colocate mode on H200 (141GB)."""
     _run_training(
         entity=entity,
         replay_id=replay_id,
@@ -195,7 +161,7 @@ def train(
 
 @app.function(
     image=training_image,
-    gpu="A100-80GB:2",
+    gpu="H200",
     timeout=60 * 60 * 4,
     volumes={str(CHECKPOINTS_DIR): checkpoints_volume},
 )

@@ -697,6 +697,7 @@ def main() -> None:
         "optim": args.optim,
         "save_strategy": args.save_strategy,
         "save_steps": args.save_steps,
+        "gradient_checkpointing": True,
     }
     if not args.quantize_4bit:
         training_kwargs["bf16"] = True
