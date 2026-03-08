@@ -781,35 +781,11 @@ class FogOfWarDiplomacyEnv:
             if provider_action is not None:
                 actions[agent_id] = provider_action
                 continue
-            signal_context, top_headline = self._build_signal_context(agent_id, signals)
-            allowed_actions = AGENT_ALLOWED_ACTIONS.get(agent_id, ())
-            action_type = max(
-                allowed_actions,
-                key=lambda candidate: self._score_live_action(
-                    agent_id=agent_id,
-                    action_type=candidate,
-                    session=session,
-                    signal_context=signal_context,
-                ),
-            )
-            target = self._select_live_action_target(agent_id, action_type, session, signal_context)
-            driver = self._event_driver_label(signal_context)
-            metadata: dict[str, object] = {
-                "mode": "heuristic_fallback",
-                "driver": driver,
-                "signal_count": int(signal_context["relevant_count"]),
-            }
-            if provider_error is not None:
-                metadata["provider_error"] = provider_error
-            if top_headline:
-                metadata["trigger_headline"] = top_headline
-            actions[agent_id] = AgentAction(
-                actor=agent_id,
-                type=action_type,
-                target=target,
-                summary=self._build_auto_action_summary(agent_id, action_type, target, driver),
-                metadata=metadata,
-            )
+            # No real provider available — skip this agent (no heuristic fallback)
+            if provider_error:
+                logger.info("Agent %s skipped: provider error — %s", agent_id, provider_error)
+            else:
+                logger.debug("Agent %s skipped: no provider configured", agent_id)
         return actions
 
     def _resolve_provider_action(

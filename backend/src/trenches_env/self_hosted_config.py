@@ -11,32 +11,32 @@ SELF_HOSTED_BINDINGS: dict[AgentId, dict[str, str]] = {
     "us": {
         "provider": "vllm",
         "model_name": "AlazarM/trenches-us-qwen3-8b-real",
-        "base_url": _vllm_base_url("https://random-elephant-ranch-beverage.trycloudflare.com"),
+        "base_url": _vllm_base_url("https://trendsweep--trenches-us.modal.run"),
     },
     "israel": {
         "provider": "vllm",
         "model_name": "AlazarM/trenches-israel-qwen3-8b-real",
-        "base_url": _vllm_base_url("https://cdna-dancing-discussion-claimed.trycloudflare.com"),
+        "base_url": _vllm_base_url("https://trendsweep--trenches-israel.modal.run"),
     },
     "iran": {
         "provider": "vllm",
         "model_name": "AlazarM/trenches-iran-qwen3-8b-real",
-        "base_url": _vllm_base_url("https://months-flash-functional-overhead.trycloudflare.com"),
+        "base_url": _vllm_base_url("https://trendsweep--trenches-iran.modal.run"),
     },
     "hezbollah": {
         "provider": "vllm",
         "model_name": "AlazarM/trenches-hezbollah-qwen3-8b-real",
-        "base_url": _vllm_base_url("https://fool-conducted-occurs-occurring.trycloudflare.com"),
+        "base_url": _vllm_base_url("https://trendsweep--trenches-hezbollah.modal.run"),
     },
     "gulf": {
         "provider": "vllm",
         "model_name": "AlazarM/trenches-gulf-qwen3-8b-real",
-        "base_url": _vllm_base_url("https://responsibility-cowboy-collar-does.trycloudflare.com"),
+        "base_url": _vllm_base_url("https://trendsweep--trenches-gulf.modal.run"),
     },
     "oversight": {
         "provider": "vllm",
         "model_name": "AlazarM/trenches-oversight-qwen3-8b-real",
-        "base_url": _vllm_base_url("https://upc-postcards-earnings-suppose.trycloudflare.com"),
+        "base_url": _vllm_base_url("https://trendsweep--trenches-oversight.modal.run"),
     },
 }
 

@@ -420,10 +420,15 @@ export default function GlobePage() {
     };
   }, []);
 
-  /* ── Step loop: advance simulation when following, buffer when rewound ── */
+  /* ── Step loop: advance only when following AND real providers exist ── */
   useEffect(() => {
     if (!session) return;
     const sessionId = session.session_id;
+
+    // Check if any agent has a real provider (not pure heuristic fallback)
+    const hasRealProviders = Object.values(session.model_bindings ?? {}).some(
+      (b) => b.decision_mode !== "heuristic_fallback"
+    );
 
     let stopped = false;
     let busy = false;
@@ -438,8 +443,8 @@ export default function GlobePage() {
 
         const isFollowing = timelineTurnRef.current >= (session.world.turn ?? 0);
 
-        if (isFollowing) {
-          // Step the simulation forward
+        if (isFollowing && hasRealProviders) {
+          // Step the simulation forward (real providers available)
           const result = await rt.sessionClient.stepSession(sessionId, {
             actions: {},
             external_signals: [],
@@ -447,13 +452,14 @@ export default function GlobePage() {
           if (!stopped) {
             applySessionSnapshot(result.session);
           }
-        } else {
+        } else if (!isFollowing) {
           // User is rewound — just poll current state, don't advance
           const latest = await rt.sessionClient.getSession(sessionId);
           if (!stopped) {
             pendingSessionRef.current = latest;
           }
         }
+        // else: following but no real providers → do nothing (idle)
       } catch (err) {
         console.warn("[Step loop error]", err);
       } finally {
