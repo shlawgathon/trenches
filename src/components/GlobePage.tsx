@@ -14,6 +14,12 @@ import type { AgentAction, SessionState } from "@/src/lib/types";
 import { bootstrapPlatform } from "@/src/app/bootstrap";
 import { deriveTimelineEvents } from "@/src/lib/timeline-types";
 import { getMapboxToken } from "@/src/lib/env";
+import usAssets from "../../entities/us/assets.json";
+import israelAssets from "../../entities/israel/assets.json";
+import iranAssets from "../../entities/iran/assets.json";
+import hezbollahAssets from "../../entities/hezbollah/assets.json";
+import gulfAssets from "../../entities/gulf/assets.json";
+import oversightAssets from "../../entities/oversight/assets.json";
 
 const MAP_STYLE = "mapbox://styles/mapbox/dark-v11";
 const DEFAULT_CENTER: [number, number] = [41.8, 27.8];
@@ -53,10 +59,76 @@ const ACTION_HEAT: Record<AgentAction["type"], number> = {
   oversight_review: 6,
 };
 
+type AssetRecord = Record<string, unknown>;
+
+const ENTITY_ASSET_PACKS = {
+  us: usAssets,
+  israel: israelAssets,
+  iran: iranAssets,
+  hezbollah: hezbollahAssets,
+  gulf: gulfAssets,
+  oversight: oversightAssets,
+} as const;
+
+const ASSET_LAYERS = [
+  "locations",
+  "fronts",
+  "infrastructure",
+  "strategic_sites",
+  "alliance_anchors",
+  "chokepoints",
+  "geospatial_anchors",
+] as const;
+
+const HARD_CODED_ENTITY_ASSETS = Object.entries(ENTITY_ASSET_PACKS).flatMap(([entityId, pack]) => {
+  const locationLookup = new Map<string, [number, number]>();
+  for (const record of (pack.locations ?? []) as AssetRecord[]) {
+    const name = typeof record.name === "string" ? record.name : undefined;
+    const lat = typeof record.lat === "number" ? record.lat : undefined;
+    const lon = typeof record.lon === "number" ? record.lon : undefined;
+    if (name && lat !== undefined && lon !== undefined) {
+      locationLookup.set(name, [lon, lat]);
+    }
+  }
+
+  return ASSET_LAYERS.flatMap((layer) => {
+    const rawRecords = (pack as unknown as Record<string, unknown>)[layer];
+    const records = Array.isArray(rawRecords) ? (rawRecords.filter((item): item is AssetRecord => typeof item === "object" && item !== null)) : [];
+    return records
+      .map((record, index) => {
+        const lat = typeof record.lat === "number" ? record.lat : undefined;
+        const lon = typeof record.lon === "number" ? record.lon : undefined;
+        const anchorLat = typeof record.anchor_lat === "number" ? record.anchor_lat : undefined;
+        const anchorLon = typeof record.anchor_lon === "number" ? record.anchor_lon : undefined;
+        const linkedLocation = typeof record.location === "string" ? locationLookup.get(record.location) : undefined;
+        const lngLat =
+          lat !== undefined && lon !== undefined
+            ? [lon, lat]
+            : anchorLat !== undefined && anchorLon !== undefined
+              ? [anchorLon, anchorLat]
+              : linkedLocation;
+
+        if (!lngLat) {
+          return null;
+        }
+
+        const label = typeof record.name === "string" ? record.name : `${entityId} ${layer} ${index + 1}`;
+        return {
+          id: `${entityId}-${layer}-${index}`,
+          entityId,
+          label,
+          lngLat: lngLat as [number, number],
+        };
+      })
+      .filter(Boolean) as Array<{ id: string; entityId: string; label: string; lngLat: [number, number] }>;
+  });
+});
+
 export default function GlobePage() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const nodeMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const assetMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const [session, setSession] = useState<SessionState | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
   const [panelsCollapsed, setPanelsCollapsed] = useState(false);
@@ -298,6 +370,39 @@ export default function GlobePage() {
       nodeMarkersRef.current.push(marker);
     }
   }, [intensityByAgent, selectedAgent]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    assetMarkersRef.current.forEach((marker) => marker.remove());
+    assetMarkersRef.current = [];
+
+    for (const asset of HARD_CODED_ENTITY_ASSETS) {
+      const entityMeta = AGENT_MAP_NODES[asset.entityId];
+      if (!entityMeta) continue;
+
+      const markerEl = document.createElement("div");
+      markerEl.style.width = "6px";
+      markerEl.style.height = "6px";
+      markerEl.style.borderRadius = "999px";
+      markerEl.style.background = entityMeta.color;
+      markerEl.style.boxShadow = `0 0 5px ${entityMeta.color}`;
+      markerEl.style.border = `1px solid ${entityMeta.secondaryColor}`;
+      markerEl.title = `${entityMeta.flag} ${entityMeta.label}: ${asset.label}`;
+
+      const marker = new mapboxgl.Marker({ element: markerEl, anchor: "center" })
+        .setLngLat(asset.lngLat)
+        .addTo(map);
+
+      assetMarkersRef.current.push(marker);
+    }
+
+    return () => {
+      assetMarkersRef.current.forEach((marker) => marker.remove());
+      assetMarkersRef.current = [];
+    };
+  }, []);
 
   useEffect(() => {
     if (!session) return;
