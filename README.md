@@ -31,6 +31,8 @@ Trenches drops six LLM-powered actors into a volatile 2026 Middle East crisis. E
 - **Fog of War** — agents see only their role-filtered intel, never the full world state
 - **Live News Injection** — real-time RSS/OSINT feeds drive stochastic in-sim events
 - **Scalable Oversight** — Bayesian risk scoring triggers interventions before runaway escalation
+- **Oversight Predictions** — oversight agent predicts what the highest-risk nation will do next turn, shown as red dots in the timeline PRED lane
+- **Globe Interaction Arcs** — great-circle arc lines between nations on the Mapbox globe, color-coded by action type (🔴 strike, 🟠 intel, 🔵 defend, 🟢 negotiate, 🟡 sanction), with hover tooltips showing actor → target and action details
 - **Tool Use** — agents call `query_intel`, `propose_negotiation`, `impose_sanctions`, etc.
 - **Multi-component Rewards** — coalition stability, escalation penalty, market impact, belief alignment
 

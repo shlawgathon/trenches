@@ -158,6 +158,32 @@ body {
   display: none !important;
 }
 
+/* Arc interaction tooltip */
+.arc-tooltip-popup .mapboxgl-popup-content {
+  background: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+.arc-tooltip-popup .mapboxgl-popup-tip {
+  display: none !important;
+}
+
+/* Asset name popup */
+.asset-name-popup .mapboxgl-popup-content {
+  background: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+.asset-name-popup .mapboxgl-popup-tip {
+  display: none !important;
+}
+
+/* All map popups render above every UI panel */
+.mapboxgl-popup {
+  z-index: 9999 !important;
+}
+
 /* Transparent scrollbar backgrounds everywhere */
 *::-webkit-scrollbar {
   width: 4px !important;
