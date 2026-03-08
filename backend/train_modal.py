@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -219,6 +220,7 @@ def _start_vllm_server(*, model_id: str) -> subprocess.Popen[str]:
         stdout=sys.stdout,
         stderr=sys.stderr,
         text=True,
+        start_new_session=True,
     )
     try:
         _wait_for_vllm_server(DEFAULT_VLLM_SERVER_PORT)
@@ -230,6 +232,28 @@ def _start_vllm_server(*, model_id: str) -> subprocess.Popen[str]:
             process.kill()
         raise
     return process
+
+
+def _stop_vllm_server(process: subprocess.Popen[str]) -> None:
+    if process.poll() is not None:
+        return
+
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+
+    try:
+        process.wait(timeout=45)
+        return
+    except subprocess.TimeoutExpired:
+        pass
+
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        return
+    process.wait(timeout=30)
 
 
 def _run_training(
@@ -276,11 +300,7 @@ def _run_training(
             check=False,
         )
     finally:
-        vllm_process.terminate()
-        try:
-            vllm_process.wait(timeout=30)
-        except subprocess.TimeoutExpired:
-            vllm_process.kill()
+        _stop_vllm_server(vllm_process)
 
     if result.returncode != 0:
         raise RuntimeError(
