@@ -11,6 +11,99 @@ The important architecture rule is simple:
 
 The first implemented proof path is the `us` entity.
 
+## Historical Data Collection Before Post-Training
+
+The bundled replay JSON files under `backend/src/trenches_env/historical_replays/` are still synthetic seed data for smoke tests.
+
+To move toward real post-training data, collect historical article candidates first and then write them back into the same replay JSON schema that the trainer already consumes.
+
+The new collector CLI does exactly that:
+
+```bash
+cd /Users/xiao/trenches
+backend/.venv/bin/python -m trenches_env.historical_collection_cli \
+  --training-agent us \
+  --window 2025 \
+  --window 2026 \
+  --max-records-per-query 50 \
+  --max-events 128 \
+  --output-dir backend/src/trenches_env/historical_replays \
+  --raw-dir backend/tmp-historical-raw
+```
+
+What it writes:
+
+- replay JSON matching the existing seed schema used by `training_cli.py`
+- raw article JSONL audit files for provenance and curator review
+
+Important date note:
+
+- `2025` maps to `2025-01-01` through `2026-01-01`
+- `2026` maps to `2026-01-01` through the current date at collection time
+
+As of March 7, 2026, a full January 1, 2026 to January 1, 2027 window does not exist yet, so the collector clamps the `2026` window to the current day.
+
+Collection path:
+
+1. start from existing agent-aligned sources in `source_manifest.json`
+2. derive historical source domains from those allowlisted feeds
+3. query the GDELT DOC API month by month
+4. write raw article audit data
+5. transform those articles into replay JSON with the same `HistoricalEvent` schema as the synthetic seeds
+6. curator-review the resulting replay before production post-training
+
+Replay file shape:
+
+```json
+{
+  "replay_id": "us_historical_2025",
+  "name": "US historical replay 2025-01-01 to 2026-01-01",
+  "description": "Historically collected replay built from allowlisted source domains via the GDELT DOC API.",
+  "training_agent": "us",
+  "events": [
+    {
+      "event_id": "us-20250112090000-abcd1234",
+      "timestamp": "2025-01-12T09:00:00Z",
+      "topic": "shipping",
+      "region": "us",
+      "actors": ["iran", "gulf"],
+      "targets": ["shipping_lanes"],
+      "severity": "medium",
+      "summary": "Commercial shipping risk rises near Hormuz after new tanker threat warning.",
+      "public_summary": "Commercial shipping risk rises near Hormuz after new tanker threat warning.",
+      "source_type": "gdelt_historical_collection",
+      "confirmed": true,
+      "tags": ["shipping", "wire", "reuters.com"],
+      "impact": {
+        "tension_delta": 3.5,
+        "market_stress_delta": 4.2,
+        "oil_pressure_delta": 5.25,
+        "actor_metric_deltas": {
+          "us": {"shipping_security": -4.2, "regional_access": -4.2}
+        }
+      }
+    }
+  ]
+}
+```
+
+Raw audit file shape:
+
+```json
+{
+  "article_id": "7d8b1f5dcb87d4f2",
+  "agent_id": "us",
+  "source_id": "us-reuters-us",
+  "source_name": "Reuters US",
+  "title": "Commercial shipping risk rises near Hormuz after new tanker threat warning.",
+  "url": "https://www.reuters.com/world/middle-east/example",
+  "domain": "reuters.com",
+  "timestamp": "2025-01-12T09:00:00Z",
+  "query": "(domainis:reuters.com) AND (\"Hormuz\" OR \"shipping\")",
+  "window_id": "2025"
+}
+```
+
 ## What This Training Loop Does
 
 On each replay step the model must return two separate outputs:

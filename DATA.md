@@ -1,200 +1,226 @@
-# DATA.md: Trenches Entity Source Inventory
+# Data Handoff
 
-This file tracks the sources currently connected into `trenches` for each simulator entity.
+## Chosen Base Model
 
-Rules for this inventory:
+Use:
 
-- Every entity has at least 20 connected sources.
-- The frontend registry in `src/lib/data-sources/registry.ts` is the source of truth.
-- The backend RL environment mirrors the same names in `backend/src/trenches_env/source_bundles.py`.
-- `training_core` sources are intended for episodic RL observations.
-- `live_demo` sources are intended for live sessions, monitoring, and demo overlays.
+- `Qwen/Qwen3-8B`
 
-World Monitor provenance for these assignments came from the local `worldmonitor` clone, especially:
+Why this is the best default for the `2025-01 -> 2026-01` post-training window:
 
-- `scripts/rss-feeds-report.csv`
-- `data/telegram-channels.json`
-- `src/components/LiveNewsPanel.ts`
-- `src/components/LiveWebcamsPanel.ts`
-- `docs/DATA_SOURCES.md`
-- generated `/api/.../v1/...` service routes
+- it was released inside the required time frame
+- it is available on Hugging Face
+- it is strong enough for structured action + prediction output
+- it is still realistic to run six separate entity post-training jobs on it
 
-## US
+This is the recommended first real base model for all six entities.
 
-Count: 20 total
+## What I Added For Data
 
-Training core:
+The repo already had:
 
-- Reuters US
-- Politico
-- Wall Street Journal
-- White House
-- State Dept
-- USNI News
-- Polymarket Geopolitical Markets
-- NPR News
-- Pentagon
-- Treasury
-- Federal Reserve
-- SEC
-- Defense One
-- Defense News
-- Military Times
+- synthetic seed replay JSON files under [backend/src/trenches_env/historical_replays](/Users/alazarmanakelew/IdeaProjects/trenches/backend/src/trenches_env/historical_replays)
+- an OpenEnv replay training path
+- a training CLI that consumes replay JSON with the `HistoricalReplayDefinition -> HistoricalEvent` schema
 
-Live/demo:
+What I added is the first path from real historical sources into that same replay schema.
 
-- Fox News Live
-- Washington DC Webcam
-- ABC News Live
-- CBS News Live
-- NBC News Live
+### New Files
 
-## Israel
+- [backend/src/trenches_env/historical_collection.py](/Users/alazarmanakelew/IdeaProjects/trenches/backend/src/trenches_env/historical_collection.py)
+  - builds historical source profiles from the existing source manifest
+  - derives historical domains from allowlisted agent sources
+  - defines the `2025` and `2026` collection windows
+  - dedupes collected articles
+  - converts collected articles into the exact replay event schema used by training
 
-Count: 20 total
+- [backend/src/trenches_env/historical_collection_cli.py](/Users/alazarmanakelew/IdeaProjects/trenches/backend/src/trenches_env/historical_collection_cli.py)
+  - CLI collector
+  - queries the GDELT DOC API month by month
+  - writes raw article audit files
+  - writes replay JSON files in the same schema as the existing synthetic seeds
 
-Training core:
+- [backend/tests/test_historical_collection.py](/Users/alazarmanakelew/IdeaProjects/trenches/backend/tests/test_historical_collection.py)
+  - validates source-profile extraction
+  - validates article -> replay-event conversion
+  - validates replay JSON compatibility with the existing historical replay loader
 
-- OREF Rocket Alerts
-- Haaretz
-- OpenSky Military Flights
-- Wingbits Flight Enrichment
-- TLV NOTAM / Airport Closures
-- GPSJam Levant View
-- The Defender Dome
-- Yedioth News
-- The Times of Israel
-- Levant Theater Posture
-- Israel Frontier Base Layer
-- Eastern Med Navigational Warnings
-- Northern Border Incident Tracker
-- Northern Strike Heat
-- Syrian Transfer Corridor Watch
-- Northern Air Defense Readiness
+## What Source Data It Uses
 
-Live/demo:
+The collector starts from the existing [backend/src/trenches_env/source_manifest.json](/Users/alazarmanakelew/IdeaProjects/trenches/backend/src/trenches_env/source_manifest.json).
 
-- Kan 11 Live
-- i24NEWS Live
-- Jerusalem Webcam
-- Tel Aviv Webcam
+That means it does not invent a separate source universe. It reuses the current project’s aligned sources, then extracts historical domains from them. In practice this means it leans on the project’s existing training-core sources such as:
 
-## Iran
+- Reuters and wire-style reporting
+- official government / ministry sources
+- regional English-language outlets already assigned to the entities
+- market / shipping / sanctions / diplomacy sources already present in the manifest
 
-Count: 20 total
+For historical collection, it converts those sources into domain-filtered GDELT queries and collects article candidates month by month.
 
-Training core:
+## Output Files
 
-- VahidOnline
-- BBC Persian
-- Iran International
-- Fars News
-- LiveUAMap Iran Events
-- NASA FIRMS Strike Heat
-- Fotros Resistance
-- Iran International Telegram
-- BNO News
-- Al Arabiya
-- Iran Nuclear Energy Watch
-- Iran Internet Outages
-- Iran Unrest Events
-- Iran Climate Anomalies
-- Iran Stock Index
+The collector writes two outputs per run.
 
-Live/demo:
+### 1. Replay JSON
 
-- Iran International Live
-- Tehran Webcam
-- TRT World Live
-- CGTN Arabic Live
-- France 24 Live
+Path example:
 
-## Hezbollah
+- `backend/src/trenches_env/historical_replays/us_historical_2025.json`
 
-Count: 20 total
+This matches the same structure as the existing synthetic seed files:
 
-Training core:
+- `replay_id`
+- `name`
+- `description`
+- `training_agent`
+- `events[]`
 
-- Abu Ali Express
-- Abu Ali Express EN
-- Lebanon Update
-- Middle East Spectator
-- The Cradle
-- ACLED Lebanon/Syria Conflict Events
-- Middle East Now Breaking
-- Aurora Intel
-- OSINTdefender
-- OSIntOps News
-- OSINT Live
-- Lebanon Humanitarian Summary
-- Lebanon Unrest Events
-- Lebanon Internet Outages
-- Lebanon Climate Anomalies
-- Lebanon Coast Navigational Warnings
-- Blue Line Incident Tracker
-- South Lebanon Strike Heat
-- Bekaa Transit Corridor Watch
+Each event matches the current training schema:
 
-Live/demo:
+- `event_id`
+- `timestamp`
+- `topic`
+- `region`
+- `actors`
+- `targets`
+- `severity`
+- `summary`
+- `public_summary`
+- `source_type`
+- `confirmed`
+- `tags`
+- `impact`
 
-- Beirut MTV Lebanon Webcam
+### 2. Raw Audit JSONL
 
-## Gulf Coalition
+Path example:
 
-Count: 20 total
+- `backend/tmp-historical-raw/us_historical_2025.articles.jsonl`
 
-Training core:
+Each line contains:
 
-- Arabian Business
-- The National (GCC Query Set)
-- Gulf Investments
-- Gulf Economies Panel
-- Oil and Energy Analytics
-- Maritime Chokepoint Disruption Panel
-- Gulf FDI Layer
-- Arab News
-- Reuters Business
-- CNBC
-- Yahoo Finance
-- Shipping Rates Monitor
-- Critical Minerals Monitor
-- Trade Restrictions Monitor
-- Tariff Trends Monitor
+- `article_id`
+- `agent_id`
+- `source_id`
+- `source_name`
+- `title`
+- `url`
+- `domain`
+- `timestamp`
+- `query`
+- `window_id`
 
-Live/demo:
+This is the provenance trail for curator review.
 
-- Sky News Arabia Live
-- Mecca Webcam
-- Al Arabiya Live
-- Al Jazeera Arabic Live
-- Middle East Regional Webcam
+## Date Windows
 
-## Oversight
+The collector currently supports:
 
-Count: 20 total
+- `2025` -> `2025-01-01` through `2026-01-01`
+- `2026` -> `2026-01-01` through the current day at collection time
 
-Training core:
+Important note:
 
-- Country Instability Index (CII)
-- Hotspot Escalation Score
-- Strategic Risk Score
-- Cross-Stream Correlation Engine
-- Intelligence Gap Tracker
-- Headline Memory / World Brief / AI Deduction
-- HAPI Displacement Data
-- WorldPop Population Exposure
-- Security Advisories Aggregation
-- UCDP Conflict Events
-- Natural Events Monitor
-- Earthquakes Feed
-- Internet Outages Baseline
-- Cable Health Advisory Layer
-- Climate Anomalies Monitor
-- Cyber Threats Feed
-- Feed Digest Aggregator
-- GDELT Document Search
-- Pizzint Status
+As of March 7, 2026, `2026` cannot honestly mean `2026-01-01 -> 2027-01-01` yet. The collector clamps future end dates to the current day so it does not pretend future historical data exists.
 
-Live/demo:
+## What Is Real vs Heuristic
 
-- UNHCR Feed
+Real:
+
+- source alignment from the project’s own source manifest
+- historical article collection via GDELT
+- raw audit/provenance files
+- replay JSON output in the exact schema the training system already consumes
+
+Heuristic:
+
+- topic classification from article titles
+- severity classification from article titles
+- dedupe logic
+- actor/target inference
+- event `impact` generation
+
+That heuristic layer is intentional. It gives you a bootstrap pipeline from real historical articles into replay training data, but the resulting replay should still be curator-reviewed before production post-training.
+
+## Commands
+
+From repo root:
+
+```bash
+backend/.venv/bin/python -m trenches_env.historical_collection_cli \
+  --training-agent us \
+  --window 2025 \
+  --window 2026 \
+  --max-records-per-query 50 \
+  --max-events 128 \
+  --output-dir backend/src/trenches_env/historical_replays \
+  --raw-dir backend/tmp-historical-raw
+```
+
+All entities:
+
+```bash
+backend/.venv/bin/python -m trenches_env.historical_collection_cli \
+  --training-agent all \
+  --window 2025 \
+  --window 2026 \
+  --max-records-per-query 50 \
+  --max-events 128 \
+  --output-dir backend/src/trenches_env/historical_replays \
+  --raw-dir backend/tmp-historical-raw
+```
+
+## Docs Updated
+
+I also updated:
+
+- [backend/TRAINING_RUNBOOK.md](/Users/alazarmanakelew/IdeaProjects/trenches/backend/TRAINING_RUNBOOK.md)
+- [backend/TRAINING_FLOW.md](/Users/alazarmanakelew/IdeaProjects/trenches/backend/TRAINING_FLOW.md)
+- [backend/POST_TRAINING_PLAN.md](/Users/alazarmanakelew/IdeaProjects/trenches/backend/POST_TRAINING_PLAN.md)
+- [backend/pyproject.toml](/Users/alazarmanakelew/IdeaProjects/trenches/backend/pyproject.toml)
+
+So the collection path is now documented and exposed as a real CLI entry point.
+
+## Verification
+
+The added data-collection path was verified locally with:
+
+```bash
+PYTHONPYCACHEPREFIX=/tmp/trenches-pyc python -m py_compile \
+  backend/src/trenches_env/historical_collection.py \
+  backend/src/trenches_env/historical_collection_cli.py
+```
+
+```bash
+cd backend
+uv run --extra dev python -m pytest \
+  tests/test_historical_collection.py \
+  tests/test_openenv_adapter.py \
+  tests/test_server.py -q
+```
+
+Result:
+
+- `20 passed in 8.78s`
+
+## Handoff
+
+What is ready now:
+
+- a chosen base model: `Qwen/Qwen3-8B`
+- a collector path from real historical sources into the existing replay schema
+- raw provenance output
+- replay JSON output compatible with the current OpenEnv training flow
+
+What still needs to happen next:
+
+1. Run the collector for each entity.
+2. Curator-review the raw article audit files and the generated replay JSON.
+3. Replace the current synthetic seed replays with reviewed historical replays.
+4. Update the actual training runs to use `Qwen/Qwen3-8B` as the base model.
+5. Keep the old synthetic seeds only for smoke tests.
+
+One important truth:
+
+The collector is the first real data path, but it does not magically make the replay production-grade by itself. The training-ready replay still needs human review because event impact shaping is currently heuristic.

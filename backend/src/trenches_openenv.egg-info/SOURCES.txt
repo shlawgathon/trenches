@@ -5,6 +5,8 @@ src/trenches_env/agents.py
 src/trenches_env/benchmark_runner.py
 src/trenches_env/entity_knowledge.py
 src/trenches_env/env.py
+src/trenches_env/historical_collection.py
+src/trenches_env/historical_collection_cli.py
 src/trenches_env/historical_replay.py
 src/trenches_env/model_runtime.py
 src/trenches_env/models.py
@@ -21,7 +23,12 @@ src/trenches_env/source_ingestion.py
 src/trenches_env/source_manifest.json
 src/trenches_env/source_monitor.py
 src/trenches_env/training_cli.py
-src/trenches_env/historical_replays/us_forecast_seed_2025_2026.json
+src/trenches_env/historical_replays/gulf_synthetic_seed_2025_2026.json
+src/trenches_env/historical_replays/hezbollah_synthetic_seed_2025_2026.json
+src/trenches_env/historical_replays/iran_synthetic_seed_2025_2026.json
+src/trenches_env/historical_replays/israel_synthetic_seed_2025_2026.json
+src/trenches_env/historical_replays/oversight_synthetic_seed_2025_2026.json
+src/trenches_env/historical_replays/us_synthetic_seed_2025_2026.json
 src/trenches_openenv.egg-info/PKG-INFO
 src/trenches_openenv.egg-info/SOURCES.txt
 src/trenches_openenv.egg-info/dependency_links.txt
@@ -29,6 +36,7 @@ src/trenches_openenv.egg-info/entry_points.txt
 src/trenches_openenv.egg-info/requires.txt
 src/trenches_openenv.egg-info/top_level.txt
 tests/test_benchmark_runner.py
+tests/test_historical_collection.py
 tests/test_live_source_accessibility.py
 tests/test_live_source_delivery.py
 tests/test_openenv_adapter.py

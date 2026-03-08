@@ -32,6 +32,7 @@ train = [
 [project.scripts]
 trenches-api = "trenches_env.server:run"
 trenches-train = "trenches_env.training_cli:main"
+trenches-build-historical-replay = "trenches_env.historical_collection_cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

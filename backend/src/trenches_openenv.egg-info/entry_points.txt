@@ -1,3 +1,4 @@
 [console_scripts]
 trenches-api = trenches_env.server:run
+trenches-build-historical-replay = trenches_env.historical_collection_cli:main
 trenches-train = trenches_env.training_cli:main

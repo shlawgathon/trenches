@@ -114,7 +114,7 @@ Each checkpoint contains: `config.json`, `model.safetensors`, `tokenizer.json`, 
 
 ## Build Steps
 
-1. Create 5 replay datasets (israel, iran, hezbollah, gulf, oversight)
+1. Replace the synthetic seed replays with curator-reviewed historical replays built by `python -m trenches_env.historical_collection_cli`
 2. Add `--quantize-4bit` to `training_cli.py` (NF4 via bitsandbytes)
 3. Add `beta`, `warmup_steps`, `temperature`, `top_k`, `save_strategy` CLI args
 4. Add `bitsandbytes>=0.43.0` to `pyproject.toml`

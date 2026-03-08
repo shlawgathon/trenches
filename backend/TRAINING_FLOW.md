@@ -99,6 +99,14 @@ flowchart LR
 
 > ✅ = implemented (all 6 replays are **synthetic seed data** for smoke-testing — replace with curated truth sets for production)
 
+The first collection step for replacing those seeds is now:
+
+```bash
+python -m trenches_env.historical_collection_cli --training-agent us --window 2025 --window 2026
+```
+
+That collector writes replay JSON in the same schema as the bundled seed files plus raw article audit JSONL for review.
+
 ## Data Sources During Post-Training
 
 All data is bundled in the repo. No external API calls during post-training.
