@@ -19,7 +19,7 @@ There are five different layers of state:
    What each entity actually sees. This can be partial, delayed, contradictory, and low-confidence.
 
 5. `belief_state[agent_id]`
-   What each entity currently believes across turns. This is persistent memory, not just the current observation.
+   What each entity currently believes across turns. This is persistent memory, not just the current observation. It now uses doctrine-specific priors, slow false-belief decay, and contradiction-driven revision.
 
 The frontend should not treat those layers as interchangeable.
 
@@ -360,6 +360,13 @@ Important fields:
 - `last_confirmed_turn`
 - `last_updated_turn`
 
+Belief behavior:
+
+- entities do not weight all topics equally
+- beliefs decay gradually when no new confirmation arrives
+- contradictory evidence usually downgrades a belief first before fully disconfirming it
+- two entities can see the same event and end up with different confidence because doctrine priors differ
+
 ### Latent Events
 
 The backend now treats event flow as first-class, not just metric movement.
@@ -414,6 +421,7 @@ Backend pieces that are ready for frontend integration:
 - latent truth vs public state split
 - latent event engine and event-driven public projection
 - persistent belief state per entity
+- doctrine-specific belief revision and false-belief persistence
 - contradiction-aware observation projection
 - per-entity rewards
 - per-entity action logging
@@ -435,16 +443,13 @@ Backend pieces that are ready for frontend integration:
 2. Deepen the latent event graph.
    The event engine now exists, but it can still be improved with stronger causal chains, event merging, event resolution rules, and richer cross-front propagation.
 
-3. Make belief revision more sophisticated.
-   Belief state now exists, but revision is still fairly simple. It can be improved with stronger false-belief handling, doctrine-specific priors, and better contradiction resolution.
-
-4. Add event-delta summaries.
+3. Add event-delta summaries.
    A compact backend-generated turn delta would make replay/debug views much easier to build.
 
-5. Keep hardening provider execution.
+4. Keep hardening provider execution.
    Retries and diagnostics now exist. The next step is richer classification for rate limits, timeout classes, and provider-specific retry traces.
 
-6. Add a durable event archive or export path.
+5. Add a durable event archive or export path.
    There is still no persistent event timeline outside in-memory session state.
 
 ### Frontend

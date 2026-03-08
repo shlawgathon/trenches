@@ -3,7 +3,16 @@ from datetime import datetime, timezone
 import pytest
 
 from trenches_env.env import FogOfWarDiplomacyEnv
-from trenches_env.models import AgentAction, EpisodeMetadata, ExternalSignal, SourcePacket, StepSessionRequest
+from trenches_env.models import (
+    AgentAction,
+    AgentBeliefEntry,
+    AgentBeliefState,
+    EpisodeMetadata,
+    ExternalSignal,
+    LatentEvent,
+    SourcePacket,
+    StepSessionRequest,
+)
 from trenches_env.rl import AGENT_ACTION_ALIGNMENT, AGENT_ACTION_IMPACTS, AGENT_ALLOWED_ACTIONS, AGENT_STATE_ACTION_EFFECTS
 
 
@@ -310,3 +319,105 @@ def test_rewards_include_direct_action_response_term() -> None:
 
     assert rewards["us"].goal_terms["action_response"] > 0
     assert rewards["gulf"].goal_terms["action_response"] > rewards["israel"].goal_terms["action_response"]
+
+
+def test_doctrine_specific_beliefs_weight_shared_events_differently() -> None:
+    env = FogOfWarDiplomacyEnv()
+    shipping_session = env.create_session(seed=7, scenario_id="shipping_crisis", training_stage="stage_3_sparse")
+    border_session = env.create_session(seed=7, scenario_id="border_flareup", training_stage="stage_3_sparse")
+
+    gulf_shipping = next(belief for belief in shipping_session.belief_state["gulf"].beliefs if belief.topic == "shipping")
+    israel_shipping = next(belief for belief in shipping_session.belief_state["israel"].beliefs if belief.topic == "shipping")
+    israel_border = next(belief for belief in border_session.belief_state["israel"].beliefs if belief.topic == "border")
+    gulf_border = next(belief for belief in border_session.belief_state["gulf"].beliefs if belief.topic == "border")
+
+    assert gulf_shipping.confidence > israel_shipping.confidence
+    assert israel_border.confidence > gulf_border.confidence
+
+
+def test_false_beliefs_persist_across_turns_without_reconfirmation() -> None:
+    env = FogOfWarDiplomacyEnv()
+    session = env.create_session(seed=7, training_stage="stage_3_sparse")
+    session.world.turn = 1
+    session.belief_state["israel"] = AgentBeliefState(
+        agent_id="israel",
+        dominant_topics=["border"],
+        beliefs=[
+            AgentBeliefEntry(
+                belief_id="israel:false-border",
+                topic="border",
+                summary="Assessment: hidden launch-cell replenishment remains active north of the border.",
+                confidence=0.74,
+                status="active",
+                source="analyst_note",
+                suspected_agents=["hezbollah"],
+                confirmation_count=2,
+                contradiction_count=0,
+                last_confirmed_turn=0,
+                last_updated_turn=0,
+            )
+        ],
+        last_revision_turn=0,
+    )
+
+    updated = env._update_belief_state(session)
+    persisted = next(belief for belief in updated["israel"].beliefs if belief.belief_id == "israel:false-border")
+
+    assert persisted.confidence < 0.74
+    assert persisted.confidence > 0.6
+    assert persisted.status == "active"
+
+
+def test_contradictions_downgrade_beliefs_before_disconfirming_them() -> None:
+    env = FogOfWarDiplomacyEnv()
+    session = env.create_session(seed=7, training_stage="stage_3_sparse")
+    shipping_event = LatentEvent(
+        event_id="manual-shipping",
+        topic="shipping",
+        status="contained",
+        severity=0.42,
+        visibility="mixed",
+        reliability=0.12,
+        origin="test",
+        affected_agents=["gulf"],
+        started_at_turn=0,
+        last_updated_turn=0,
+    )
+    session.world.latent_events = [shipping_event]
+    session.belief_state["gulf"] = AgentBeliefState(
+        agent_id="gulf",
+        dominant_topics=["shipping"],
+        beliefs=[
+            AgentBeliefEntry(
+                belief_id=f"gulf:{shipping_event.event_id}",
+                topic="shipping",
+                summary="Assessment: coordinated disruption remains active across the chokepoint.",
+                confidence=0.78,
+                status="confirmed",
+                source="latent_event",
+                suspected_agents=["iran"],
+                related_event_ids=[shipping_event.event_id],
+                confirmation_count=2,
+                contradiction_count=0,
+                last_confirmed_turn=0,
+                last_updated_turn=0,
+            )
+        ],
+        last_revision_turn=0,
+    )
+
+    session.world.turn = 1
+    first_pass = env._update_belief_state(session)
+    contested = next(belief for belief in first_pass["gulf"].beliefs if belief.belief_id == f"gulf:{shipping_event.event_id}")
+
+    assert contested.status == "contested"
+    assert contested.contradiction_count == 1
+    assert contested.confidence > 0.42
+
+    session.belief_state = first_pass
+    session.world.turn = 2
+    second_pass = env._update_belief_state(session)
+    disconfirmed = next(belief for belief in second_pass["gulf"].beliefs if belief.belief_id == f"gulf:{shipping_event.event_id}")
+
+    assert disconfirmed.contradiction_count == 2
+    assert disconfirmed.status == "disconfirmed"

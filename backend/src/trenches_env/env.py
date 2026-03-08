@@ -155,6 +155,18 @@ LATENT_EVENT_LINKS = {
     "corridor": ("border",),
     "cyber": ("market",),
 }
+BELIEF_TOPIC_PRIORS = {
+    "us": {"shipping": 0.12, "diplomacy": 0.08, "market": 0.06, "border": 0.04},
+    "israel": {"border": 0.14, "corridor": 0.08, "diplomacy": 0.04},
+    "iran": {"corridor": 0.14, "domestic": 0.1, "shipping": 0.06},
+    "hezbollah": {"border": 0.12, "corridor": 0.1, "domestic": 0.04},
+    "gulf": {"shipping": 0.16, "market": 0.12, "diplomacy": 0.06},
+    "oversight": {"cyber": 0.12, "shipping": 0.08, "border": 0.08, "domestic": 0.08},
+}
+BELIEF_PERSISTENCE_FLOOR = 0.12
+BELIEF_MAX_STALE_TURNS = 4
+BELIEF_CONFIRMATION_BONUS = 0.03
+BELIEF_CONTRADICTION_PENALTY = 0.14
 PUBLIC_STATE_SYNC_FACTORS = {
     "support": 0.62,
     "confidence": 0.6,
@@ -1682,26 +1694,30 @@ class FogOfWarDiplomacyEnv:
         for agent_id in AGENT_IDS:
             existing = session.belief_state.get(agent_id, AgentBeliefState(agent_id=agent_id))
             belief_index = {belief.belief_id: belief.model_copy(deep=True) for belief in existing.beliefs}
+            seen_belief_ids: set[str] = set()
 
             for event in self._relevant_latent_events_for_agent(world, agent_id):
                 next_belief = self._belief_entry_from_event(event, world=world, episode=episode, agent_id=agent_id)
+                seen_belief_ids.add(next_belief.belief_id)
                 prior = belief_index.get(next_belief.belief_id)
                 if prior is None:
                     belief_index[next_belief.belief_id] = next_belief
                     continue
-                if next_belief.status == "contested":
-                    prior.contradiction_count += 1
-                else:
-                    prior.confirmation_count += 1
-                prior.confidence = round(max(0.08, min(0.98, prior.confidence * 0.45 + next_belief.confidence * 0.55)), 3)
-                prior.summary = next_belief.summary
-                prior.status = next_belief.status
-                prior.source = next_belief.source
-                prior.suspected_agents = list(next_belief.suspected_agents)
-                prior.related_event_ids = list({*prior.related_event_ids, *next_belief.related_event_ids})
-                prior.last_updated_turn = world.turn
-                if next_belief.status in {"active", "confirmed"}:
-                    prior.last_confirmed_turn = world.turn
+                belief_index[next_belief.belief_id] = self._revise_belief_entry(
+                    prior,
+                    next_belief,
+                    agent_id=agent_id,
+                    turn=world.turn,
+                )
+
+            for belief_id, prior in list(belief_index.items()):
+                if belief_id in seen_belief_ids:
+                    continue
+                decayed = self._decay_unseen_belief(prior, agent_id=agent_id, turn=world.turn)
+                if decayed is None:
+                    belief_index.pop(belief_id, None)
+                    continue
+                belief_index[belief_id] = decayed
 
             beliefs = sorted(
                 belief_index.values(),
@@ -1715,6 +1731,104 @@ class FogOfWarDiplomacyEnv:
                 last_revision_turn=world.turn,
             )
         return updated_state
+
+    @staticmethod
+    def _belief_doctrine_prior(agent_id: str, topic: str) -> float:
+        return BELIEF_TOPIC_PRIORS.get(agent_id, {}).get(topic, 0.0)
+
+    def _revise_belief_entry(
+        self,
+        prior: AgentBeliefEntry,
+        next_belief: AgentBeliefEntry,
+        *,
+        agent_id: str,
+        turn: int,
+    ) -> AgentBeliefEntry:
+        revised = prior.model_copy(deep=True)
+        doctrine_prior = self._belief_doctrine_prior(agent_id, next_belief.topic)
+        contradiction = next_belief.status in {"contested", "disconfirmed"} or (
+            next_belief.status == "suspected" and prior.status in {"active", "confirmed"}
+        )
+
+        revised.source = next_belief.source
+        revised.suspected_agents = list(next_belief.suspected_agents)
+        revised.related_event_ids = list({*prior.related_event_ids, *next_belief.related_event_ids})
+        revised.last_updated_turn = turn
+
+        if contradiction:
+            revised.contradiction_count += 1
+            retention = 0.78 + doctrine_prior * 0.5 + min(prior.confirmation_count, 3) * 0.02
+            revised.confidence = round(
+                max(
+                    BELIEF_PERSISTENCE_FLOOR,
+                    min(
+                        0.98,
+                        prior.confidence * retention
+                        + next_belief.confidence * 0.12
+                        - BELIEF_CONTRADICTION_PENALTY,
+                    ),
+                ),
+                3,
+            )
+            revised.status = "disconfirmed" if revised.contradiction_count >= 2 and revised.confidence <= 0.5 else "contested"
+            if revised.confidence < 0.46:
+                revised.summary = next_belief.summary
+            return revised
+
+        revised.confirmation_count += 1
+        retention = 0.38 + doctrine_prior * 0.4
+        revised.confidence = round(
+            max(
+                BELIEF_PERSISTENCE_FLOOR,
+                min(
+                    0.98,
+                    prior.confidence * retention
+                    + next_belief.confidence * (1.0 - retention)
+                    + BELIEF_CONFIRMATION_BONUS,
+                ),
+            ),
+            3,
+        )
+        revised.summary = next_belief.summary
+        revised.status = next_belief.status
+        if revised.confirmation_count >= 2 and revised.confidence >= 0.74 and revised.status == "active":
+            revised.status = "confirmed"
+        if revised.status in {"active", "confirmed"}:
+            revised.last_confirmed_turn = turn
+        return revised
+
+    def _decay_unseen_belief(
+        self,
+        prior: AgentBeliefEntry,
+        *,
+        agent_id: str,
+        turn: int,
+    ) -> AgentBeliefEntry | None:
+        stale_turns = max(0, turn - prior.last_updated_turn)
+        if stale_turns <= 0:
+            return prior
+
+        doctrine_prior = self._belief_doctrine_prior(agent_id, prior.topic)
+        decay = max(
+            0.04,
+            0.11
+            - doctrine_prior * 0.22
+            - min(prior.confirmation_count, 3) * 0.01,
+        )
+        revised = prior.model_copy(deep=True)
+        revised.confidence = round(max(0.06, prior.confidence - decay), 3)
+
+        if stale_turns >= 1 and revised.status == "confirmed":
+            revised.status = "active"
+        if stale_turns >= 2 and revised.status in {"active", "confirmed"}:
+            revised.status = "contested" if revised.confidence >= 0.42 else "suspected"
+        elif stale_turns >= 2 and revised.status == "contested" and revised.confidence < 0.34:
+            revised.status = "suspected"
+        if stale_turns >= 3 and revised.contradiction_count > revised.confirmation_count and revised.confidence < 0.28:
+            revised.status = "disconfirmed"
+        if stale_turns > BELIEF_MAX_STALE_TURNS and revised.confidence <= 0.14:
+            return None
+        return revised
 
     def _relevant_latent_events_for_agent(self, world: WorldState, agent_id: str) -> list[LatentEvent]:
         relevant_events: list[LatentEvent] = []
@@ -1775,6 +1889,7 @@ class FogOfWarDiplomacyEnv:
         agent_id: str,
     ) -> float:
         confidence = event.reliability
+        confidence += self._belief_doctrine_prior(agent_id, event.topic)
         if event.visibility == "public":
             confidence += 0.12
         elif event.visibility == "private":
@@ -1793,15 +1908,16 @@ class FogOfWarDiplomacyEnv:
         episode: EpisodeMetadata,
         agent_id: str,
     ) -> str:
+        doctrine_prior = BELIEF_TOPIC_PRIORS.get(agent_id, {}).get(event.topic, 0.0)
         if event.visibility == "private" and agent_id not in event.affected_agents and agent_id != "oversight":
             return "suspected"
         if event.status == "contained" and confidence < 0.45:
             return "contested"
         if not episode.fog_of_war or agent_id == "oversight":
             return "confirmed"
-        if confidence >= 0.7:
+        if confidence >= 0.7 - min(0.08, doctrine_prior * 0.45):
             return "active"
-        if confidence <= 0.34:
+        if confidence <= 0.34 - min(0.06, doctrine_prior * 0.2):
             return "suspected"
         return "contested"
 
