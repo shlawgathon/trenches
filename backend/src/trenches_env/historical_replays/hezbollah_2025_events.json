@@ -1,0 +1,1993 @@
+{
+  "replay_id": "hezbollah_2025_events",
+  "name": "HEZBOLLAH Real Events 2025",
+  "description": "Real historical events from 2025 relevant to the hezbollah entity. Source: Reubencf/2025_events HuggingFace dataset (68 events). Impact values are heuristic \u2014 curator review recommended before production training.",
+  "training_agent": "hezbollah",
+  "events": [
+    {
+      "event_id": "evt-2025-jan-07-d7a7aa3e",
+      "timestamp": "2025-01-07T12:00:00Z",
+      "topic": "security",
+      "region": "levant",
+      "actors": [
+        "hezbollah",
+        "gulf"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "medium",
+      "summary": "Lebanon approves the extradition of Abdul Rahman Yusuf, the son of late Egyptian ulama Yusuf al-Qaradawi, to the United Arab Emirates following his detention on December 28 after returning from Syria.",
+      "public_summary": "Lebanon approves the extradition of Abdul Rahman Yusuf, the son of late Egyptian ulama Yusuf al-Qaradawi, to the United Arab Emirates following his detention on December 28 after returning from Syria.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "security",
+        "law_and_crime",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 2.0,
+        "market_stress_delta": 1.0,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jan-09-03df61dc",
+      "timestamp": "2025-01-09T12:00:00Z",
+      "topic": "domestic",
+      "region": "levant",
+      "actors": [
+        "hezbollah",
+        "oversight"
+      ],
+      "targets": [
+        "civilians"
+      ],
+      "severity": "medium",
+      "summary": "2022\u20132025 Lebanese presidential election Military commander Joseph Aoun is elected as President of Lebanon, ending the power vacuum that began in October 2022.",
+      "public_summary": "2022\u20132025 Lebanese presidential election Military commander Joseph Aoun is elected as President of Lebanon, ending the power vacuum that began in October 2022.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "domestic",
+        "politics_and_elections",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 1.0,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jan-11-6823bb50",
+      "timestamp": "2025-01-11T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "levant",
+      "actors": [
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "medium",
+      "summary": "Lebanese prime minister Najib Mikati and Syrian de facto leader Ahmed al-Sharaa hold a meeting in Damascus, Syria, the first time that the two countries have met since the Syrian civil war began in 2011. (24 Digital) (MTV)",
+      "public_summary": "Lebanese prime minister Najib Mikati and Syrian de facto leader Ahmed al-Sharaa hold a meeting in Damascus, Syria, the first time that the two countries have met since the Syrian civil war began in 20",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "international_relations",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": -3.0,
+        "market_stress_delta": -2.0,
+        "oil_pressure_delta": -1.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jan-13-cc2bf47a",
+      "timestamp": "2025-01-13T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah",
+        "oversight"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "2024 Israel\u2013Lebanon ceasefire agreement The Israel Defense Forces strike several Hezbollah sites in Lebanon, alleging that the targets violated the terms of the ceasefire agreement. (The Times of Israel)",
+      "public_summary": "2024 Israel\u2013Lebanon ceasefire agreement The Israel Defense Forces strike several Hezbollah sites in Lebanon, alleging that the targets violated the terms of the ceasefire agreement. (The Times of Isra",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": -4.5,
+        "market_stress_delta": -3.0,
+        "oil_pressure_delta": -1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jan-13-d53bb5ad",
+      "timestamp": "2025-01-13T12:00:00Z",
+      "topic": "domestic",
+      "region": "levant",
+      "actors": [
+        "hezbollah",
+        "oversight"
+      ],
+      "targets": [
+        "civilians",
+        "government"
+      ],
+      "severity": "medium",
+      "summary": "International Court of Justice President Nawaf Salam becomes the prime minister-designate of Lebanon after winning an absolute majority of votes from parliament, while stepping down from the ICJ. (TVN24)",
+      "public_summary": "International Court of Justice President Nawaf Salam becomes the prime minister-designate of Lebanon after winning an absolute majority of votes from parliament, while stepping down from the ICJ. (TVN",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "domestic",
+        "politics_and_elections",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 1.0,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jan-26-36fdad2c",
+      "timestamp": "2025-01-26T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah",
+        "oversight"
+      ],
+      "targets": [
+        "civilians"
+      ],
+      "severity": "high",
+      "summary": "2024 Israel\u2013Lebanon ceasefire agreement January 2025 southern Lebanon attack Israeli soldiers open fire against the Lebanese Army and civilians in two villages in southern Lebanon, killing 22 people and wounding at least 124 more. (The Times of Israel)",
+      "public_summary": "2024 Israel\u2013Lebanon ceasefire agreement January 2025 southern Lebanon attack Israeli soldiers open fire against the Lebanese Army and civilians in two villages in southern Lebanon, killing 22 people a",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": -4.5,
+        "market_stress_delta": -3.0,
+        "oil_pressure_delta": -1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jan-26-294ead53",
+      "timestamp": "2025-01-26T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "levant",
+      "actors": [
+        "us",
+        "israel",
+        "hezbollah",
+        "oversight"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "2024 Israel\u2013Lebanon ceasefire agreement The United States announces that the ceasefire between Israel and Lebanon will be extended to February 18. (Axios)",
+      "public_summary": "2024 Israel\u2013Lebanon ceasefire agreement The United States announces that the ceasefire between Israel and Lebanon will be extended to February 18. (Axios)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": -4.5,
+        "market_stress_delta": -3.0,
+        "oil_pressure_delta": -1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jan-31-5d3ec117",
+      "timestamp": "2025-01-31T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah",
+        "oversight"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "2024 Israel\u2013Lebanon ceasefire agreement Two people are killed and ten others are injured during Israeli airstrikes in the Beqaa Valley, Lebanon.",
+      "public_summary": "2024 Israel\u2013Lebanon ceasefire agreement Two people are killed and ten others are injured during Israeli airstrikes in the Beqaa Valley, Lebanon.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": -4.5,
+        "market_stress_delta": -3.0,
+        "oil_pressure_delta": -1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-feb-08-42563620",
+      "timestamp": "2025-02-08T12:00:00Z",
+      "topic": "border",
+      "region": "levant",
+      "actors": [
+        "hezbollah"
+      ],
+      "targets": [
+        "northern_front"
+      ],
+      "severity": "high",
+      "summary": "Four people are killed in border clashes between Syrian Hay'at Tahrir al-Sham and Lebanese clans. (Al-Monitor)",
+      "public_summary": "Four people are killed in border clashes between Syrian Hay'at Tahrir al-Sham and Lebanese clans. (Al-Monitor)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "border",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.8,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-feb-08-221a1303",
+      "timestamp": "2025-02-08T12:00:00Z",
+      "topic": "domestic",
+      "region": "levant",
+      "actors": [
+        "hezbollah"
+      ],
+      "targets": [
+        "civilians",
+        "government"
+      ],
+      "severity": "medium",
+      "summary": "A new government is formed in Lebanon, with former International Court of Justice president Nawaf Salam as the new prime minister, following two years of the country under a caretaker government.",
+      "public_summary": "A new government is formed in Lebanon, with former International Court of Justice president Nawaf Salam as the new prime minister, following two years of the country under a caretaker government.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "domestic",
+        "politics_and_elections",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 1.0,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-feb-09-10b945ba",
+      "timestamp": "2025-02-09T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Six people are killed and two others are wounded in Israeli airstrikes near Jannata, South Governorate, Lebanon.",
+      "public_summary": "Six people are killed and two others are wounded in Israeli airstrikes near Jannata, South Governorate, Lebanon.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-feb-15-d2808a36",
+      "timestamp": "2025-02-15T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "levant",
+      "actors": [
+        "hezbollah",
+        "oversight"
+      ],
+      "targets": [
+        "infrastructure"
+      ],
+      "severity": "medium",
+      "summary": "2025 Beirut attack on UN convoy The Lebanese Armed Forces arrest over 25 people on suspicion of attacking a UNIFIL convoy and United Nations peacekeepers near Rafic Hariri International Airport in Beirut.",
+      "public_summary": "2025 Beirut attack on UN convoy The Lebanese Armed Forces arrest over 25 people on suspicion of attacking a UNIFIL convoy and United Nations peacekeepers near Rafic Hariri International Airport in Bei",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "law_and_crime",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": -3.0,
+        "market_stress_delta": -2.0,
+        "oil_pressure_delta": -1.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-feb-17-0eae2220",
+      "timestamp": "2025-02-17T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah",
+        "oversight"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "2024 Israel\u2013Lebanon ceasefire agreement Mohammad Shahin, a senior Hamas commander, is assassinated in an Israeli airstrike on a vehicle in Sidon, Lebanon. (Anadolu Ajans\u0131)",
+      "public_summary": "2024 Israel\u2013Lebanon ceasefire agreement Mohammad Shahin, a senior Hamas commander, is assassinated in an Israeli airstrike on a vehicle in Sidon, Lebanon. (Anadolu Ajans\u0131)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": -4.5,
+        "market_stress_delta": -3.0,
+        "oil_pressure_delta": -1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-feb-18-5cf1ac14",
+      "timestamp": "2025-02-18T12:00:00Z",
+      "topic": "conflict",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Israel partially withdraws troops from Lebanon as the deadline for their withdrawal expires.",
+      "public_summary": "Israel partially withdraws troops from Lebanon as the deadline for their withdrawal expires.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "conflict",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-feb-23-996c089e",
+      "timestamp": "2025-02-23T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Israel launches airstrikes in the Baalbek area in northeastern Lebanon and other areas in the south of the country. (Times of Israel)",
+      "public_summary": "Israel launches airstrikes in the Baalbek area in northeastern Lebanon and other areas in the south of the country. (Times of Israel)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-feb-23-32a876cf",
+      "timestamp": "2025-02-23T12:00:00Z",
+      "topic": "domestic",
+      "region": "levant",
+      "actors": [
+        "hezbollah",
+        "oversight"
+      ],
+      "targets": [
+        "infrastructure"
+      ],
+      "severity": "medium",
+      "summary": "Funeral of Hassan Nasrallah and Hashem Safieddine The joint funeral for Hezbollah leaders Hassan Nasrallah and Hashem Safieddine is held at the Camille Chamoun Sports City Stadium in Beirut, Lebanon.",
+      "public_summary": "Funeral of Hassan Nasrallah and Hashem Safieddine The joint funeral for Hezbollah leaders Hassan Nasrallah and Hashem Safieddine is held at the Camille Chamoun Sports City Stadium in Beirut, Lebanon.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "domestic",
+        "politics_and_elections",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 1.0,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-mar-04-bf37eb45",
+      "timestamp": "2025-03-04T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "An Israeli drone strike in Tyre, Lebanon, kills Haidar Hashem, the head of naval forces in Hezbollah's Radwan Force. (Times of Israel)",
+      "public_summary": "An Israeli drone strike in Tyre, Lebanon, kills Haidar Hashem, the head of naval forces in Hezbollah's Radwan Force. (Times of Israel)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-mar-17-c455ec67",
+      "timestamp": "2025-03-17T12:00:00Z",
+      "topic": "border",
+      "region": "levant",
+      "actors": [
+        "hezbollah"
+      ],
+      "targets": [
+        "government",
+        "northern_front"
+      ],
+      "severity": "high",
+      "summary": "Hezbollah involvement in the Syrian civil war, Hezbollah\u2013Syria relations Hezbollah\u2013Syria clashes, Lebanon\u2013Syria border clashes According to Syria's state media, clashes occur at the Lebanon\u2013Syria border, after the Syrian transitional government accused Hezbollah militants of kidnapping three soldier",
+      "public_summary": "Hezbollah involvement in the Syrian civil war, Hezbollah\u2013Syria relations Hezbollah\u2013Syria clashes, Lebanon\u2013Syria border clashes According to Syria's state media, clashes occur at the Lebanon\u2013Syria bord",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "border",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.8,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-mar-22-8beb634e",
+      "timestamp": "2025-03-22T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah",
+        "oversight"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Six people, including a child, are killed by Israeli airstrikes in Lebanon in the heaviest exchange of fire since the ceasefire with the Lebanese militant group Hezbollah almost four months ago. The strikes were carried out in retaliation for rockets from Lebanon being fired into Israel. (CTV News)",
+      "public_summary": "Six people, including a child, are killed by Israeli airstrikes in Lebanon in the heaviest exchange of fire since the ceasefire with the Lebanese militant group Hezbollah almost four months ago. The s",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": -4.5,
+        "market_stress_delta": -3.0,
+        "oil_pressure_delta": -1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-mar-28-784c03ba",
+      "timestamp": "2025-03-28T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah",
+        "oversight"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "2024 Israel\u2013Lebanon ceasefire agreement The Israel Defense Forces strikes southern Beirut, Lebanon, for the first time since November 2024, violating the ceasefire agreement.",
+      "public_summary": "2024 Israel\u2013Lebanon ceasefire agreement The Israel Defense Forces strikes southern Beirut, Lebanon, for the first time since November 2024, violating the ceasefire agreement.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": -4.5,
+        "market_stress_delta": -3.0,
+        "oil_pressure_delta": -1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-apr-01-abc80e69",
+      "timestamp": "2025-04-01T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "levant",
+      "actors": [
+        "us",
+        "israel",
+        "hezbollah",
+        "oversight"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "2024 Israel\u2013Lebanon ceasefire agreement Four people are killed, including Hassan Bdeir, a high-ranking Hezbollah official, and seven others are injured by an Israeli airstrike on a building in Dahieh, Beirut, Lebanon.",
+      "public_summary": "2024 Israel\u2013Lebanon ceasefire agreement Four people are killed, including Hassan Bdeir, a high-ranking Hezbollah official, and seven others are injured by an Israeli airstrike on a building in Dahieh,",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": -4.5,
+        "market_stress_delta": -3.0,
+        "oil_pressure_delta": -1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-apr-16-a1545048",
+      "timestamp": "2025-04-16T12:00:00Z",
+      "topic": "security",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "The Lebanese military detains a group of people, including several Palestinians, for firing rockets towards Israel in two separate attacks. Hezbollah denies their involvement in the rocket attacks.",
+      "public_summary": "The Lebanese military detains a group of people, including several Palestinians, for firing rockets towards Israel in two separate attacks. Hezbollah denies their involvement in the rocket attacks.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "security",
+        "law_and_crime",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.8,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-apr-27-6e271ef9",
+      "timestamp": "2025-04-27T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah",
+        "oversight"
+      ],
+      "targets": [
+        "infrastructure"
+      ],
+      "severity": "high",
+      "summary": "Israel carries out airstrikes on several suburbs of Beirut, Lebanon, despite a ceasefire agreement following the 2024 invasion. The Lebanese Civil Defense reports no casualties.",
+      "public_summary": "Israel carries out airstrikes on several suburbs of Beirut, Lebanon, despite a ceasefire agreement following the 2024 invasion. The Lebanese Civil Defense reports no casualties.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": -4.5,
+        "market_stress_delta": -3.0,
+        "oil_pressure_delta": -1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-may-04-4ef8e5be",
+      "timestamp": "2025-05-04T12:00:00Z",
+      "topic": "domestic",
+      "region": "levant",
+      "actors": [
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "medium",
+      "summary": "2025 Lebanese municipal elections First round of voting in the Lebanese municipal elections begin in the Mount Lebanon Governorate and Keserwan-Jbeil Governorate. (NBC News)",
+      "public_summary": "2025 Lebanese municipal elections First round of voting in the Lebanese municipal elections begin in the Mount Lebanon Governorate and Keserwan-Jbeil Governorate. (NBC News)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "domestic",
+        "politics_and_elections",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 1.0,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-may-11-453debd8",
+      "timestamp": "2025-05-11T12:00:00Z",
+      "topic": "conflict",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "medium",
+      "summary": "The body of Israel Defense Forces soldier Zvi Feldman, missing since the 1982 Lebanon War, is repatriated to Israel from \"deep inside Syria\" in a joint Mossad\u2013IDF operation. (The Times of Israel)",
+      "public_summary": "The body of Israel Defense Forces soldier Zvi Feldman, missing since the 1982 Lebanon War, is repatriated to Israel from \"deep inside Syria\" in a joint Mossad\u2013IDF operation. (The Times of Israel)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "conflict",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 5.0,
+        "market_stress_delta": 2.0,
+        "oil_pressure_delta": 1.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-may-14-3fd3730d",
+      "timestamp": "2025-05-14T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "The Israel Defense Forces claim that a drone strike in Qaaqaait al-Jisr, Nabatieh Governorate, Lebanon, killed a Hezbollah commander. (The Times of Israel)",
+      "public_summary": "The Israel Defense Forces claim that a drone strike in Qaaqaait al-Jisr, Nabatieh Governorate, Lebanon, killed a Hezbollah commander. (The Times of Israel)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-03-8ce77e7e",
+      "timestamp": "2025-06-03T12:00:00Z",
+      "topic": "security",
+      "region": "levant",
+      "actors": [
+        "hezbollah",
+        "oversight"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "A court in Stuttgart, Germany, sentences a Syrian man to life in prison under universal jurisdiction for leading a Hezbollah-backed group and committing alleged war crimes against Sunni Muslims in Busra al-Sham, Syria, during the Syrian civil war. (DW)",
+      "public_summary": "A court in Stuttgart, Germany, sentences a Syrian man to life in prison under universal jurisdiction for leading a Hezbollah-backed group and committing alleged war crimes against Sunni Muslims in Bus",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "security",
+        "law_and_crime",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.8,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-05-284cb00e",
+      "timestamp": "2025-06-05T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "us",
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Israeli Air Force jets launch airstrikes on southern Beirut, Lebanon, targeting alleged underground Hezbollah drone manufacturing facilities. (T\u00fcrkiye Today) (Al-Monitor)",
+      "public_summary": "Israeli Air Force jets launch airstrikes on southern Beirut, Lebanon, targeting alleged underground Hezbollah drone manufacturing facilities. (T\u00fcrkiye Today) (Al-Monitor)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-28-1c0ebb59",
+      "timestamp": "2025-06-28T12:00:00Z",
+      "topic": "conflict",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Three people are killed by Israeli attacks on multiple vehicles in southern Lebanon.",
+      "public_summary": "Three people are killed by Israeli attacks on multiple vehicles in southern Lebanon.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "conflict",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jul-06-599bfcd6",
+      "timestamp": "2025-07-06T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Israel conducts four drone strikes in Bint Jbeil, Shebaa, and Shaqra, in southern Lebanon over the weekend, killing one person and injuring several others.",
+      "public_summary": "Israel conducts four drone strikes in Bint Jbeil, Shebaa, and Shaqra, in southern Lebanon over the weekend, killing one person and injuring several others.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jul-08-ef9f612a",
+      "timestamp": "2025-07-08T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "An Israeli airstrike kills at least three people and injures 13 others in an attack on Tripoli, Lebanon.",
+      "public_summary": "An Israeli airstrike kills at least three people and injures 13 others in an attack on Tripoli, Lebanon.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jul-15-373cb31b",
+      "timestamp": "2025-07-15T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah",
+        "oversight"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "At least 12 people are killed in Israeli air strikes in Lebanon's eastern Bekaa Valley. The missiles struck a number of military compounds belonging to the armed group Hezbollah, including training camps affiliated to its elite Radwan Force. These were the deadliest strikes since a ceasefire ended a",
+      "public_summary": "At least 12 people are killed in Israeli air strikes in Lebanon's eastern Bekaa Valley. The missiles struck a number of military compounds belonging to the armed group Hezbollah, including training ca",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": -4.5,
+        "market_stress_delta": -3.0,
+        "oil_pressure_delta": -1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jul-24-911b9aa0",
+      "timestamp": "2025-07-24T12:00:00Z",
+      "topic": "security",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "infrastructure"
+      ],
+      "severity": "medium",
+      "summary": "Hungary\u2013Israel relations, Hungary\u2013United Kingdom relations Hungary bans Irish rap trio Kneecap for three years ahead of a music festival, citing a national security threat over their alleged support for Hamas and Hezbollah. (The Times of Israel)",
+      "public_summary": "Hungary\u2013Israel relations, Hungary\u2013United Kingdom relations Hungary bans Irish rap trio Kneecap for three years ahead of a music festival, citing a national security threat over their alleged support f",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "security",
+        "law_and_crime",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 2.0,
+        "market_stress_delta": 1.0,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jul-29-3e354f7d",
+      "timestamp": "2025-07-29T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "levant",
+      "actors": [
+        "hezbollah",
+        "oversight"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Lebanon convicts and sentences six people who are accused of killing a United Nations peacekeeper in Beirut in 2023.",
+      "public_summary": "Lebanon convicts and sentences six people who are accused of killing a United Nations peacekeeper in Beirut in 2023.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "law_and_crime",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": -4.5,
+        "market_stress_delta": -3.0,
+        "oil_pressure_delta": -1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-aug-07-dfc4fcd9",
+      "timestamp": "2025-08-07T12:00:00Z",
+      "topic": "domestic",
+      "region": "levant",
+      "actors": [
+        "us",
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "medium",
+      "summary": "The cabinet of Lebanon approves a U.S. proposal for disarming Hezbollah by the end of the year, along with ending Israel's occupation in the country, despite Hezbollah's rejection of this demand.",
+      "public_summary": "The cabinet of Lebanon approves a U.S. proposal for disarming Hezbollah by the end of the year, along with ending Israel's occupation in the country, despite Hezbollah's rejection of this demand.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "domestic",
+        "politics_and_elections",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 1.0,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-aug-09-ecc2fce9",
+      "timestamp": "2025-08-09T12:00:00Z",
+      "topic": "border",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "northern_front"
+      ],
+      "severity": "high",
+      "summary": "At least six Lebanese soldiers are killed in an explosion while removing munitions from a Hezbollah facility near the Israeli border. (Al Arabiya)",
+      "public_summary": "At least six Lebanese soldiers are killed in an explosion while removing munitions from a Hezbollah facility near the Israeli border. (Al Arabiya)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "border",
+        "disasters_and_accidents",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.8,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-aug-28-53dcd36c",
+      "timestamp": "2025-08-28T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "infrastructure"
+      ],
+      "severity": "high",
+      "summary": "The Lebanese army reports that two soldiers were killed and two others were injured after an Israeli drone crashed and exploded in An-Naqoura, southern Lebanon, while they were inspecting it.",
+      "public_summary": "The Lebanese army reports that two soldiers were killed and two others were injured after an Israeli drone crashed and exploded in An-Naqoura, southern Lebanon, while they were inspecting it.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-aug-28-901efa72",
+      "timestamp": "2025-08-28T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah",
+        "oversight"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "The United Nations Security Council votes unanimously to withdraw its peacekeeping mission in Lebanon on December 31, 2026.",
+      "public_summary": "The United Nations Security Council votes unanimously to withdraw its peacekeeping mission in Lebanon on December 31, 2026.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": -4.5,
+        "market_stress_delta": -3.0,
+        "oil_pressure_delta": -1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-sep-08-2deaa7a0",
+      "timestamp": "2025-09-08T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Five people are killed and five others injured during at least eight Israeli airstrikes between Beqaa Valley and Hermel, in Lebanon.",
+      "public_summary": "Five people are killed and five others injured during at least eight Israeli airstrikes between Beqaa Valley and Hermel, in Lebanon.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-sep-09-6ee67073",
+      "timestamp": "2025-09-09T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "levant",
+      "actors": [
+        "us",
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "proxy_corridor"
+      ],
+      "severity": "medium",
+      "summary": "Iraq\u2013Israel relations, Iraq\u2013United States relations Iraqi Shia militia Kata'ib Hezbollah releases Russian\u2013Israeli researcher Elizabeth Tsurkov who was abducted in 2023 during a research trip to Iraq following negotiations involving Israel and the United States. (CNBC)",
+      "public_summary": "Iraq\u2013Israel relations, Iraq\u2013United States relations Iraqi Shia militia Kata'ib Hezbollah releases Russian\u2013Israeli researcher Elizabeth Tsurkov who was abducted in 2023 during a research trip to Iraq f",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "international_relations",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": -3.0,
+        "market_stress_delta": -2.0,
+        "oil_pressure_delta": -1.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-sep-16-1203ea8d",
+      "timestamp": "2025-09-16T12:00:00Z",
+      "topic": "security",
+      "region": "levant",
+      "actors": [
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Bulgarian police arrest the owner of the ship that brought explosive material to Beirut, Lebanon, which caused an explosion in August 2020 that killed more than 200 people.",
+      "public_summary": "Bulgarian police arrest the owner of the ship that brought explosive material to Beirut, Lebanon, which caused an explosion in August 2020 that killed more than 200 people.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "security",
+        "law_and_crime",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.8,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-sep-21-eaa27044",
+      "timestamp": "2025-09-21T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Five people are killed and two others are injured in an Israeli drone strike on a vehicle in Bint Jbeil, Lebanon.",
+      "public_summary": "Five people are killed and two others are injured in an Israeli drone strike on a vehicle in Bint Jbeil, Lebanon.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-sep-26-46695b30",
+      "timestamp": "2025-09-26T12:00:00Z",
+      "topic": "security",
+      "region": "levant",
+      "actors": [
+        "us",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "medium",
+      "summary": "Lebanese authorities release former central bank governor Riad Salameh after he posts bail of US$14 million and LL 5 billion ($55,866) while facing ongoing charges of alleged financial crimes.",
+      "public_summary": "Lebanese authorities release former central bank governor Riad Salameh after he posts bail of US$14 million and LL 5 billion ($55,866) while facing ongoing charges of alleged financial crimes.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "security",
+        "law_and_crime",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 2.0,
+        "market_stress_delta": 1.0,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-sep-28-97d06874",
+      "timestamp": "2025-09-28T12:00:00Z",
+      "topic": "disaster",
+      "region": "levant",
+      "actors": [
+        "us",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Four people are killed and another six people affected after a fire in a building in Lebanon, Pennsylvania, United States. (MSN)",
+      "public_summary": "Four people are killed and another six people affected after a fire in a building in Lebanon, Pennsylvania, United States. (MSN)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disasters_and_accidents",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 1.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-oct-07-9974fc64",
+      "timestamp": "2025-10-07T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "levant",
+      "actors": [
+        "hezbollah"
+      ],
+      "targets": [
+        "infrastructure"
+      ],
+      "severity": "medium",
+      "summary": "Foreign relations of the Holy See Visit by Pope Leo XIV to Turkey and Lebanon The Holy See Press Office announces that Pope Leo XIV will visit \u0130znik, Turkey, the location of the ancient city Nicaea, and Lebanon in November and December as his first papal visits abroad. (The Catholic Herald) (Anadolu",
+      "public_summary": "Foreign relations of the Holy See Visit by Pope Leo XIV to Turkey and Lebanon The Holy See Press Office announces that Pope Leo XIV will visit \u0130znik, Turkey, the location of the ancient city Nicaea, a",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "international_relations",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": -3.0,
+        "market_stress_delta": -2.0,
+        "oil_pressure_delta": -1.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-oct-10-6494d5d9",
+      "timestamp": "2025-10-10T12:00:00Z",
+      "topic": "conflict",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "government"
+      ],
+      "severity": "high",
+      "summary": "Israel\u2013Hezbollah conflict (2023\u2013present) The Lebanese government announces the arrest of a network affiliated to Israel which attempted to carry out assassinations and bombing attacks, mainly during a commemoration ceremony for the assassinated Hezbollah leader Hassan Nasrallah.",
+      "public_summary": "Israel\u2013Hezbollah conflict (2023\u2013present) The Lebanese government announces the arrest of a network affiliated to Israel which attempted to carry out assassinations and bombing attacks, mainly during a",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "conflict",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-oct-11-f7370a76",
+      "timestamp": "2025-10-11T12:00:00Z",
+      "topic": "conflict",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "One person is killed, seven others are injured, dozens of bulldozers are destroyed, and a key route connecting Beirut to Lebanon's south is severed in Israeli attacks in Msayleh, An-Najjariyah, Lebanon. (Naharnetnet)",
+      "public_summary": "One person is killed, seven others are injured, dozens of bulldozers are destroyed, and a key route connecting Beirut to Lebanon's south is severed in Israeli attacks in Msayleh, An-Najjariyah, Lebano",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "conflict",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-oct-16-f53c3e02",
+      "timestamp": "2025-10-16T12:00:00Z",
+      "topic": "conflict",
+      "region": "levant",
+      "actors": [
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Heavy armed clashes break out in Zawiya, Tripolitania, Libya, after the attempted assassination of Reserve Force commander Suleiman Al-Fitouri. (Xinhua News Agency)",
+      "public_summary": "Heavy armed clashes break out in Zawiya, Tripolitania, Libya, after the attempted assassination of Reserve Force commander Suleiman Al-Fitouri. (Xinhua News Agency)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "conflict",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-oct-23-99d61a03",
+      "timestamp": "2025-10-23T12:00:00Z",
+      "topic": "military",
+      "region": "gulf",
+      "actors": [
+        "israel",
+        "hezbollah",
+        "gulf"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Four people, including an elderly woman, are killed in a series of Israeli airstrikes in eastern and southern Lebanon.",
+      "public_summary": "Four people, including an elderly woman, are killed in a series of Israeli airstrikes in eastern and southern Lebanon.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "gulf"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-oct-24-f15a2436",
+      "timestamp": "2025-10-24T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Three people are killed and two others injured during two Israeli airstrikes against two vehicles in Toul and Nabatieh, Lebanon. Senior Hezbollah commander Abbas Karki is among the fatalities. (AA)",
+      "public_summary": "Three people are killed and two others injured during two Israeli airstrikes against two vehicles in Toul and Nabatieh, Lebanon. Senior Hezbollah commander Abbas Karki is among the fatalities. (AA)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-oct-25-4adb2abc",
+      "timestamp": "2025-10-25T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Two people are killed during two Israeli airstrikes against a car and a motorcycle in Harouf and Qlayleh, Lebanon, bringing the death toll from the attacks since the past 48 hours to nine.",
+      "public_summary": "Two people are killed during two Israeli airstrikes against a car and a motorcycle in Harouf and Qlayleh, Lebanon, bringing the death toll from the attacks since the past 48 hours to nine.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-oct-26-6e2fdfe0",
+      "timestamp": "2025-10-26T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Three people are killed in two Israeli airstrikes in An-Naqoura and Baalbek, Lebanon. Separately, an Israeli drone drops a grenade near UNIFIL forces in Kfar Kila, without casualties.",
+      "public_summary": "Three people are killed in two Israeli airstrikes in An-Naqoura and Baalbek, Lebanon. Separately, an Israeli drone drops a grenade near UNIFIL forces in Kfar Kila, without casualties.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-oct-30-d623fb35",
+      "timestamp": "2025-10-30T12:00:00Z",
+      "topic": "border",
+      "region": "israel",
+      "actors": [
+        "israel",
+        "hezbollah",
+        "oversight"
+      ],
+      "targets": [
+        "civilians"
+      ],
+      "severity": "high",
+      "summary": "Israeli troops enter the southern Lebanese city of Blida and storm the municipal hall, killing an employee while sleeping. In response, Lebanese president Joseph Aoun orders the military to confront any Israeli incursions.",
+      "public_summary": "Israeli troops enter the southern Lebanese city of Blida and storm the municipal hall, killing an employee while sleeping. In response, Lebanese president Joseph Aoun orders the military to confront a",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "border",
+        "armed_conflicts_and_attacks",
+        "israel"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.8,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-nov-01-99cb3eee",
+      "timestamp": "2025-11-01T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Four people are killed and three injured in an Israeli airstrike on a vehicle in Kfar Reman, Lebanon.",
+      "public_summary": "Four people are killed and three injured in an Israeli airstrike on a vehicle in Kfar Reman, Lebanon.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-nov-10-eb28755c",
+      "timestamp": "2025-11-10T12:00:00Z",
+      "topic": "security",
+      "region": "levant",
+      "actors": [
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "medium",
+      "summary": "Lebanon grants a US$900,000 bail to Hannibal Gaddafi, the son of former Libyan leader Muammar Gaddafi, ending his nearly 10-year detention in a case involving the 1978 disappearance of Shia Muslim cleric Musa al-Sadr, for which Gaddafi was accused of withholding information but never tried.",
+      "public_summary": "Lebanon grants a US$900,000 bail to Hannibal Gaddafi, the son of former Libyan leader Muammar Gaddafi, ending his nearly 10-year detention in a case involving the 1978 disappearance of Shia Muslim cle",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "security",
+        "law_and_crime",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 2.0,
+        "market_stress_delta": 1.0,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-nov-18-cdfe2fae",
+      "timestamp": "2025-11-18T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "civilians"
+      ],
+      "severity": "high",
+      "summary": "Thirteen people are killed and several others are wounded in an Israeli airstrike in the Ain al-Hilweh Palestinian refugee camp in Sidon District, Lebanon. (MENA via The New Arab)",
+      "public_summary": "Thirteen people are killed and several others are wounded in an Israeli airstrike in the Ain al-Hilweh Palestinian refugee camp in Sidon District, Lebanon. (MENA via The New Arab)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-nov-18-ec6565fe",
+      "timestamp": "2025-11-18T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Two people are killed in two separate Israeli airstrikes on vehicles in Bint Jbeil and Marjayoun, Lebanon. (L'Orient Today)",
+      "public_summary": "Two people are killed in two separate Israeli airstrikes on vehicles in Bint Jbeil and Marjayoun, Lebanon. (L'Orient Today)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-nov-19-e4cdfd62",
+      "timestamp": "2025-11-19T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "us",
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "One person is killed in an Israeli airstrike attack against a vehicle in Bint Jbeil, Lebanon. Several students are also wounded on a bus passing in the area.",
+      "public_summary": "One person is killed in an Israeli airstrike attack against a vehicle in Bint Jbeil, Lebanon. Several students are also wounded on a bus passing in the area.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-nov-22-1df578e2",
+      "timestamp": "2025-11-22T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "A person is killed in an Israeli airstrike on a car in Zawtar al-Sharqiyah, Lebanon, while several more attacks are carried out across Kafr Rumman.",
+      "public_summary": "A person is killed in an Israeli airstrike on a car in Zawtar al-Sharqiyah, Lebanon, while several more attacks are carried out across Kafr Rumman.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-nov-23-3f1e2172",
+      "timestamp": "2025-11-23T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "November 2025 Israeli attack in Beirut Israel carries out an airstrike on a building in Beirut, Lebanon, killing five Hezbollah militants and injuring 28 others. Hezbollah military chief Haytham Ali Tabatabai\u00a0is confirmed among the fatalities.",
+      "public_summary": "November 2025 Israeli attack in Beirut Israel carries out an airstrike on a building in Beirut, Lebanon, killing five Hezbollah militants and injuring 28 others. Hezbollah military chief Haytham Ali T",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-nov-26-4e3538d9",
+      "timestamp": "2025-11-26T12:00:00Z",
+      "topic": "culture",
+      "region": "levant",
+      "actors": [
+        "hezbollah"
+      ],
+      "targets": [
+        "infrastructure"
+      ],
+      "severity": "high",
+      "summary": "Holy See\u2013Lebanon relations, Holy See\u2013Turkey relations Visit by Pope Leo XIV to Turkey and Lebanon Pope Leo XIV begins his first papal trip, first to \u0130znik and Nicaea in Turkey, then to Bkerk\u00e9, the Monastery of Saint Maron, and the Port of Beirut in Lebanon. The trip will include an ecumenical commem",
+      "public_summary": "Holy See\u2013Lebanon relations, Holy See\u2013Turkey relations Visit by Pope Leo XIV to Turkey and Lebanon Pope Leo XIV begins his first papal trip, first to \u0130znik and Nicaea in Turkey, then to Bkerk\u00e9, the Mon",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "culture",
+        "arts_and_culture",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 0.0,
+        "market_stress_delta": 0.0,
+        "oil_pressure_delta": 0.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-nov-26-814de5ef",
+      "timestamp": "2025-11-26T12:00:00Z",
+      "topic": "shipping",
+      "region": "levant",
+      "actors": [
+        "us",
+        "hezbollah"
+      ],
+      "targets": [
+        "shipping_lanes"
+      ],
+      "severity": "medium",
+      "summary": "Cyprus and Lebanon sign a long-delayed maritime boundary agreement.",
+      "public_summary": "Cyprus and Lebanon sign a long-delayed maritime boundary agreement.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "shipping",
+        "international_relations",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 4.0,
+        "oil_pressure_delta": 6.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-dec-08-614e2d74",
+      "timestamp": "2025-12-08T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Israel carries out a wave of airstrikes in southern Lebanon, allegedly targeting Hezbollah's site.",
+      "public_summary": "Israel carries out a wave of airstrikes in southern Lebanon, allegedly targeting Hezbollah's site.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-dec-13-6ca8c26a",
+      "timestamp": "2025-12-13T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "The Israeli military issues an evacuation order in southern Lebanese villages in preparation for planned airstrikes on Hezbollah targets. (The Jerusalem Post)",
+      "public_summary": "The Israeli military issues an evacuation order in southern Lebanese villages in preparation for planned airstrikes on Hezbollah targets. (The Jerusalem Post)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-dec-14-5d24227b",
+      "timestamp": "2025-12-14T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Three people are killed in three separated Israeli airstrikes against vehicles in southern Lebanon. (L'Orient Today)",
+      "public_summary": "Three people are killed in three separated Israeli airstrikes against vehicles in southern Lebanon. (L'Orient Today)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-dec-22-48c66d32",
+      "timestamp": "2025-12-22T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Three people are killed in an Israeli airstrike against a vehicle near Sidon, Lebanon.",
+      "public_summary": "Three people are killed in an Israeli airstrike against a vehicle near Sidon, Lebanon.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-dec-24-30bada7a",
+      "timestamp": "2025-12-24T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "An alleged Hezbollah member is killed in an airstrike by the Israel Defense Forces on a vehicle near Jannata, Tyre District, South Governorate,  Lebanon. (MSN)",
+      "public_summary": "An alleged Hezbollah member is killed in an airstrike by the Israel Defense Forces on a vehicle near Jannata, Tyre District, South Governorate,  Lebanon. (MSN)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-dec-25-7c508b87",
+      "timestamp": "2025-12-25T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "iran",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Israel\u2013Hezbollah conflict, Iran\u2013Israel relations Three people are killed in two separate Israeli airstrikes targeting vehicles in southern Lebanon, including a member of the Iranian Quds Force.",
+      "public_summary": "Israel\u2013Hezbollah conflict, Iran\u2013Israel relations Three people are killed in two separate Israeli airstrikes targeting vehicles in southern Lebanon, including a member of the Iranian Quds Force.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    }
+  ]
+}

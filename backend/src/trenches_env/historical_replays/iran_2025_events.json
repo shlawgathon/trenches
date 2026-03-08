@@ -1,0 +1,4517 @@
+{
+  "replay_id": "iran_2025_events",
+  "name": "IRAN Real Events 2025",
+  "description": "Real historical events from 2025 relevant to the iran entity. Source: Reubencf/2025_events HuggingFace dataset (154 events). Impact values are heuristic \u2014 curator review recommended before production training.",
+  "training_agent": "iran",
+  "events": [
+    {
+      "event_id": "evt-2025-jan-01-63a9dffb",
+      "timestamp": "2025-01-01T12:00:00Z",
+      "topic": "security",
+      "region": "gulf",
+      "actors": [
+        "iran",
+        "gulf"
+      ],
+      "targets": [
+        "government"
+      ],
+      "severity": "medium",
+      "summary": "Capital punishment in Saudi Arabia Saudi Arabia announces the execution of six Iranian nationals convicted of smuggling hashish. In Tehran, the Iranian Foreign Ministry summoned the Saudi ambassador in protest.",
+      "public_summary": "Capital punishment in Saudi Arabia Saudi Arabia announces the execution of six Iranian nationals convicted of smuggling hashish. In Tehran, the Iranian Foreign Ministry summoned the Saudi ambassador i",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "security",
+        "law_and_crime",
+        "gulf"
+      ],
+      "impact": {
+        "tension_delta": 2.0,
+        "market_stress_delta": 1.0,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jan-02-f9be8b5f",
+      "timestamp": "2025-01-02T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "infrastructure"
+      ],
+      "severity": "medium",
+      "summary": "Italy summons Iran's ambassador to demand the release of Il Foglio reporter Cecilia Sala, detained in Tehran for alleged legal violations.",
+      "public_summary": "Italy summons Iran's ambassador to demand the release of Il Foglio reporter Cecilia Sala, detained in Tehran for alleged legal violations.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": -3.0,
+        "market_stress_delta": -2.0,
+        "oil_pressure_delta": -1.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jan-08-49a5e98c",
+      "timestamp": "2025-01-08T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "government"
+      ],
+      "severity": "medium",
+      "summary": "The Iranian government releases Italian journalist Cecilia Sala from prison, with Sala arriving back in Rome later that day. (Euronews) (Yahoo! News)",
+      "public_summary": "The Iranian government releases Italian journalist Cecilia Sala from prison, with Sala arriving back in Rome later that day. (Euronews) (Yahoo! News)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": -3.0,
+        "market_stress_delta": -2.0,
+        "oil_pressure_delta": -1.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jan-12-a115dde6",
+      "timestamp": "2025-01-12T12:00:00Z",
+      "topic": "disaster",
+      "region": "asia",
+      "actors": [
+        "us",
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "A bus fell down a 100-meter gorge in Pauri Garhwal district, Uttarakhand, India, killing six and injuring 22. (The Tribune)",
+      "public_summary": "A bus fell down a 100-meter gorge in Pauri Garhwal district, Uttarakhand, India, killing six and injuring 22. (The Tribune)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disasters_and_accidents",
+        "asia"
+      ],
+      "impact": {
+        "tension_delta": 1.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jan-17-9077c049",
+      "timestamp": "2025-01-17T12:00:00Z",
+      "topic": "energy",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "energy_networks",
+        "civilians",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Iranian president Masoud Pezeshkian and Russian president Vladimir Putin sign the Iranian\u2013Russian Treaty on Comprehensive Strategic Partnership. The 20-year deal will see cooperation between the two countries in multiple areas, including nuclear energy, counterterrorism, and environmental issues. (M",
+      "public_summary": "Iranian president Masoud Pezeshkian and Russian president Vladimir Putin sign the Iranian\u2013Russian Treaty on Comprehensive Strategic Partnership. The 20-year deal will see cooperation between the two c",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "energy",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 7.5,
+        "oil_pressure_delta": 10.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jan-18-123419f4",
+      "timestamp": "2025-01-18T12:00:00Z",
+      "topic": "conflict",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "2025 assassination of Iranian Supreme Court judges Two judges are killed and a third judge and a bodyguard are injured in a mass shooting at the Supreme Court of Iran in Tehran, Iran. The perpetrator subsequently kills himself. (DW)",
+      "public_summary": "2025 assassination of Iranian Supreme Court judges Two judges are killed and a third judge and a bodyguard are injured in a mass shooting at the Supreme Court of Iran in Tehran, Iran. The perpetrator ",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "conflict",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jan-19-6c718fd8",
+      "timestamp": "2025-01-19T12:00:00Z",
+      "topic": "security",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Capital punishment in Iran, Islam and blasphemy An Iranian court sentences singer Amir Tataloo to death on appeal after Tataloo was convicted of insulting the prophet Muhammad. (Al Arabiya)",
+      "public_summary": "Capital punishment in Iran, Islam and blasphemy An Iranian court sentences singer Amir Tataloo to death on appeal after Tataloo was convicted of insulting the prophet Muhammad. (Al Arabiya)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "security",
+        "law_and_crime",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.8,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jan-29-bf184742",
+      "timestamp": "2025-01-29T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "military_base",
+        "government"
+      ],
+      "severity": "high",
+      "summary": "A Venezuelan Ministry of Interior, Justice and Peace Cessna Citation II aircraft crashes shortly after takeoff from Generalissimo Francisco de Miranda Air Base in Caracas, Venezuela, killing all three people on board. (Caraota Digital)",
+      "public_summary": "A Venezuelan Ministry of Interior, Justice and Peace Cessna Citation II aircraft crashes shortly after takeoff from Generalissimo Francisco de Miranda Air Base in Caracas, Venezuela, killing all three",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "disasters_and_accidents",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": -4.5,
+        "market_stress_delta": -3.0,
+        "oil_pressure_delta": -1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-feb-04-c8316624",
+      "timestamp": "2025-02-04T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "iran",
+      "actors": [
+        "us",
+        "iran"
+      ],
+      "targets": [
+        "civilians"
+      ],
+      "severity": "medium",
+      "summary": "U.S. President Donald Trump signs a presidential memorandum reimposing a policy of maximum pressure against Iran.",
+      "public_summary": "U.S. President Donald Trump signs a presidential memorandum reimposing a policy of maximum pressure against Iran.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": -3.0,
+        "market_stress_delta": -2.0,
+        "oil_pressure_delta": -1.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-feb-14-e75379c1",
+      "timestamp": "2025-02-14T12:00:00Z",
+      "topic": "nuclear",
+      "region": "europe",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "civilians",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Chernobyl Nuclear Power Plant drone strike A drone strikes the New Safe Confinement structure housing the site of the Chernobyl disaster. Ukrainian President Volodymyr Zelenskyy states that a Russian combat drone caused significant damage to the structure, but did not produce an increase in external",
+      "public_summary": "Chernobyl Nuclear Power Plant drone strike A drone strikes the New Safe Confinement structure housing the site of the Chernobyl disaster. Ukrainian President Volodymyr Zelenskyy states that a Russian ",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "armed_conflicts_and_attacks",
+        "europe"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-feb-16-54fd33df",
+      "timestamp": "2025-02-16T12:00:00Z",
+      "topic": "conflict",
+      "region": "gulf",
+      "actors": [
+        "us",
+        "iran",
+        "gulf"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Yemeni civil war, Red Sea crisis The U.S. military announces that the Yemen Coast Guard had successfully intercepted an Iranian weapons shipment on its way to the Houthi movement in Yemen on 12 February. (i24 News)",
+      "public_summary": "Yemeni civil war, Red Sea crisis The U.S. military announces that the Yemen Coast Guard had successfully intercepted an Iranian weapons shipment on its way to the Houthi movement in Yemen on 12 Februa",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "conflict",
+        "armed_conflicts_and_attacks",
+        "gulf"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-feb-18-0c397cb1",
+      "timestamp": "2025-02-18T12:00:00Z",
+      "topic": "security",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "critical",
+      "summary": "An Iranian court charges a British couple who were arrested and jailed last month with espionage. (DW)",
+      "public_summary": "An Iranian court charges a British couple who were arrested and jailed last month with espionage. (DW)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "security",
+        "law_and_crime",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 5.0,
+        "market_stress_delta": 2.5,
+        "oil_pressure_delta": 1.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-feb-28-bef1f986",
+      "timestamp": "2025-02-28T12:00:00Z",
+      "topic": "disaster",
+      "region": "asia",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "5 construction workers are trapped, 48 others are rescued and 4 people are killed after a group of 57 people are swept away by an avalanche near the Mana Pass, Uttarakhand, India. (CTV News)",
+      "public_summary": "5 construction workers are trapped, 48 others are rescued and 4 people are killed after a group of 57 people are swept away by an avalanche near the Mana Pass, Uttarakhand, India. (CTV News)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disasters_and_accidents",
+        "asia"
+      ],
+      "impact": {
+        "tension_delta": 1.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-mar-04-517bcbc8",
+      "timestamp": "2025-03-04T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "medium",
+      "summary": "Iran says Turkey's criticism of its foreign policy could lead to worsening ties after Turkish Foreign Minister Hakan Fidan said Iran risks plunging the Middle East into \"disorder\". (Al Arabiya)",
+      "public_summary": "Iran says Turkey's criticism of its foreign policy could lead to worsening ties after Turkish Foreign Minister Hakan Fidan said Iran risks plunging the Middle East into \"disorder\". (Al Arabiya)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": -3.0,
+        "market_stress_delta": -2.0,
+        "oil_pressure_delta": -1.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-mar-04-d3efa9f1",
+      "timestamp": "2025-03-04T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "government"
+      ],
+      "severity": "medium",
+      "summary": "Turkey summons Iran's charg\u00e9s d'affaires in Ankara after Iran's foreign ministry summoned Turkey's ambassador. (Al Arabiya)",
+      "public_summary": "Turkey summons Iran's charg\u00e9s d'affaires in Ankara after Iran's foreign ministry summoned Turkey's ambassador. (Al Arabiya)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": -3.0,
+        "market_stress_delta": -2.0,
+        "oil_pressure_delta": -1.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-mar-11-f2acaacb",
+      "timestamp": "2025-03-11T12:00:00Z",
+      "topic": "conflict",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "At least ten people are killed after five Al-Shabaab militants detonate a car bomb and attack a hotel in Beledweyne, Hiran, Somalia. (First Post)",
+      "public_summary": "At least ten people are killed after five Al-Shabaab militants detonate a car bomb and attack a hotel in Beledweyne, Hiran, Somalia. (First Post)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "conflict",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-mar-12-24a21785",
+      "timestamp": "2025-03-12T12:00:00Z",
+      "topic": "conflict",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "civilians"
+      ],
+      "severity": "high",
+      "summary": "Somali security forces end the 24-hour siege at a hotel in Beledweyne, Hiran, Somalia, with at least fifteen civilians and all six Al-Shabaab attackers killed.",
+      "public_summary": "Somali security forces end the 24-hour siege at a hotel in Beledweyne, Hiran, Somalia, with at least fifteen civilians and all six Al-Shabaab attackers killed.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "conflict",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-mar-12-68bedef9",
+      "timestamp": "2025-03-12T12:00:00Z",
+      "topic": "nuclear",
+      "region": "iran",
+      "actors": [
+        "us",
+        "iran"
+      ],
+      "targets": [
+        "nuclear_facility"
+      ],
+      "severity": "critical",
+      "summary": "Iranian supreme leader Ali Khamenei rejects negotiations with the U.S. regarding Iran's nuclear program, stating that Iran is \"not interested in nuclear weapons\".",
+      "public_summary": "Iranian supreme leader Ali Khamenei rejects negotiations with the U.S. regarding Iran's nuclear program, stating that Iran is \"not interested in nuclear weapons\".",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 17.5,
+        "market_stress_delta": 7.5,
+        "oil_pressure_delta": 5.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-mar-14-4e486bc0",
+      "timestamp": "2025-03-14T12:00:00Z",
+      "topic": "disaster",
+      "region": "global",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "At least two people are killed and one other is injured in a landslide at a salt mine in Karak District, Khyber Pakhtunkhwa, Pakistan. (Aaj News)",
+      "public_summary": "At least two people are killed and one other is injured in a landslide at a salt mine in Karak District, Khyber Pakhtunkhwa, Pakistan. (Aaj News)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disasters_and_accidents",
+        "global"
+      ],
+      "impact": {
+        "tension_delta": 1.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-mar-15-fdd303b8",
+      "timestamp": "2025-03-15T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "A police officer is killed and six others are injured when an improvised explosive device strikes an Anti-Terrorism Force vehicle on patrol in Kirani, Balochistan, Pakistan. (Asian News International)",
+      "public_summary": "A police officer is killed and six others are injured when an improvised explosive device strikes an Anti-Terrorism Force vehicle on patrol in Kirani, Balochistan, Pakistan. (Asian News International)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-mar-19-6e794bb3",
+      "timestamp": "2025-03-19T12:00:00Z",
+      "topic": "nuclear",
+      "region": "iran",
+      "actors": [
+        "us",
+        "iran"
+      ],
+      "targets": [
+        "civilians",
+        "government",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "U.S. government sources reveal that President Donald Trump's letter to Iranian Supreme Leader Ali Khamenei from two weeks ago contained a deadline of two months for reaching a new deal on Iran's nuclear program. (Axios)",
+      "public_summary": "U.S. government sources reveal that President Donald Trump's letter to Iranian Supreme Leader Ali Khamenei from two weeks ago contained a deadline of two months for reaching a new deal on Iran's nucle",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-mar-19-d2ea0480",
+      "timestamp": "2025-03-19T12:00:00Z",
+      "topic": "security",
+      "region": "global",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "medium",
+      "summary": "Bangladesh Police arrest Ataullah abu Ammar Jununi, the leader of the Arakan Rohingya Salvation Army, a Rohingya insurgent group, in Dhaka, Bangladesh, accusing him of leading and carrying out attacks against the Tatmadaw since 2016 along with charges of illegal entry, murder, and sabotage. (DW) (Th",
+      "public_summary": "Bangladesh Police arrest Ataullah abu Ammar Jununi, the leader of the Arakan Rohingya Salvation Army, a Rohingya insurgent group, in Dhaka, Bangladesh, accusing him of leading and carrying out attacks",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "security",
+        "law_and_crime",
+        "global"
+      ],
+      "impact": {
+        "tension_delta": 2.0,
+        "market_stress_delta": 1.0,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-mar-23-1b52a22c",
+      "timestamp": "2025-03-23T12:00:00Z",
+      "topic": "nuclear",
+      "region": "iran",
+      "actors": [
+        "us",
+        "iran"
+      ],
+      "targets": [
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "U.S. National Security Advisor Mike Waltz says that the U.S. wants the \"full dismantlement\" of Iran's nuclear program and that \"all options are on the table\". (Al Arabiya)",
+      "public_summary": "U.S. National Security Advisor Mike Waltz says that the U.S. wants the \"full dismantlement\" of Iran's nuclear program and that \"all options are on the table\". (Al Arabiya)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-mar-30-7190e3e5",
+      "timestamp": "2025-03-30T12:00:00Z",
+      "topic": "nuclear",
+      "region": "iran",
+      "actors": [
+        "us",
+        "iran"
+      ],
+      "targets": [
+        "civilians",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Iranian president Masoud Pezeshkian says that Iran will not have direct negotiations with the U.S. on its nuclear program, but is open for indirect talks to rebuild trust, after U.S. president Donald Trump threatened \"bombing\" if Iran does not agree to a new nuclear deal.",
+      "public_summary": "Iranian president Masoud Pezeshkian says that Iran will not have direct negotiations with the U.S. on its nuclear program, but is open for indirect talks to rebuild trust, after U.S. president Donald ",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-mar-31-30f0a130",
+      "timestamp": "2025-03-31T12:00:00Z",
+      "topic": "energy",
+      "region": "gulf",
+      "actors": [
+        "iran",
+        "gulf"
+      ],
+      "targets": [
+        "shipping_lanes",
+        "energy_networks",
+        "infrastructure"
+      ],
+      "severity": "high",
+      "summary": "The Iranian IRGC Navy seizes two foreign oil tankers in the Persian Gulf and is towing the vessels to the country's Bushehr port, claiming they are part of a \"fuel-smuggling network\". It is currently unknown what countries the vessels belong to. (Al Arabiya)",
+      "public_summary": "The Iranian IRGC Navy seizes two foreign oil tankers in the Persian Gulf and is towing the vessels to the country's Bushehr port, claiming they are part of a \"fuel-smuggling network\". It is currently ",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "energy",
+        "armed_conflicts_and_attacks",
+        "gulf"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 7.5,
+        "oil_pressure_delta": 10.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-apr-02-ce13b141",
+      "timestamp": "2025-04-02T12:00:00Z",
+      "topic": "nuclear",
+      "region": "iran",
+      "actors": [
+        "us",
+        "iran"
+      ],
+      "targets": [
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "The United States Air Force deploys 6 nuclear-capable B-2 stealth bombers to Diego Garcia, amid rising tensions with Iran over their nuclear program.",
+      "public_summary": "The United States Air Force deploys 6 nuclear-capable B-2 stealth bombers to Diego Garcia, amid rising tensions with Iran over their nuclear program.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-apr-07-ff0373d8",
+      "timestamp": "2025-04-07T12:00:00Z",
+      "topic": "disaster",
+      "region": "global",
+      "actors": [
+        "us",
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "A bus lost control after a break faliure and overturned in Tharaka-Nithi County, killing seven. (Tuko)",
+      "public_summary": "A bus lost control after a break faliure and overturned in Tharaka-Nithi County, killing seven. (Tuko)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disaster_and_accidents",
+        "global"
+      ],
+      "impact": {
+        "tension_delta": 1.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-apr-12-38d9ae05",
+      "timestamp": "2025-04-12T12:00:00Z",
+      "topic": "conflict",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Sistan and Baluchestan insurgency Eight Pakistani citizens are killed in a mass shooting by Baloch Nationalist Army gunmen in Mehrestan, Sistan and Baluchestan province, Iran.",
+      "public_summary": "Sistan and Baluchestan insurgency Eight Pakistani citizens are killed in a mass shooting by Baloch Nationalist Army gunmen in Mehrestan, Sistan and Baluchestan province, Iran.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "conflict",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-apr-12-49bb25b7",
+      "timestamp": "2025-04-12T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "gulf",
+      "actors": [
+        "us",
+        "israel",
+        "iran",
+        "gulf"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "medium",
+      "summary": "Iran and the United States, represented by foreign minister Abbas Araghchi and special envoy Steve Witkoff, hold their first round of indirect talks in Muscat, Oman, and agree to continue the negotiations. (The Jerusalem Post)",
+      "public_summary": "Iran and the United States, represented by foreign minister Abbas Araghchi and special envoy Steve Witkoff, hold their first round of indirect talks in Muscat, Oman, and agree to continue the negotiat",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "international_relations",
+        "gulf"
+      ],
+      "impact": {
+        "tension_delta": -3.0,
+        "market_stress_delta": -2.0,
+        "oil_pressure_delta": -1.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-apr-26-5e4f28cb",
+      "timestamp": "2025-04-26T12:00:00Z",
+      "topic": "disaster",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "infrastructure"
+      ],
+      "severity": "high",
+      "summary": "Port of Shahid Rajaee explosion At least twenty-five people are killed and over 800 others are injured in an explosion at the Port of Shahid Rajaee in Bandar Abbas, Iran.",
+      "public_summary": "Port of Shahid Rajaee explosion At least twenty-five people are killed and over 800 others are injured in an explosion at the Port of Shahid Rajaee in Bandar Abbas, Iran.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disasters_and_accidents",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 1.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-apr-27-b3a5dbd1",
+      "timestamp": "2025-04-27T12:00:00Z",
+      "topic": "disaster",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "infrastructure"
+      ],
+      "severity": "high",
+      "summary": "Port of Shahid Rajaee explosion The death toll from yesterday's explosion at the Port of Shahid Rajaee in Bandar Abbas, Iran, rises to 40 while the injury count increases to 1,205. (Iran International)",
+      "public_summary": "Port of Shahid Rajaee explosion The death toll from yesterday's explosion at the Port of Shahid Rajaee in Bandar Abbas, Iran, rises to 40 while the injury count increases to 1,205. (Iran International",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disasters_and_accidents",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 1.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-may-02-b650199e",
+      "timestamp": "2025-05-02T12:00:00Z",
+      "topic": "disaster",
+      "region": "global",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Eight people are killed after a car lost control and plunged into a ravine on the Karakoram Highway in Kohistan district, Pakistan. (Pakistan Today)",
+      "public_summary": "Eight people are killed after a car lost control and plunged into a ravine on the Karakoram Highway in Kohistan district, Pakistan. (Pakistan Today)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disasters_and_accidents",
+        "global"
+      ],
+      "impact": {
+        "tension_delta": 1.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-may-04-2c9e273a",
+      "timestamp": "2025-05-04T12:00:00Z",
+      "topic": "disaster",
+      "region": "iran",
+      "actors": [
+        "us",
+        "iran"
+      ],
+      "targets": [
+        "infrastructure",
+        "government"
+      ],
+      "severity": "high",
+      "summary": "Port of Shahid Rajaee explosion The casualty figure from the explosion at the Port of Shahid Rajaee in Hormozgan province, Iran, is revised by the judiciary of Iran to 57 deaths and more than 1,000 injuries. Two people, including a government official, are arrested in connection with the explosion.",
+      "public_summary": "Port of Shahid Rajaee explosion The casualty figure from the explosion at the Port of Shahid Rajaee in Hormozgan province, Iran, is revised by the judiciary of Iran to 57 deaths and more than 1,000 in",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disasters_and_accidents",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 1.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-may-08-da71d279",
+      "timestamp": "2025-05-08T12:00:00Z",
+      "topic": "disaster",
+      "region": "asia",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Five tourists and a pilot are killed, and one other person is injured, when a Bell 407 helicopter crashes and falls into a deep gorge near Bhagirathi River in Uttarakhand, India. (The Hindu) (NDTV)",
+      "public_summary": "Five tourists and a pilot are killed, and one other person is injured, when a Bell 407 helicopter crashes and falls into a deep gorge near Bhagirathi River in Uttarakhand, India. (The Hindu) (NDTV)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disasters_and_accidents",
+        "asia"
+      ],
+      "impact": {
+        "tension_delta": 1.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-may-15-fb0d685c",
+      "timestamp": "2025-05-15T12:00:00Z",
+      "topic": "sanctions",
+      "region": "iran",
+      "actors": [
+        "us",
+        "iran"
+      ],
+      "targets": [
+        "civilians",
+        "infrastructure",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "U.S. president Donald Trump says that the U.S. and Iran have \"sort of\" agreed on the terms of a deal on Iran's nuclear program, which reportedly includes Iran agreeing to give up highly enriched uranium while keeping lower-grade uranium needed for civilian nuclear power, in exchange for the lifting",
+      "public_summary": "U.S. president Donald Trump says that the U.S. and Iran have \"sort of\" agreed on the terms of a deal on Iran's nuclear program, which reportedly includes Iran agreeing to give up highly enriched urani",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "sanctions",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 4.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-may-17-2f4ec18d",
+      "timestamp": "2025-05-17T12:00:00Z",
+      "topic": "security",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Capital punishment in Iran, Blasphemy law in Iran The Supreme Court of Iran overturns a 5-year prison sentence imposed by a Tehran court against singer Amir Tataloo and confirms his death sentence for blasphemy. Tataloo had been extradited from Turkey in 2023. (News Central Africa) (IranWire)",
+      "public_summary": "Capital punishment in Iran, Blasphemy law in Iran The Supreme Court of Iran overturns a 5-year prison sentence imposed by a Tehran court against singer Amir Tataloo and confirms his death sentence for",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "security",
+        "law_and_crime",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.8,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-may-18-456b5eba",
+      "timestamp": "2025-05-18T12:00:00Z",
+      "topic": "security",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Capital punishment in Iran, 2022 Shah Cheragh attack A court in Shiraz, Iran, sentences three people to death over two attacks on a Shiite shrine in 2022 and 2023 in Shiraz and several to others to different prison terms. (The Times of Israel)",
+      "public_summary": "Capital punishment in Iran, 2022 Shah Cheragh attack A court in Shiraz, Iran, sentences three people to death over two attacks on a Shiite shrine in 2022 and 2023 in Shiraz and several to others to di",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "security",
+        "law_and_crime",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.8,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-may-19-ddc4aa04",
+      "timestamp": "2025-05-19T12:00:00Z",
+      "topic": "border",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "northern_front"
+      ],
+      "severity": "high",
+      "summary": "Over 70 Al-Shabaab militants are killed along the Hiran\u2013Middle Shabelle border in Somalia in an overnight military operation by the Somali National Army and local defense fighters from Hiran. (Hiiraan Online)",
+      "public_summary": "Over 70 Al-Shabaab militants are killed along the Hiran\u2013Middle Shabelle border in Somalia in an overnight military operation by the Somali National Army and local defense fighters from Hiran. (Hiiraan",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "border",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.8,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-may-19-078155d3",
+      "timestamp": "2025-05-19T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "government"
+      ],
+      "severity": "medium",
+      "summary": "The Iranian foreign ministry summons the British charg\u00e9 d'affaires to protest the arrest of seven Iranian nationals in London earlier this month. (DW)",
+      "public_summary": "The Iranian foreign ministry summons the British charg\u00e9 d'affaires to protest the arrest of seven Iranian nationals in London earlier this month. (DW)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": -3.0,
+        "market_stress_delta": -2.0,
+        "oil_pressure_delta": -1.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-may-25-2e4c8cce",
+      "timestamp": "2025-05-25T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Russian forces launch their largest air attack on Ukraine, including the capital city Kyiv, since the start of the war, killing at least 14 people and wounding dozens more. At least 298 Iranian Shahed drones and 69 missiles are launched at Ukrainian cities during the overnight attack.",
+      "public_summary": "Russian forces launch their largest air attack on Ukraine, including the capital city Kyiv, since the start of the war, killing at least 14 people and wounding dozens more. At least 298 Iranian Shahed",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-02-e3a7394f",
+      "timestamp": "2025-06-02T12:00:00Z",
+      "topic": "nuclear",
+      "region": "iran",
+      "actors": [
+        "us",
+        "iran"
+      ],
+      "targets": [
+        "civilians",
+        "infrastructure",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "U.S. president Donald Trump announces that the recent U.S. proposal for a deal on Iran's nuclear program does not allow any uranium enrichment by Iran, despite previous media reports to the contrary. (France24)",
+      "public_summary": "U.S. president Donald Trump announces that the recent U.S. proposal for a deal on Iran's nuclear program does not allow any uranium enrichment by Iran, despite previous media reports to the contrary. ",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-10-c7d3bfe3",
+      "timestamp": "2025-06-10T12:00:00Z",
+      "topic": "nuclear",
+      "region": "global",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "government",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "The British government announces it will invest \u00a314.2 billion (US$19 billion) to construct the new Sizewell C nuclear power station in Suffolk, England, to reduce the country's reliance on fossil fuels.",
+      "public_summary": "The British government announces it will invest \u00a314.2 billion (US$19 billion) to construct the new Sizewell C nuclear power station in Suffolk, England, to reduce the country's reliance on fossil fuel",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "business_and_economy",
+        "global"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-10-f33a8022",
+      "timestamp": "2025-06-10T12:00:00Z",
+      "topic": "security",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Iran hangs nine members of the Islamic State for a 2018 attack which killed three Islamic Revolutionary Guard Corps personnel.",
+      "public_summary": "Iran hangs nine members of the Islamic State for a 2018 attack which killed three Islamic Revolutionary Guard Corps personnel.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "security",
+        "law_and_crime",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.8,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-12-4fc36d29",
+      "timestamp": "2025-06-12T12:00:00Z",
+      "topic": "energy",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "energy_networks",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "The International Atomic Energy Agency finds Iran in breach of its obligations to limit uranium enrichment and provision of information on its nuclear materials. (The Guardian)",
+      "public_summary": "The International Atomic Energy Agency finds Iran in breach of its obligations to limit uranium enrichment and provision of information on its nuclear materials. (The Guardian)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "energy",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 7.5,
+        "oil_pressure_delta": 10.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-13-e5fcd1f0",
+      "timestamp": "2025-06-13T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "June 2025 Iranian strikes on Israel Iran launches over 100 Shahed drones and ballistic missiles towards Israel in retaliation for the strikes. (The Times of Israel)",
+      "public_summary": "June 2025 Iranian strikes on Israel Iran launches over 100 Shahed drones and ballistic missiles towards Israel in retaliation for the strikes. (The Times of Israel)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-13-99b6043b",
+      "timestamp": "2025-06-13T12:00:00Z",
+      "topic": "nuclear",
+      "region": "iran",
+      "actors": [
+        "us",
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "infrastructure",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "The Israeli Air Force launches a bombing campaign against Iran targeting nuclear facilities with the main goal of the operation being to destroy Iran's nuclear program. A special state of emergency is declared in Israel by Defence Minister Israel Katz and Israeli airspace is closed to all flights. I",
+      "public_summary": "The Israeli Air Force launches a bombing campaign against Iran targeting nuclear facilities with the main goal of the operation being to destroy Iran's nuclear program. A special state of emergency is",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-13-6ddedb69",
+      "timestamp": "2025-06-13T12:00:00Z",
+      "topic": "nuclear",
+      "region": "iran",
+      "actors": [
+        "us",
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "government",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Israel also launches targeted assassination strikes against senior Iranian government officials, Iranian military leadership and senior nuclear scientists.",
+      "public_summary": "Israel also launches targeted assassination strikes against senior Iranian government officials, Iranian military leadership and senior nuclear scientists.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-13-866072cf",
+      "timestamp": "2025-06-13T12:00:00Z",
+      "topic": "nuclear",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "The Israeli military confirms it has targeted nuclear facilities in Iran with the main goal of the operation being to destroy Iran's nuclear program. Israeli prime minister Benjamin Netanyahu confirms Israeli warplanes have targeted Iran's main Natanz Nuclear Facility. It is later confirmed that the",
+      "public_summary": "The Israeli military confirms it has targeted nuclear facilities in Iran with the main goal of the operation being to destroy Iran's nuclear program. Israeli prime minister Benjamin Netanyahu confirms",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-13-7af444fc",
+      "timestamp": "2025-06-13T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "civilians",
+        "infrastructure"
+      ],
+      "severity": "high",
+      "summary": "Iranian state media reports that all flights to and from Imam Khomeini International Airport have been suspended until further notice and that several residential buildings in Tehran have collapsed due to missile strikes. (The Times of Israel)",
+      "public_summary": "Iranian state media reports that all flights to and from Imam Khomeini International Airport have been suspended until further notice and that several residential buildings in Tehran have collapsed du",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-13-5b6029ff",
+      "timestamp": "2025-06-13T12:00:00Z",
+      "topic": "energy",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "energy_networks",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Israeli decapitation strikes kill commander-in-chief of the Islamic Revolutionary Guard Corps Hossein Salami, senior nuclear scientist and former head of the Atomic Energy Organization of Iran Fereydoon Abbasi, and chief of the General Staff of the Armed Forces of the Islamic Republic of Iran Mohamm",
+      "public_summary": "Israeli decapitation strikes kill commander-in-chief of the Islamic Revolutionary Guard Corps Hossein Salami, senior nuclear scientist and former head of the Atomic Energy Organization of Iran Fereydo",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "energy",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 7.5,
+        "oil_pressure_delta": 10.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-13-0d1c8301",
+      "timestamp": "2025-06-13T12:00:00Z",
+      "topic": "conflict",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Exiled crown prince Reza Pahlavi, the son of Iran's last Shah, writes in Farsi calling for the Iranian military to abandon the Islamic Republic and accuses Supreme Leader Ayatollah Ali Khamenei of forcing Iranians into the war. He also refers to the war as \"Khamenei's war and the Islamic Republic's",
+      "public_summary": "Exiled crown prince Reza Pahlavi, the son of Iran's last Shah, writes in Farsi calling for the Iranian military to abandon the Islamic Republic and accuses Supreme Leader Ayatollah Ali Khamenei of for",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "conflict",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-13-c22b5f5d",
+      "timestamp": "2025-06-13T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "June 2025 Iranian strikes on Israel At least three people are killed and 172 others injured in Israel after Iran's retaliatory strikes. (The Jerusalem Post)",
+      "public_summary": "June 2025 Iranian strikes on Israel At least three people are killed and 172 others injured in Israel after Iran's retaliatory strikes. (The Jerusalem Post)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-14-410d8098",
+      "timestamp": "2025-06-14T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "government"
+      ],
+      "severity": "high",
+      "summary": "Iran\u2013Israel war (list of airstrikes) Iran and Israel continue to launch missiles and drones at each other after the preemptive strike on Iran yesterday. Israel targeted Iran's Ministry of Defence headquarters while Iran retaliated by launching missiles at Tel Aviv and Haifa.",
+      "public_summary": "Iran\u2013Israel war (list of airstrikes) Iran and Israel continue to launch missiles and drones at each other after the preemptive strike on Iran yesterday. Israel targeted Iran's Ministry of Defence head",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-14-b39206a8",
+      "timestamp": "2025-06-14T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Iran\u2013Israel war (list of airstrikes) At least 13 Israelis are killed and over 200 others are injured in an Iranian ballistic missile attack on Bat Yam. (The Times of Israel)",
+      "public_summary": "Iran\u2013Israel war (list of airstrikes) At least 13 Israelis are killed and over 200 others are injured in an Iranian ballistic missile attack on Bat Yam. (The Times of Israel)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-14-ac35ef3f",
+      "timestamp": "2025-06-14T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "government"
+      ],
+      "severity": "medium",
+      "summary": "Elon Musk announces on X (formerly Twitter) that Starlink will provide internet access to citizens in Tehran, Iran after the Iranian government shut down the internet in the country due to Israeli strikes against the nation. (The Times of Israel)",
+      "public_summary": "Elon Musk announces on X (formerly Twitter) that Starlink will provide internet access to citizens in Tehran, Iran after the Iranian government shut down the internet in the country due to Israeli str",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "science_and_technology",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 6.0,
+        "market_stress_delta": 2.5,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-15-86056dc1",
+      "timestamp": "2025-06-15T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "us",
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "infrastructure"
+      ],
+      "severity": "high",
+      "summary": "Iran\u2013Israel war (list of airstrikes) The Israeli Air Force says it has targeted Mashhad Shahid Hasheminejad International Airport in eastern Iran, destroying a refueling plane used by the Islamic Republic of Iran Air Force.",
+      "public_summary": "Iran\u2013Israel war (list of airstrikes) The Israeli Air Force says it has targeted Mashhad Shahid Hasheminejad International Airport in eastern Iran, destroying a refueling plane used by the Islamic Repu",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-15-f578c01c",
+      "timestamp": "2025-06-15T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "civilians"
+      ],
+      "severity": "high",
+      "summary": "Iran\u2013Israel war (list of airstrikes) An Iranian ballistic missile strike on a residential building kills nine people, including three children, and injures over 200 others in Bat Yam, Israel. (The Times of Israel)",
+      "public_summary": "Iran\u2013Israel war (list of airstrikes) An Iranian ballistic missile strike on a residential building kills nine people, including three children, and injures over 200 others in Bat Yam, Israel. (The Tim",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-15-ffd6b8f9",
+      "timestamp": "2025-06-15T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "us",
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "civilians"
+      ],
+      "severity": "high",
+      "summary": "Iran\u2013Israel war (list of airstrikes) According to American officials, U.S. president Donald Trump vetoed a plan by Israel to assassinate the supreme leader of Iran, Ayatollah Ali Khamenei.",
+      "public_summary": "Iran\u2013Israel war (list of airstrikes) According to American officials, U.S. president Donald Trump vetoed a plan by Israel to assassinate the supreme leader of Iran, Ayatollah Ali Khamenei.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-15-fd70302a",
+      "timestamp": "2025-06-15T12:00:00Z",
+      "topic": "military",
+      "region": "gulf",
+      "actors": [
+        "us",
+        "israel",
+        "iran",
+        "gulf",
+        "oversight"
+      ],
+      "targets": [
+        "civilians",
+        "infrastructure"
+      ],
+      "severity": "high",
+      "summary": "Iran\u2013Israel war (list of airstrikes) The Syrian Observatory for Human Rights reports that a Syrian civilian woman was killed after a drone strikes her home in rural Tartus Governorate, Syria, which the group says was likely an Iranian drone. (The Times of Israel)",
+      "public_summary": "Iran\u2013Israel war (list of airstrikes) The Syrian Observatory for Human Rights reports that a Syrian civilian woman was killed after a drone strikes her home in rural Tartus Governorate, Syria, which th",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "gulf"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-15-fcf1e6f0",
+      "timestamp": "2025-06-15T12:00:00Z",
+      "topic": "disaster",
+      "region": "asia",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Seven people are killed, including an infant, when a Bell 407 aircraft crashes in a forested area in bad weather while en route to the Kedarnath Temple in Kedarnath, Uttarakhand, India. (The Free Press Journal)",
+      "public_summary": "Seven people are killed, including an infant, when a Bell 407 aircraft crashes in a forested area in bad weather while en route to the Kedarnath Temple in Kedarnath, Uttarakhand, India. (The Free Pres",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disasters_and_accidents",
+        "asia"
+      ],
+      "impact": {
+        "tension_delta": 1.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-16-c0899083",
+      "timestamp": "2025-06-16T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Iran\u2013Israel war (list of airstrikes) The death toll from Israeli airstrikes on Iran rises to at least 220 people, including 70 women and children.",
+      "public_summary": "Iran\u2013Israel war (list of airstrikes) The death toll from Israeli airstrikes on Iran rises to at least 220 people, including 70 women and children.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-16-87f6dcd0",
+      "timestamp": "2025-06-16T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "infrastructure"
+      ],
+      "severity": "high",
+      "summary": "Iran\u2013Israel war (list of airstrikes) Israel strikes buildings in Tehran belonging to the Islamic Republic of Iran Broadcasting, Iran's state-owned media company, knocking it temporarily off-air for an hour before later returning. Three employees are killed and several others are injured. (Al-Monitor",
+      "public_summary": "Iran\u2013Israel war (list of airstrikes) Israel strikes buildings in Tehran belonging to the Islamic Republic of Iran Broadcasting, Iran's state-owned media company, knocking it temporarily off-air for an",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-16-00ce32c2",
+      "timestamp": "2025-06-16T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "civilians"
+      ],
+      "severity": "high",
+      "summary": "Iran\u2013Israel war (list of airstrikes) Iran says Israel struck a hospital in Kermanshah in western Iran. Video footage published by local platforms showed bloodstains, indicating casualties from the strike.",
+      "public_summary": "Iran\u2013Israel war (list of airstrikes) Iran says Israel struck a hospital in Kermanshah in western Iran. Video footage published by local platforms showed bloodstains, indicating casualties from the str",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-16-b31ccc0e",
+      "timestamp": "2025-06-16T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Iran\u2013Israel war (list of airstrikes) Israeli jets strike 120 surface-to-surface missile systems in central Iran and ten command and control centres belonging to the IRGC's Quds Force.",
+      "public_summary": "Iran\u2013Israel war (list of airstrikes) Israeli jets strike 120 surface-to-surface missile systems in central Iran and ten command and control centres belonging to the IRGC's Quds Force.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-16-ac43addb",
+      "timestamp": "2025-06-16T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "us",
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "infrastructure"
+      ],
+      "severity": "high",
+      "summary": "Iran\u2013Israel war (list of airstrikes) Israeli drones strike two Iranian Air Force  F-14 Tomcats stationed at Imam Khomeini International Airport. Combat footage released by the IDF confirm both were destroyed. (The Times of Israel)",
+      "public_summary": "Iran\u2013Israel war (list of airstrikes) Israeli drones strike two Iranian Air Force  F-14 Tomcats stationed at Imam Khomeini International Airport. Combat footage released by the IDF confirm both were de",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-16-d82c8b35",
+      "timestamp": "2025-06-16T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Iran\u2013Israel war (list of airstrikes) An Iranian ballistic missile barrage kills eight people and injures 287 others in central Israel. (The Times of Israel)",
+      "public_summary": "Iran\u2013Israel war (list of airstrikes) An Iranian ballistic missile barrage kills eight people and injures 287 others in central Israel. (The Times of Israel)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-16-cb3733a4",
+      "timestamp": "2025-06-16T12:00:00Z",
+      "topic": "nuclear",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "government",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Iran\u2013Israel war (list of airstrikes) Iran's parliament prepares a bill to exit the international nuclear Non-Proliferation Treaty.",
+      "public_summary": "Iran\u2013Israel war (list of airstrikes) Iran's parliament prepares a bill to exit the international nuclear Non-Proliferation Treaty.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-16-ff4f74ca",
+      "timestamp": "2025-06-16T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "us",
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Iran\u2013Israel war (list of airstrikes) Israel announces it has taken \"full aerial operational control\" of the airspace over Tehran and western Iran after destroying much of the country's air defence network giving the Israeli Air Force near complete air supremacy over Iranian forces.",
+      "public_summary": "Iran\u2013Israel war (list of airstrikes) Israel announces it has taken \"full aerial operational control\" of the airspace over Tehran and western Iran after destroying much of the country's air defence net",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-16-33d9d83c",
+      "timestamp": "2025-06-16T12:00:00Z",
+      "topic": "conflict",
+      "region": "iran",
+      "actors": [
+        "us",
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "civilians"
+      ],
+      "severity": "high",
+      "summary": "Democratic senator Tim Kaine of Virginia introduces legislation to prevent U.S. president Donald Trump from using military force against Iran without Congress's authorization. (US Congress)",
+      "public_summary": "Democratic senator Tim Kaine of Virginia introduces legislation to prevent U.S. president Donald Trump from using military force against Iran without Congress's authorization. (US Congress)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "conflict",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-17-111c9c79",
+      "timestamp": "2025-06-17T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "us",
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Airstrikes during the Iran\u2013Israel War Israel says it has killed Major General Ali Shadmani, the most senior military commander in Iran who was appointed to his post four days ago. (The New York Times)",
+      "public_summary": "Airstrikes during the Iran\u2013Israel War Israel says it has killed Major General Ali Shadmani, the most senior military commander in Iran who was appointed to his post four days ago. (The New York Times)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-17-65a67e0c",
+      "timestamp": "2025-06-17T12:00:00Z",
+      "topic": "conflict",
+      "region": "iran",
+      "actors": [
+        "us",
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "civilians"
+      ],
+      "severity": "high",
+      "summary": "U.S. president Donald Trump calls for the unconditional surrender of Iran amid its war with Israel. Iran rejects the ultimatum. (The Guardian)",
+      "public_summary": "U.S. president Donald Trump calls for the unconditional surrender of Iran amid its war with Israel. Iran rejects the ultimatum. (The Guardian)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "conflict",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-18-8cad84f1",
+      "timestamp": "2025-06-18T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "infrastructure"
+      ],
+      "severity": "high",
+      "summary": "Airstrikes during the Iran\u2013Israel war Twenty-five Iranian ballistic missiles are launched at central Israel, with most being intercepted and no injuries reported. (YNet)",
+      "public_summary": "Airstrikes during the Iran\u2013Israel war Twenty-five Iranian ballistic missiles are launched at central Israel, with most being intercepted and no injuries reported. (YNet)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-19-f427b3ef",
+      "timestamp": "2025-06-19T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Airstrikes during the Iran\u2013Israel war The death toll from Israel's strikes on Iran rises to more than 240, including 70 women and children. To date, at least 24 people have been killed by Iranian strikes on Israel.",
+      "public_summary": "Airstrikes during the Iran\u2013Israel war The death toll from Israel's strikes on Iran rises to more than 240, including 70 women and children. To date, at least 24 people have been killed by Iranian stri",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-19-eb5d1d80",
+      "timestamp": "2025-06-19T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "civilians"
+      ],
+      "severity": "high",
+      "summary": "Airstrikes during the Iran\u2013Israel war Iran strikes four sites in central and southern Israel. The Soroka Medical Center in Beersheba, is hit by an Iranian ballistic missile, injuring at least 240 people. Iran says it was targeting a military site, striking an Israeli military and intelligence centre",
+      "public_summary": "Airstrikes during the Iran\u2013Israel war Iran strikes four sites in central and southern Israel. The Soroka Medical Center in Beersheba, is hit by an Iranian ballistic missile, injuring at least 240 peop",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-19-5978a9e9",
+      "timestamp": "2025-06-19T12:00:00Z",
+      "topic": "nuclear",
+      "region": "iran",
+      "actors": [
+        "us",
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Airstrikes during the Iran\u2013Israel war The Israeli Air Force strikes the Arak Nuclear Complex, a heavy-water reactor near Arak, Iran. (The Times of Israel)",
+      "public_summary": "Airstrikes during the Iran\u2013Israel war The Israeli Air Force strikes the Arak Nuclear Complex, a heavy-water reactor near Arak, Iran. (The Times of Israel)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-20-245a1e6f",
+      "timestamp": "2025-06-20T12:00:00Z",
+      "topic": "nuclear",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "2025 Iran\u2013European nuclear talks Iranian foreign minister Abbas Araghchi meets with the foreign ministers of the United Kingdom, Germany, France and European Union in Geneva for talks about its nuclear program.",
+      "public_summary": "2025 Iran\u2013European nuclear talks Iranian foreign minister Abbas Araghchi meets with the foreign ministers of the United Kingdom, Germany, France and European Union in Geneva for talks about its nuclea",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-20-f8b6b527",
+      "timestamp": "2025-06-20T12:00:00Z",
+      "topic": "conflict",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "infrastructure"
+      ],
+      "severity": "critical",
+      "summary": "Hundreds of thousands of people protest against Israel on the streets of Tehran after weekly prayers, chanting slogans in support of Iranian leaders. Protests also took place in Tabriz in northwestern Iran and Shiraz in the south.",
+      "public_summary": "Hundreds of thousands of people protest against Israel on the streets of Tehran after weekly prayers, chanting slogans in support of Iranian leaders. Protests also took place in Tabriz in northwestern",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "conflict",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 12.5,
+        "market_stress_delta": 5.0,
+        "oil_pressure_delta": 2.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-20-dcbb3e2a",
+      "timestamp": "2025-06-20T12:00:00Z",
+      "topic": "nuclear",
+      "region": "gulf",
+      "actors": [
+        "israel",
+        "iran",
+        "gulf",
+        "oversight"
+      ],
+      "targets": [
+        "civilians",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Saudi Arabia's Nuclear and Radiological Regulatory Commission says military strikes on civilian nuclear facilities violate international law in response to Israeli strikes on Iranian nuclear facilities.",
+      "public_summary": "Saudi Arabia's Nuclear and Radiological Regulatory Commission says military strikes on civilian nuclear facilities violate international law in response to Israeli strikes on Iranian nuclear facilitie",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "armed_conflicts_and_attacks",
+        "gulf"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-20-5c31c8e6",
+      "timestamp": "2025-06-20T12:00:00Z",
+      "topic": "nuclear",
+      "region": "europe",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "government",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "The Nigerien government announces it will nationalize the controlling share of the SOMAIR mining company that previously belonged to French multinational nuclear fuel cycle corporation Orano, which is in turn controlled by the French government. (DW)",
+      "public_summary": "The Nigerien government announces it will nationalize the controlling share of the SOMAIR mining company that previously belonged to French multinational nuclear fuel cycle corporation Orano, which is",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "international_relations",
+        "europe"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-21-b0359dcb",
+      "timestamp": "2025-06-21T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "The death toll from Israel's strikes on Iran rises to more than 430, while 3,056 people have been injured.",
+      "public_summary": "The death toll from Israel's strikes on Iran rises to more than 430, while 3,056 people have been injured.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-21-6d10e1fe",
+      "timestamp": "2025-06-21T12:00:00Z",
+      "topic": "conflict",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "civilians"
+      ],
+      "severity": "high",
+      "summary": "Iran's health minister Mohammadreza Zafarghandi says Israel has targeted three hospitals during the conflict, killing two health workers and a child, and has targeted six ambulances.",
+      "public_summary": "Iran's health minister Mohammadreza Zafarghandi says Israel has targeted three hospitals during the conflict, killing two health workers and a child, and has targeted six ambulances.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "conflict",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-21-c205e476",
+      "timestamp": "2025-06-21T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "military_base",
+        "civilians"
+      ],
+      "severity": "high",
+      "summary": "Iran's emergency organization head says Israeli strikes have targeted medical and relief facilities, in addition to residential areas across the country. Three relief bases and eight ambulances have been seriously damaged or destroyed.",
+      "public_summary": "Iran's emergency organization head says Israeli strikes have targeted medical and relief facilities, in addition to residential areas across the country. Three relief bases and eight ambulances have b",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-22-2fb612d4",
+      "timestamp": "2025-06-22T12:00:00Z",
+      "topic": "nuclear",
+      "region": "iran",
+      "actors": [
+        "us",
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "civilians",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Airstrikes during the Iran\u2013Israel war United States strikes on Iranian nuclear sites U.S. president Donald Trump announces that the U.S. Air Force has conducted strikes on several nuclear facilities in Iran, including Natanz Nuclear Facility and Fordow Uranium Enrichment Plant. (The Times of Israel)",
+      "public_summary": "Airstrikes during the Iran\u2013Israel war United States strikes on Iranian nuclear sites U.S. president Donald Trump announces that the U.S. Air Force has conducted strikes on several nuclear facilities i",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-22-280d0746",
+      "timestamp": "2025-06-22T12:00:00Z",
+      "topic": "energy",
+      "region": "iran",
+      "actors": [
+        "us",
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "energy_networks",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Airstrikes during the Iran\u2013Israel war United States strikes on Iranian nuclear sites The International Atomic Energy Agency says no increase in off-site radiation levels was detected at the three targeted nuclear sites.",
+      "public_summary": "Airstrikes during the Iran\u2013Israel war United States strikes on Iranian nuclear sites The International Atomic Energy Agency says no increase in off-site radiation levels was detected at the three targ",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "energy",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 7.5,
+        "oil_pressure_delta": 10.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-22-bfe7f3df",
+      "timestamp": "2025-06-22T12:00:00Z",
+      "topic": "nuclear",
+      "region": "iran",
+      "actors": [
+        "us",
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "infrastructure",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Airstrikes during the Iran\u2013Israel war United States strikes on Iranian nuclear sites A report by Axios finds that Democrats on the Senate and House Intelligence panels were not given advance notice of the attack, while Republicans were given advance notice. (Axios)",
+      "public_summary": "Airstrikes during the Iran\u2013Israel war United States strikes on Iranian nuclear sites A report by Axios finds that Democrats on the Senate and House Intelligence panels were not given advance notice of",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-22-54b13711",
+      "timestamp": "2025-06-22T12:00:00Z",
+      "topic": "shipping",
+      "region": "gulf",
+      "actors": [
+        "us",
+        "israel",
+        "iran",
+        "gulf"
+      ],
+      "targets": [
+        "government",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Airstrikes during the Iran\u2013Israel war United States strikes on Iranian nuclear sites The Parliament of Iran votes for the closure of the Strait of Hormuz in response to the U.S. attacks. (The Guardian)",
+      "public_summary": "Airstrikes during the Iran\u2013Israel war United States strikes on Iranian nuclear sites The Parliament of Iran votes for the closure of the Strait of Hormuz in response to the U.S. attacks. (The Guardian",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "shipping",
+        "armed_conflicts_and_attacks",
+        "gulf"
+      ],
+      "impact": {
+        "tension_delta": 4.5,
+        "market_stress_delta": 6.0,
+        "oil_pressure_delta": 9.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-22-9e62d8a4",
+      "timestamp": "2025-06-22T12:00:00Z",
+      "topic": "nuclear",
+      "region": "iran",
+      "actors": [
+        "us",
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Airstrikes during the Iran\u2013Israel war United States strikes on Iranian nuclear sites Iran launches over 40 ballistic missiles at Israel, injuring at least 23 people and destroying apartments and homes.",
+      "public_summary": "Airstrikes during the Iran\u2013Israel war United States strikes on Iranian nuclear sites Iran launches over 40 ballistic missiles at Israel, injuring at least 23 people and destroying apartments and homes",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-23-f0016595",
+      "timestamp": "2025-06-23T12:00:00Z",
+      "topic": "nuclear",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran",
+        "oversight"
+      ],
+      "targets": [
+        "infrastructure",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Airstrikes during the Iran\u2013Israel war A United Nations fact-finding mission reports that Israeli strikes on Iran\u2019s state broadcasting agency and killing of Iranian nuclear scientists were likely in violation of international humanitarian law.",
+      "public_summary": "Airstrikes during the Iran\u2013Israel war A United Nations fact-finding mission reports that Israeli strikes on Iran\u2019s state broadcasting agency and killing of Iranian nuclear scientists were likely in vi",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-23-fdbbbfd1",
+      "timestamp": "2025-06-23T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "infrastructure"
+      ],
+      "severity": "high",
+      "summary": "Airstrikes during the Iran\u2013Israel war The Israeli military strikes Evin Prison in Tehran, Iran, damaging the facility's infrastructure. State TV showed first responders carrying a casualty and searching for survivors under a collapsed building.",
+      "public_summary": "Airstrikes during the Iran\u2013Israel war The Israeli military strikes Evin Prison in Tehran, Iran, damaging the facility's infrastructure. State TV showed first responders carrying a casualty and searchi",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-23-8b45b282",
+      "timestamp": "2025-06-23T12:00:00Z",
+      "topic": "military",
+      "region": "gulf",
+      "actors": [
+        "us",
+        "israel",
+        "iran",
+        "gulf"
+      ],
+      "targets": [
+        "infrastructure"
+      ],
+      "severity": "high",
+      "summary": "Airstrikes during the Iran\u2013Israel war Qatar closes the country's airspace amidst an imminent threat of a Iranian ballistic missile attack on U.S. forces stationed in the country. Multiple explosions are reported over Doha.",
+      "public_summary": "Airstrikes during the Iran\u2013Israel war Qatar closes the country's airspace amidst an imminent threat of a Iranian ballistic missile attack on U.S. forces stationed in the country. Multiple explosions a",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "gulf"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-23-a0f1bf0f",
+      "timestamp": "2025-06-23T12:00:00Z",
+      "topic": "military",
+      "region": "gulf",
+      "actors": [
+        "us",
+        "israel",
+        "iran",
+        "gulf"
+      ],
+      "targets": [
+        "military_base"
+      ],
+      "severity": "high",
+      "summary": "2025 Iranian strikes on Al Udeid Air Base Iran's Islamic Revolutionary Guards Corps says it has launched missiles at the U.S. Al Udeid Air Base in Qatar and U.S. bases in Iraq. U.S. officials later confirm no Iranian missiles hit the Al Udeid Air Base. (France 24)",
+      "public_summary": "2025 Iranian strikes on Al Udeid Air Base Iran's Islamic Revolutionary Guards Corps says it has launched missiles at the U.S. Al Udeid Air Base in Qatar and U.S. bases in Iraq. U.S. officials later co",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "gulf"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-23-3dd55305",
+      "timestamp": "2025-06-23T12:00:00Z",
+      "topic": "military",
+      "region": "gulf",
+      "actors": [
+        "israel",
+        "iran",
+        "gulf"
+      ],
+      "targets": [
+        "military_base",
+        "infrastructure",
+        "government"
+      ],
+      "severity": "high",
+      "summary": "2025 Iranian strikes on Al Udeid Air Base The Qatar Foreign Ministry says the Qatari military has intercepted all the missiles launched at the Al Udeid Air Base, and that no injuries are reported. (Al Bawaba) (Axios)",
+      "public_summary": "2025 Iranian strikes on Al Udeid Air Base The Qatar Foreign Ministry says the Qatari military has intercepted all the missiles launched at the Al Udeid Air Base, and that no injuries are reported. (Al",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "gulf"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-23-8f3841a1",
+      "timestamp": "2025-06-23T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "iran",
+      "actors": [
+        "us",
+        "israel",
+        "iran",
+        "oversight"
+      ],
+      "targets": [
+        "civilians"
+      ],
+      "severity": "high",
+      "summary": "U.S. president Donald Trump announces that a ceasefire has been reached between Iran and Israel. The ceasefire has not been confirmed by either Iran or Israel.",
+      "public_summary": "U.S. president Donald Trump announces that a ceasefire has been reached between Iran and Israel. The ceasefire has not been confirmed by either Iran or Israel.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": -4.5,
+        "market_stress_delta": -3.0,
+        "oil_pressure_delta": -1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-24-1b87beaf",
+      "timestamp": "2025-06-24T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "iran",
+      "actors": [
+        "us",
+        "israel",
+        "iran",
+        "oversight"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Airstrikes during the Iran\u2013Israel war Israel continues to launch airstrikes on Iran while Iran launches a wave of ballistic missiles at Israel despite the United States claiming a ceasefire had been reached between the warring sides. (The Guardian)",
+      "public_summary": "Airstrikes during the Iran\u2013Israel war Israel continues to launch airstrikes on Iran while Iran launches a wave of ballistic missiles at Israel despite the United States claiming a ceasefire had been r",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": -4.5,
+        "market_stress_delta": -3.0,
+        "oil_pressure_delta": -1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-24-35c49706",
+      "timestamp": "2025-06-24T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "civilians"
+      ],
+      "severity": "high",
+      "summary": "Airstrikes during the Iran\u2013Israel war Nine people are killed in an Israeli airstrike on residential units in Gilan, Iran. The attack also injured 33 people, including 16 women and children, with five requiring hospital treatment.",
+      "public_summary": "Airstrikes during the Iran\u2013Israel war Nine people are killed in an Israeli airstrike on residential units in Gilan, Iran. The attack also injured 33 people, including 16 women and children, with five ",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-24-437b9302",
+      "timestamp": "2025-06-24T12:00:00Z",
+      "topic": "military",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Airstrikes during the Iran\u2013Israel war Four people are killed and 22 others are injured in Beersheba, Southern Israel, after an Iranian missile strikes an apartment block. (The Times of Israel)",
+      "public_summary": "Airstrikes during the Iran\u2013Israel war Four people are killed and 22 others are injured in Beersheba, Southern Israel, after an Iranian missile strikes an apartment block. (The Times of Israel)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-24-bddaefbc",
+      "timestamp": "2025-06-24T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "iran",
+      "actors": [
+        "us",
+        "israel",
+        "iran",
+        "oversight"
+      ],
+      "targets": [
+        "civilians",
+        "infrastructure"
+      ],
+      "severity": "high",
+      "summary": "Airstrikes during the Iran\u2013Israel war U.S. president Donald Trump tells reporters at the White House that Israel and Iran \"don't know what the fuck they are doing\" as both countries continue to launch attacks despite U.S. claims of a ceasefire. (The Independent) (The Guardian)",
+      "public_summary": "Airstrikes during the Iran\u2013Israel war U.S. president Donald Trump tells reporters at the White House that Israel and Iran \"don't know what the fuck they are doing\" as both countries continue to launch",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": -4.5,
+        "market_stress_delta": -3.0,
+        "oil_pressure_delta": -1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-25-280e7847",
+      "timestamp": "2025-06-25T12:00:00Z",
+      "topic": "nuclear",
+      "region": "iran",
+      "actors": [
+        "us",
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "civilians",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "United States strikes on Iranian nuclear sites A preliminary assessment by the U.S. Defense Intelligence Agency finds that Iran's nuclear program may have only been set back by a few months after the U.S. airstrikes, with the centrifuges required to enrich uranium left largely intact, contradicting",
+      "public_summary": "United States strikes on Iranian nuclear sites A preliminary assessment by the U.S. Defense Intelligence Agency finds that Iran's nuclear program may have only been set back by a few months after the ",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jun-25-1b509aed",
+      "timestamp": "2025-06-25T12:00:00Z",
+      "topic": "nuclear",
+      "region": "iran",
+      "actors": [
+        "us",
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "civilians",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "United States strikes on Iranian nuclear sites After U.S. president Donald Trump rejects the DIA assessment as \"fake news\", U.S. Central Intelligence Agency director John Ratcliffe says that the CIA assesses that several key Iranian nuclear facilities were severely damaged in the airstrikes, likely",
+      "public_summary": "United States strikes on Iranian nuclear sites After U.S. president Donald Trump rejects the DIA assessment as \"fake news\", U.S. Central Intelligence Agency director John Ratcliffe says that the CIA a",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jul-02-768e26ce",
+      "timestamp": "2025-07-02T12:00:00Z",
+      "topic": "energy",
+      "region": "iran",
+      "actors": [
+        "us",
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "energy_networks",
+        "civilians",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Iranian president Masoud Pezeshkian orders the suspension of cooperation with the International Atomic Energy Agency following the Iran\u2013Israel war and the United States strikes on Iranian nuclear sites.",
+      "public_summary": "Iranian president Masoud Pezeshkian orders the suspension of cooperation with the International Atomic Energy Agency following the Iran\u2013Israel war and the United States strikes on Iranian nuclear site",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "energy",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 7.5,
+        "oil_pressure_delta": 10.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jul-19-4e60869f",
+      "timestamp": "2025-07-19T12:00:00Z",
+      "topic": "disaster",
+      "region": "iran",
+      "actors": [
+        "us",
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "At least 21 people are killed and 34 others are injured after a bus overturns and crashes in Kavar, Fars province, Iran. (The New Arab)",
+      "public_summary": "At least 21 people are killed and 34 others are injured after a bus overturns and crashes in Kavar, Fars province, Iran. (The New Arab)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disasters_and_accidents",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 1.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jul-26-4d79a8c6",
+      "timestamp": "2025-07-26T12:00:00Z",
+      "topic": "conflict",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Sistan and Baluchestan insurgency At least nine people are killed, including three attackers and a child, and 22 others are injured, including several critically, in a terrorist mass shooting and grenade attack at a courthouse in Zahedan, Sistan and Baluchestan province, Iran. Sunni jihadist separat",
+      "public_summary": "Sistan and Baluchestan insurgency At least nine people are killed, including three attackers and a child, and 22 others are injured, including several critically, in a terrorist mass shooting and gren",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "conflict",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jul-27-195775e5",
+      "timestamp": "2025-07-27T12:00:00Z",
+      "topic": "disaster",
+      "region": "asia",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "At least six people are killed and 27 others are injured in a stampede when a high-voltage electric wire falls on a path at the Mansa Devi Temple in Haridwar, Uttarakhand, India. (The Independent via Yahoo! News Canada)",
+      "public_summary": "At least six people are killed and 27 others are injured in a stampede when a high-voltage electric wire falls on a path at the Mansa Devi Temple in Haridwar, Uttarakhand, India. (The Independent via ",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disasters_and_accidents",
+        "asia"
+      ],
+      "impact": {
+        "tension_delta": 1.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-jul-27-b1c6430f",
+      "timestamp": "2025-07-27T12:00:00Z",
+      "topic": "security",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "civilians",
+        "government"
+      ],
+      "severity": "medium",
+      "summary": "Iran executes two members of the exiled terrorist group Mojahedin-e-Khalq on charges of carrying out attacks on residential, education, and government buildings.",
+      "public_summary": "Iran executes two members of the exiled terrorist group Mojahedin-e-Khalq on charges of carrying out attacks on residential, education, and government buildings.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "security",
+        "law_and_crime",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 2.0,
+        "market_stress_delta": 1.0,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-aug-01-68517202",
+      "timestamp": "2025-08-01T12:00:00Z",
+      "topic": "nuclear",
+      "region": "us",
+      "actors": [
+        "us",
+        "iran"
+      ],
+      "targets": [
+        "civilians",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "United States and the Russian invasion of Ukraine, Russia\u2013United States relations U.S. president Donald Trump orders the deployment of two United States Navy nuclear submarines near Russia for potential military action against Russian forces in response to statements made by former Russian president",
+      "public_summary": "United States and the Russian invasion of Ukraine, Russia\u2013United States relations U.S. president Donald Trump orders the deployment of two United States Navy nuclear submarines near Russia for potenti",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "armed_conflicts_and_attacks",
+        "us"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-aug-05-9548c8b9",
+      "timestamp": "2025-08-05T12:00:00Z",
+      "topic": "disaster",
+      "region": "asia",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "infrastructure"
+      ],
+      "severity": "high",
+      "summary": "At least four people are killed and around 100 others are reported missing after a massive cloudburst triggers flash floods in Dharali village, Uttarkashi, Uttarakhand, India. (NDTV)  (Hindustan Times)",
+      "public_summary": "At least four people are killed and around 100 others are reported missing after a massive cloudburst triggers flash floods in Dharali village, Uttarkashi, Uttarakhand, India. (NDTV)  (Hindustan Times",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disasters_and_accidents",
+        "asia"
+      ],
+      "impact": {
+        "tension_delta": 1.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-aug-08-7bdf1b3a",
+      "timestamp": "2025-08-08T12:00:00Z",
+      "topic": "disaster",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "medium",
+      "summary": "At least 30 people are injured when a passenger train derails on the Kerman\u2013Zarand railway path near Siriz, Kerman province, Iran. (The Express Tribune) (Caliber)",
+      "public_summary": "At least 30 people are injured when a passenger train derails on the Kerman\u2013Zarand railway path near Siriz, Kerman province, Iran. (The Express Tribune) (Caliber)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disasters_and_accidents",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 1.0,
+        "market_stress_delta": 2.0,
+        "oil_pressure_delta": 1.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-aug-09-c0a396d1",
+      "timestamp": "2025-08-09T12:00:00Z",
+      "topic": "disaster",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "medium",
+      "summary": "A passenger train derails after hitting an excavator in Tabas, Iran injuring 30 people. (Caspian Post)",
+      "public_summary": "A passenger train derails after hitting an excavator in Tabas, Iran injuring 30 people. (Caspian Post)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disasters_and_accidents",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 1.0,
+        "market_stress_delta": 2.0,
+        "oil_pressure_delta": 1.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-aug-19-f58f54f7",
+      "timestamp": "2025-08-19T12:00:00Z",
+      "topic": "disaster",
+      "region": "iran",
+      "actors": [
+        "us",
+        "iran"
+      ],
+      "targets": [
+        "infrastructure"
+      ],
+      "severity": "high",
+      "summary": "2025 Afghan deportation from Iran At least 79 people are killed, including 19 children, and three others are injured when an overcrowded passenger bus carrying migrants deported from Iran veers off a road and collides with a motorcycle and a truck before catching fire in Guzara District, Herat Provi",
+      "public_summary": "2025 Afghan deportation from Iran At least 79 people are killed, including 19 children, and three others are injured when an overcrowded passenger bus carrying migrants deported from Iran veers off a ",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disasters_and_accidents",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 1.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-aug-19-23659657",
+      "timestamp": "2025-08-19T12:00:00Z",
+      "topic": "nuclear",
+      "region": "global",
+      "actors": [
+        "iran",
+        "oversight"
+      ],
+      "targets": [
+        "civilians",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "The Peruvian Constitutional Court orders the suspension of all investigations into President Dina Boluarte, including probes into protest-related deaths, alleged illicit enrichment, and temporary absence from office, until her term ends in July 2026.",
+      "public_summary": "The Peruvian Constitutional Court orders the suspension of all investigations into President Dina Boluarte, including probes into protest-related deaths, alleged illicit enrichment, and temporary abse",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "law_and_crime",
+        "global"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-aug-22-1f056c39",
+      "timestamp": "2025-08-22T12:00:00Z",
+      "topic": "conflict",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Sistan and Baluchestan insurgency Five police officers are killed in a mass shooting by unknown gunmen while patrolling on a highway in Sistan and Baluchestan province, Iran.",
+      "public_summary": "Sistan and Baluchestan insurgency Five police officers are killed in a mass shooting by unknown gunmen while patrolling on a highway in Sistan and Baluchestan province, Iran.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "conflict",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-aug-23-ad14776a",
+      "timestamp": "2025-08-23T12:00:00Z",
+      "topic": "energy",
+      "region": "asia",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "energy_networks",
+        "government",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Taiwan's referendum on reopening the Maanshan Nuclear Power Plant in Pingtung fails to meet the legal threshold for it to be binding, despite a majority voting in favor, leaving the facility closed as the government continues its shift toward renewable energy and liquefied natural gas.",
+      "public_summary": "Taiwan's referendum on reopening the Maanshan Nuclear Power Plant in Pingtung fails to meet the legal threshold for it to be binding, despite a majority voting in favor, leaving the facility closed as",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "energy",
+        "politics_and_elections",
+        "asia"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 7.5,
+        "oil_pressure_delta": 10.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-aug-26-5498242f",
+      "timestamp": "2025-08-26T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "iran",
+      "actors": [
+        "iran",
+        "oversight"
+      ],
+      "targets": [
+        "government"
+      ],
+      "severity": "medium",
+      "summary": "Australia\u2013Iran relations, Terrorism in Australia, Antisemitism in Australia Australian prime minister Anthony Albanese announces the closure of the Australian embassy in Tehran, the expulsion of  Iranian ambassadors from Australia, and designation of the Islamic Revolutionary Guard Corps (IRGC) as a",
+      "public_summary": "Australia\u2013Iran relations, Terrorism in Australia, Antisemitism in Australia Australian prime minister Anthony Albanese announces the closure of the Australian embassy in Tehran, the expulsion of  Iran",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": -3.0,
+        "market_stress_delta": -2.0,
+        "oil_pressure_delta": -1.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-aug-26-bd3b9aef",
+      "timestamp": "2025-08-26T12:00:00Z",
+      "topic": "sanctions",
+      "region": "iran",
+      "actors": [
+        "iran",
+        "oversight"
+      ],
+      "targets": [
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "International sanctions against Iran, Nuclear program of Iran Representatives of France, Germany, and the United Kingdom fail to reach an agreement with Iran in Geneva, Switzerland, on avoiding the possible reimposition of UN sanctions under the 2015 nuclear deal's snapback mechanism, following conc",
+      "public_summary": "International sanctions against Iran, Nuclear program of Iran Representatives of France, Germany, and the United Kingdom fail to reach an agreement with Iran in Geneva, Switzerland, on avoiding the po",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "sanctions",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 4.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-sep-02-a4701ec4",
+      "timestamp": "2025-09-02T12:00:00Z",
+      "topic": "border",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "northern_front"
+      ],
+      "severity": "high",
+      "summary": "An attack near the Iran\u2013Pakistan border in Balochistan, Pakistan, kills five people.",
+      "public_summary": "An attack near the Iran\u2013Pakistan border in Balochistan, Pakistan, kills five people.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "border",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.8,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-sep-09-51b5da34",
+      "timestamp": "2025-09-09T12:00:00Z",
+      "topic": "sanctions",
+      "region": "iran",
+      "actors": [
+        "us",
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "energy_networks",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Iran and the International Atomic Energy Agency agree to resume nuclear site inspections which were suspended after U.S. and Israeli strikes, with Iran warning the deal will be void if international sanctions are reimposed.",
+      "public_summary": "Iran and the International Atomic Energy Agency agree to resume nuclear site inspections which were suspended after U.S. and Israeli strikes, with Iran warning the deal will be void if international s",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "sanctions",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 4.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-sep-12-e22a1ecf",
+      "timestamp": "2025-09-12T12:00:00Z",
+      "topic": "military",
+      "region": "global",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "civilians"
+      ],
+      "severity": "high",
+      "summary": "At least 18 people, mostly students, are killed in a Tatmadaw airstrike on two schools in Kyauktaw Township in Rakhine State, Myanmar, an area controlled by the Arakan Army.",
+      "public_summary": "At least 18 people, mostly students, are killed in a Tatmadaw airstrike on two schools in Kyauktaw Township in Rakhine State, Myanmar, an area controlled by the Arakan Army.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "global"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-sep-16-29a7f3d9",
+      "timestamp": "2025-09-16T12:00:00Z",
+      "topic": "military",
+      "region": "gulf",
+      "actors": [
+        "us",
+        "israel",
+        "iran",
+        "gulf"
+      ],
+      "targets": [
+        "infrastructure"
+      ],
+      "severity": "high",
+      "summary": "The Israel Air Force bombs at least ten Houthi targets near Hudaydah Port in Al Hudaydah, Yemen. The sites targeted by the airstrikes reportedly include a command center and locations used to smuggle weapons from Iran. (The Jerusalem Post)",
+      "public_summary": "The Israel Air Force bombs at least ten Houthi targets near Hudaydah Port in Al Hudaydah, Yemen. The sites targeted by the airstrikes reportedly include a command center and locations used to smuggle ",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "gulf"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-sep-16-6cf694ab",
+      "timestamp": "2025-09-16T12:00:00Z",
+      "topic": "disaster",
+      "region": "asia",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "At least 15 people are killed and 16 others are missing when a cloudburst causes landslides and flooding across Uttarakhand, India. (The Indian Express)",
+      "public_summary": "At least 15 people are killed and 16 others are missing when a cloudburst causes landslides and flooding across Uttarakhand, India. (The Indian Express)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disasters_and_accidents",
+        "asia"
+      ],
+      "impact": {
+        "tension_delta": 1.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-sep-19-61461135",
+      "timestamp": "2025-09-19T12:00:00Z",
+      "topic": "sanctions",
+      "region": "iran",
+      "actors": [
+        "iran",
+        "oversight"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "medium",
+      "summary": "International sanctions against Iran, Snapback mechanism of sanctions against Iran The United Nations Security Council (UNSC) convenes to vote on a draft resolution concerning the snapback of sanctions on Iran. Nine UNSC countries voted against lifting Iran sanctions, four in favor.",
+      "public_summary": "International sanctions against Iran, Snapback mechanism of sanctions against Iran The United Nations Security Council (UNSC) convenes to vote on a draft resolution concerning the snapback of sanction",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "sanctions",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 2.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-sep-25-3d704c4c",
+      "timestamp": "2025-09-25T12:00:00Z",
+      "topic": "nuclear",
+      "region": "europe",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Ethiopia and Russia sign an agreement on the construction of a nuclear power plant for Ethiopian Electric Power by Rosatom. (AA)",
+      "public_summary": "Ethiopia and Russia sign an agreement on the construction of a nuclear power plant for Ethiopian Electric Power by Rosatom. (AA)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "business_and_economy",
+        "europe"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-sep-25-4d64c46d",
+      "timestamp": "2025-09-25T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "medium",
+      "summary": "France withdraws its case at the International Court of Justice accusing Iran of denying consular protection to two French citizens detained at Evin Prison in Tehran for more than three years.",
+      "public_summary": "France withdraws its case at the International Court of Justice accusing Iran of denying consular protection to two French citizens detained at Evin Prison in Tehran for more than three years.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": -3.0,
+        "market_stress_delta": -2.0,
+        "oil_pressure_delta": -1.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-sep-27-b71a176c",
+      "timestamp": "2025-09-27T12:00:00Z",
+      "topic": "sanctions",
+      "region": "iran",
+      "actors": [
+        "iran",
+        "oversight"
+      ],
+      "targets": [
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "International sanctions against Iran, Nuclear program of Iran The United Nations reimposes economic and military sanctions on Iran after France, Germany, and the United Kingdom trigger the snapback mechanism under Security Council Resolution 2231 and the Joint Comprehensive Plan of Action, citing Ir",
+      "public_summary": "International sanctions against Iran, Nuclear program of Iran The United Nations reimposes economic and military sanctions on Iran after France, Germany, and the United Kingdom trigger the snapback me",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "sanctions",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 4.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-sep-29-c284fa2e",
+      "timestamp": "2025-09-29T12:00:00Z",
+      "topic": "security",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "infrastructure"
+      ],
+      "severity": "medium",
+      "summary": "Iran executes a man convicted of being a spy for Israeli spy agency Mossad working on sensitive telecommunications projects and providing information on routes for importing electronic devices.",
+      "public_summary": "Iran executes a man convicted of being a spy for Israeli spy agency Mossad working on sensitive telecommunications projects and providing information on routes for importing electronic devices.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "security",
+        "law_and_crime",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 2.0,
+        "market_stress_delta": 1.0,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-oct-01-e5dbde1f",
+      "timestamp": "2025-10-01T12:00:00Z",
+      "topic": "energy",
+      "region": "europe",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "energy_networks",
+        "infrastructure",
+        "government"
+      ],
+      "severity": "high",
+      "summary": "Russian strikes against Ukrainian infrastructure The Ukrainian energy ministry declares an \"emergency situation\" at the Chernobyl Nuclear Power Plant as the New Safe Confinement structure meant to prevent radioactive material from spreading into the environment experiences a three-hour power outage",
+      "public_summary": "Russian strikes against Ukrainian infrastructure The Ukrainian energy ministry declares an \"emergency situation\" at the Chernobyl Nuclear Power Plant as the New Safe Confinement structure meant to pre",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "energy",
+        "armed_conflicts_and_attacks",
+        "europe"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 7.5,
+        "oil_pressure_delta": 10.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-oct-02-a7722ee0",
+      "timestamp": "2025-10-02T12:00:00Z",
+      "topic": "disaster",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "One person is killed and four others are injured in a hydrogen capsule explosion in a laboratory at Tehran University in Tehran, Iran.",
+      "public_summary": "One person is killed and four others are injured in a hydrogen capsule explosion in a laboratory at Tehran University in Tehran, Iran.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disasters_and_accidents",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 1.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-oct-03-c069c7c2",
+      "timestamp": "2025-10-03T12:00:00Z",
+      "topic": "disaster",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "At least two people are killed and others are injured when an Iranian Red Crescent Society rescue helicopter carrying nine people crashes in Lorestan province, Iran. (Mehr News Agency)",
+      "public_summary": "At least two people are killed and others are injured when an Iranian Red Crescent Society rescue helicopter carrying nine people crashes in Lorestan province, Iran. (Mehr News Agency)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disasters_and_accidents",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 1.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-oct-04-0e3c5e46",
+      "timestamp": "2025-10-04T12:00:00Z",
+      "topic": "security",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "medium",
+      "summary": "Capital punishment in Iran, Iran\u2013Israel relations Iran executes six prisoners accused and convicted of carrying out attacks inside Iran for the Arab Struggle Movement for the Liberation of Ahwaz on behalf of Israel.",
+      "public_summary": "Capital punishment in Iran, Iran\u2013Israel relations Iran executes six prisoners accused and convicted of carrying out attacks inside Iran for the Arab Struggle Movement for the Liberation of Ahwaz on be",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "security",
+        "law_and_crime",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 2.0,
+        "market_stress_delta": 1.0,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-oct-06-fa27d08b",
+      "timestamp": "2025-10-06T12:00:00Z",
+      "topic": "security",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "A man opens fire inside an appeals courts in Tirana, Albania, killing the presiding judge and injuring two others in the courtroom. Police later arrest the suspect.",
+      "public_summary": "A man opens fire inside an appeals courts in Tirana, Albania, killing the presiding judge and injuring two others in the courtroom. Police later arrest the suspect.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "security",
+        "law_and_crime",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.8,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-oct-14-3c745dae",
+      "timestamp": "2025-10-14T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "government"
+      ],
+      "severity": "medium",
+      "summary": "The Iranian government detains and imprisons two unnamed French nationals for alleged espionage on behalf of French and Israeli intelligence agencies. (DW) (TRT World)",
+      "public_summary": "The Iranian government detains and imprisons two unnamed French nationals for alleged espionage on behalf of French and Israeli intelligence agencies. (DW) (TRT World)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": -3.0,
+        "market_stress_delta": -2.0,
+        "oil_pressure_delta": -1.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-oct-14-e3cfe20f",
+      "timestamp": "2025-10-14T12:00:00Z",
+      "topic": "domestic",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "civilians"
+      ],
+      "severity": "medium",
+      "summary": "President of Peru Jos\u00e9 Jer\u00ed appoints Ernesto \u00c1lvarez Miranda as the new Prime Minister.",
+      "public_summary": "President of Peru Jos\u00e9 Jer\u00ed appoints Ernesto \u00c1lvarez Miranda as the new Prime Minister.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "domestic",
+        "politics_and_elections",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 1.0,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-oct-19-c4b0628d",
+      "timestamp": "2025-10-19T12:00:00Z",
+      "topic": "security",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "government"
+      ],
+      "severity": "medium",
+      "summary": "Capital punishment in Iran, Iran\u2013Israel relations The Iranian government executes a person convicted of allegedly spying for Israeli intelligence agency Mossad in Qom.",
+      "public_summary": "Capital punishment in Iran, Iran\u2013Israel relations The Iranian government executes a person convicted of allegedly spying for Israeli intelligence agency Mossad in Qom.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "security",
+        "law_and_crime",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 2.0,
+        "market_stress_delta": 1.0,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-nov-02-de6e995b",
+      "timestamp": "2025-11-02T12:00:00Z",
+      "topic": "disaster",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "medium",
+      "summary": "Four girls drown in an irrigation canal in Srirangapatna taluk, India. (The Hindu)",
+      "public_summary": "Four girls drown in an irrigation canal in Srirangapatna taluk, India. (The Hindu)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disasters_and_accidents",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 1.0,
+        "market_stress_delta": 2.0,
+        "oil_pressure_delta": 1.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-nov-07-1c44dae8",
+      "timestamp": "2025-11-07T12:00:00Z",
+      "topic": "nuclear",
+      "region": "asia",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "infrastructure",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "China\u2013Japan relations, Discharge of radioactive water of the Fukushima Daiichi Nuclear Power Plant Japan reports that seafood exports to China have resumed for the first time since China imposed a ban in August 2023 over treated wastewater releases from the Fukushima Daiichi nuclear plant. However,",
+      "public_summary": "China\u2013Japan relations, Discharge of radioactive water of the Fukushima Daiichi Nuclear Power Plant Japan reports that seafood exports to China have resumed for the first time since China imposed a ban",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "international_relations",
+        "asia"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-nov-11-00f68c96",
+      "timestamp": "2025-11-11T12:00:00Z",
+      "topic": "energy",
+      "region": "europe",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "energy_networks",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "The National Anti-Corruption Bureau of Ukraine starts investigating a large-scale corruption scheme in the country\u2019s energy sector, involving the state nuclear power operator Energoatom. (EuroNews)",
+      "public_summary": "The National Anti-Corruption Bureau of Ukraine starts investigating a large-scale corruption scheme in the country\u2019s energy sector, involving the state nuclear power operator Energoatom. (EuroNews)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "energy",
+        "law_and_crime",
+        "europe"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 7.5,
+        "oil_pressure_delta": 10.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-nov-12-f3708315",
+      "timestamp": "2025-11-12T12:00:00Z",
+      "topic": "energy",
+      "region": "europe",
+      "actors": [
+        "iran",
+        "oversight"
+      ],
+      "targets": [
+        "energy_networks",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Ukrainian justice minister German Galushchenko and energy minister Svitlana Hrynchuk resign following a National Anti-Corruption Bureau investigation into an alleged kickback scheme involving Ukraine's nuclear power plant operator Energoatom. The alleged head of the corruption group, Tymur Mindych,",
+      "public_summary": "Ukrainian justice minister German Galushchenko and energy minister Svitlana Hrynchuk resign following a National Anti-Corruption Bureau investigation into an alleged kickback scheme involving Ukraine'",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "energy",
+        "law_and_crime",
+        "europe"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 7.5,
+        "oil_pressure_delta": 10.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-nov-16-c5fd6ac1",
+      "timestamp": "2025-11-16T12:00:00Z",
+      "topic": "nuclear",
+      "region": "iran",
+      "actors": [
+        "us",
+        "israel",
+        "iran"
+      ],
+      "targets": [
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Iranian foreign minister Abbas Araghchi says that Iran is no longer enriching uranium due, in part, to the damage at nuclear facilities following the Iran\u2013Israel war and the US strikes on nuclear sites in Iran.",
+      "public_summary": "Iranian foreign minister Abbas Araghchi says that Iran is no longer enriching uranium due, in part, to the damage at nuclear facilities following the Iran\u2013Israel war and the US strikes on nuclear site",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "politics_and_elections",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-nov-18-f3cdccba",
+      "timestamp": "2025-11-18T12:00:00Z",
+      "topic": "energy",
+      "region": "gulf",
+      "actors": [
+        "us",
+        "iran",
+        "gulf"
+      ],
+      "targets": [
+        "energy_networks",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Saudi Arabia\u2013United States relations Saudi Arabia and the United States ratify a joint declaration on civil nuclear energy, and the U.S. approves a defense sale that includes future deliveries of F-35 fighter jets to Saudi Arabia.",
+      "public_summary": "Saudi Arabia\u2013United States relations Saudi Arabia and the United States ratify a joint declaration on civil nuclear energy, and the U.S. approves a defense sale that includes future deliveries of F-35",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "energy",
+        "international_relations",
+        "gulf"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 7.5,
+        "oil_pressure_delta": 10.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-nov-19-dca9ea7b",
+      "timestamp": "2025-11-19T12:00:00Z",
+      "topic": "shipping",
+      "region": "gulf",
+      "actors": [
+        "iran",
+        "gulf"
+      ],
+      "targets": [
+        "shipping_lanes"
+      ],
+      "severity": "medium",
+      "summary": "Foreign relations of Iran, Foreign relations of the Marshall Islands Iran releases a Marshall Islands-flagged tanker and its 21 crew after seizing it without explanation last Friday in the Strait of Hormuz.",
+      "public_summary": "Foreign relations of Iran, Foreign relations of the Marshall Islands Iran releases a Marshall Islands-flagged tanker and its 21 crew after seizing it without explanation last Friday in the Strait of H",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "shipping",
+        "international_relations",
+        "gulf"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 4.0,
+        "oil_pressure_delta": 6.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-nov-19-08e1462e",
+      "timestamp": "2025-11-19T12:00:00Z",
+      "topic": "energy",
+      "region": "europe",
+      "actors": [
+        "us",
+        "iran",
+        "oversight"
+      ],
+      "targets": [
+        "energy_networks",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Ukraine's Verkhovna Rada dismisses energy minister Svitlana Hrynchuk and justice minister German Galushchenko after an anti-corruption investigation into alleged misconduct at the state nuclear agency implicated them, among other officials.",
+      "public_summary": "Ukraine's Verkhovna Rada dismisses energy minister Svitlana Hrynchuk and justice minister German Galushchenko after an anti-corruption investigation into alleged misconduct at the state nuclear agency",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "energy",
+        "politics_and_elections",
+        "europe"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 7.5,
+        "oil_pressure_delta": 10.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-nov-24-43099a8f",
+      "timestamp": "2025-11-24T12:00:00Z",
+      "topic": "disaster",
+      "region": "asia",
+      "actors": [
+        "us",
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Five people are killed and 13 others are injured after a bus carrying pilgrims overturns and plunges into a gorge in Tehri Garhwal, Uttarakhand, India. (The Indian Express)",
+      "public_summary": "Five people are killed and 13 others are injured after a bus carrying pilgrims overturns and plunges into a gorge in Tehri Garhwal, Uttarakhand, India. (The Indian Express)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disasters_and_accidents",
+        "asia"
+      ],
+      "impact": {
+        "tension_delta": 1.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-nov-27-1e746f1a",
+      "timestamp": "2025-11-27T12:00:00Z",
+      "topic": "diplomacy",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "medium",
+      "summary": "2024 Iranian operations inside Australia Australia adds Iran's Islamic Revolutionary Guard Corps to its list of terrorist organisations as a state sponsor due to its role in orchestrating and executing terrorist attacks in Australia last year. (ABC News Australia)",
+      "public_summary": "2024 Iranian operations inside Australia Australia adds Iran's Islamic Revolutionary Guard Corps to its list of terrorist organisations as a state sponsor due to its role in orchestrating and executin",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "diplomacy",
+        "international_relations",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": -3.0,
+        "market_stress_delta": -2.0,
+        "oil_pressure_delta": -1.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-dec-01-fc185ec2",
+      "timestamp": "2025-12-01T12:00:00Z",
+      "topic": "energy",
+      "region": "global",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "energy_networks",
+        "infrastructure",
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "Malaysia enacts amendments to its nuclear law that require permits for all atomic-energy activities, including the import, export, transshipment, and transit of radioactive and nuclear materials. The updated framework introduces stricter oversight and penalties, including the possibility of the deat",
+      "public_summary": "Malaysia enacts amendments to its nuclear law that require permits for all atomic-energy activities, including the import, export, transshipment, and transit of radioactive and nuclear materials. The ",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "energy",
+        "science_and_technology",
+        "global"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 7.5,
+        "oil_pressure_delta": 10.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-dec-10-1b74db8c",
+      "timestamp": "2025-12-10T12:00:00Z",
+      "topic": "conflict",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Sistan and Baluchestan insurgency Three members of the Islamic Revolutionary Guard Corps are killed after an ambush by gunmen in Sistan and Baluchestan province, Iran.",
+      "public_summary": "Sistan and Baluchestan insurgency Three members of the Islamic Revolutionary Guard Corps are killed after an ambush by gunmen in Sistan and Baluchestan province, Iran.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "conflict",
+        "armed_conflicts_and_attacks",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-dec-12-d62986ab",
+      "timestamp": "2025-12-12T12:00:00Z",
+      "topic": "security",
+      "region": "iran",
+      "actors": [
+        "iran",
+        "oversight"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "medium",
+      "summary": "Police in Mashhad, Iran, arrest Nobel laureate Narges Mohammadi during a ceremony honoring deceased lawyer and human rights activist Khosrow Alikordi.",
+      "public_summary": "Police in Mashhad, Iran, arrest Nobel laureate Narges Mohammadi during a ceremony honoring deceased lawyer and human rights activist Khosrow Alikordi.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "security",
+        "law_and_crime",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 2.0,
+        "market_stress_delta": 1.0,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-dec-16-92664989",
+      "timestamp": "2025-12-16T12:00:00Z",
+      "topic": "disaster",
+      "region": "iran",
+      "actors": [
+        "us",
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Thirteen people are killed, and several others are injured when a passenger bus overturns on a highway and collides with a taxi in Isfahan Province, Iran.",
+      "public_summary": "Thirteen people are killed, and several others are injured when a passenger bus overturns on a highway and collides with a taxi in Isfahan Province, Iran.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "disaster",
+        "disasters_and_accidents",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 1.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-dec-20-cd3911ee",
+      "timestamp": "2025-12-20T12:00:00Z",
+      "topic": "security",
+      "region": "iran",
+      "actors": [
+        "israel",
+        "iran",
+        "oversight"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "medium",
+      "summary": "Iran executes a man convicted of spying for Israeli intelligence agency Mossad in Urmia. (Iran Human Rights)",
+      "public_summary": "Iran executes a man convicted of spying for Israeli intelligence agency Mossad in Urmia. (Iran Human Rights)",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "security",
+        "law_and_crime",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 2.0,
+        "market_stress_delta": 1.0,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-dec-22-22bcdeb3",
+      "timestamp": "2025-12-22T12:00:00Z",
+      "topic": "nuclear",
+      "region": "asia",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "nuclear_facility"
+      ],
+      "severity": "high",
+      "summary": "The Niigata prefectural assembly approves the restart of the Kashiwazaki-Kariwa Nuclear Power Plant, the world's largest nuclear facility, nearly 15 years after Japan shut down its reactors following the 2011 Fukushima disaster.",
+      "public_summary": "The Niigata prefectural assembly approves the restart of the Kashiwazaki-Kariwa Nuclear Power Plant, the world's largest nuclear facility, nearly 15 years after Japan shut down its reactors following ",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "nuclear",
+        "health_and_environment",
+        "asia"
+      ],
+      "impact": {
+        "tension_delta": 10.5,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-dec-23-4607027c",
+      "timestamp": "2025-12-23T12:00:00Z",
+      "topic": "conflict",
+      "region": "global",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Insurgency in Khyber Pakhtunkhwa The Pakistani Taliban detonates a bomb and shoots at a police van in Karak, Khyber Pakhtunkhwa, Pakistan, killing five officers.",
+      "public_summary": "Insurgency in Khyber Pakhtunkhwa The Pakistani Taliban detonates a bomb and shoots at a police van in Karak, Khyber Pakhtunkhwa, Pakistan, killing five officers.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "conflict",
+        "armed_conflicts_and_attacks",
+        "global"
+      ],
+      "impact": {
+        "tension_delta": 7.5,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-dec-25-7c508b87",
+      "timestamp": "2025-12-25T12:00:00Z",
+      "topic": "military",
+      "region": "levant",
+      "actors": [
+        "israel",
+        "iran",
+        "hezbollah"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "Israel\u2013Hezbollah conflict, Iran\u2013Israel relations Three people are killed in two separate Israeli airstrikes targeting vehicles in southern Lebanon, including a member of the Iranian Quds Force.",
+      "public_summary": "Israel\u2013Hezbollah conflict, Iran\u2013Israel relations Three people are killed in two separate Israeli airstrikes targeting vehicles in southern Lebanon, including a member of the Iranian Quds Force.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "military",
+        "armed_conflicts_and_attacks",
+        "levant"
+      ],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 3.8,
+        "oil_pressure_delta": 2.2,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-dec-27-d9d68434",
+      "timestamp": "2025-12-27T12:00:00Z",
+      "topic": "energy",
+      "region": "gulf",
+      "actors": [
+        "iran",
+        "gulf"
+      ],
+      "targets": [
+        "shipping_lanes",
+        "energy_networks",
+        "government"
+      ],
+      "severity": "medium",
+      "summary": "The Iranian justice ministry seizes a foreign-flagged oil tanker carrying 25,000 barrels traveling through the Strait of Hormuz and detains its sixteen crew members on allegations of carrying illegal items.",
+      "public_summary": "The Iranian justice ministry seizes a foreign-flagged oil tanker carrying 25,000 barrels traveling through the Strait of Hormuz and detains its sixteen crew members on allegations of carrying illegal ",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "energy",
+        "law_and_crime",
+        "gulf"
+      ],
+      "impact": {
+        "tension_delta": 2.0,
+        "market_stress_delta": 5.0,
+        "oil_pressure_delta": 7.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-dec-29-97ea7163",
+      "timestamp": "2025-12-29T12:00:00Z",
+      "topic": "domestic",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "medium",
+      "summary": "Protests erupt in Tehran, Iran, for a second day after the Iranian rial drops in value and inflation rates increase by 42.2%. The leader of the Central Bank of Iran Mohammad Reza Farzi\u00a0[fa] resigns in response.",
+      "public_summary": "Protests erupt in Tehran, Iran, for a second day after the Iranian rial drops in value and inflation rates increase by 42.2%. The leader of the Central Bank of Iran Mohammad Reza Farzi\u00a0[fa] resigns in",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "domestic",
+        "politics_and_elections",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 1.0,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-dec-31-280fa377",
+      "timestamp": "2025-12-31T12:00:00Z",
+      "topic": "economy",
+      "region": "iran",
+      "actors": [
+        "us",
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "medium",
+      "summary": "Iran appoints Abdolnaser Hemmati as the new leader of the Central Bank following protests over the Iranian rial's value depreciating and the previous governor's resignation.",
+      "public_summary": "Iran appoints Abdolnaser Hemmati as the new leader of the Central Bank following protests over the Iranian rial's value depreciating and the previous governor's resignation.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "economy",
+        "business_and_economy",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 0.5,
+        "market_stress_delta": 4.0,
+        "oil_pressure_delta": 2.0,
+        "actor_metric_deltas": {}
+      }
+    },
+    {
+      "event_id": "evt-2025-dec-31-98b38f37",
+      "timestamp": "2025-12-31T12:00:00Z",
+      "topic": "security",
+      "region": "iran",
+      "actors": [
+        "iran"
+      ],
+      "targets": [
+        "general"
+      ],
+      "severity": "high",
+      "summary": "A Basij officer is killed and 13 others are injured in clashes in Lordegan, Chaharmahal and Bakhtiari province, Iran, during demonstrations over rising living costs.",
+      "public_summary": "A Basij officer is killed and 13 others are injured in clashes in Lordegan, Chaharmahal and Bakhtiari province, Iran, during demonstrations over rising living costs.",
+      "source_type": "hf_2025_events",
+      "confirmed": true,
+      "tags": [
+        "security",
+        "law_and_crime",
+        "iran"
+      ],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.8,
+        "actor_metric_deltas": {}
+      }
+    }
+  ]
+}
