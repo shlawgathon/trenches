@@ -50,6 +50,34 @@
       "notes": "Rear-area depth for air operations, reserves, and strategic continuity."
     },
     {
+      "name": "Nevatim Air Base",
+      "category": "airbase",
+      "lat": 31.2085,
+      "lon": 35.0122,
+      "notes": "Publicly documented Israeli Air Force base in the Negev supporting long-range strike and transport operations."
+    },
+    {
+      "name": "Hatzerim Air Base",
+      "category": "airbase",
+      "lat": 31.2357,
+      "lon": 34.6627,
+      "notes": "Publicly documented IAF base in the northern Negev tied to training and combat-air operations."
+    },
+    {
+      "name": "Palmachim Air Base",
+      "category": "airbase",
+      "lat": 31.8842,
+      "lon": 34.6906,
+      "notes": "Publicly documented coastal IAF base associated with air and missile activity near the central belt."
+    },
+    {
+      "name": "Ramat David Air Base",
+      "category": "airbase",
+      "lat": 32.6651,
+      "lon": 35.179,
+      "notes": "Publicly documented northern IAF base positioned for the Lebanon and Syria fronts."
+    },
+    {
       "name": "Ashdod Logistics Coast",
       "category": "port-zone",
       "lat": 31.8014,
@@ -218,7 +246,9 @@
     {
       "partner": "United States",
       "location": "Eastern Mediterranean Security Front",
-      "function": "resupply, deterrence, and diplomatic cover"
+      "function": "resupply, deterrence, and diplomatic cover",
+      "anchor_lat": 33.1,
+      "anchor_lon": 33.6
     },
     {
       "partner": "Jordan",

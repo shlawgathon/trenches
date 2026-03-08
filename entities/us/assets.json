@@ -50,6 +50,34 @@
       "notes": "Forward air node for ISR, tanking, and defensive counter-air."
     },
     {
+      "name": "Ali Al Salem Air Base",
+      "category": "airbase",
+      "lat": 29.3467,
+      "lon": 47.5208,
+      "notes": "Publicly documented USAF hub in Kuwait used for intra-theater airlift and force flow."
+    },
+    {
+      "name": "Prince Sultan Air Base",
+      "category": "airbase",
+      "lat": 24.0628,
+      "lon": 47.5805,
+      "notes": "Publicly documented USAF and partner airpower node in central Saudi Arabia."
+    },
+    {
+      "name": "Muwaffaq Salti Air Base",
+      "category": "airbase",
+      "lat": 31.8336,
+      "lon": 36.782,
+      "notes": "Publicly documented coalition air hub in Jordan supporting regional strike and ISR missions."
+    },
+    {
+      "name": "Al Asad Air Base",
+      "category": "base",
+      "lat": 33.7856,
+      "lon": 42.4412,
+      "notes": "Publicly documented U.S.-used base in western Iraq tied to distributed force protection and transit monitoring."
+    },
+    {
       "name": "Jebel Ali Logistics Node",
       "category": "logistics-port",
       "lat": 25.0113,

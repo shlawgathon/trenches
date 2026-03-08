@@ -22,6 +22,20 @@
       "notes": "Interior industrial and strategic program support area."
     },
     {
+      "name": "Natanz Fuel Enrichment Plant",
+      "category": "nuclear-site",
+      "lat": 33.7244,
+      "lon": 51.7257,
+      "notes": "Publicly documented enrichment facility repeatedly referenced in IAEA reporting."
+    },
+    {
+      "name": "Fordow Fuel Enrichment Plant",
+      "category": "nuclear-site",
+      "lat": 34.8849,
+      "lon": 50.9964,
+      "notes": "Publicly documented hardened enrichment site near Qom referenced in IAEA reporting."
+    },
+    {
       "name": "Khuzestan Energy Belt",
       "category": "energy-zone",
       "lat": 31.32,
@@ -34,6 +48,13 @@
       "lat": 28.8295,
       "lon": 50.8864,
       "notes": "Energy and strategic infrastructure node."
+    },
+    {
+      "name": "Bushehr Nuclear Power Plant",
+      "category": "nuclear-site",
+      "lat": 28.8292,
+      "lon": 50.8853,
+      "notes": "Publicly documented civilian nuclear power site under ongoing IAEA safeguards monitoring."
     },
     {
       "name": "Bandar Abbas",
@@ -217,7 +238,9 @@
     {
       "partner": "Hezbollah",
       "location": "Western Proxy Corridor Front",
-      "function": "northern-front deterrence against Israel"
+      "function": "northern-front deterrence against Israel",
+      "anchor_lat": 33.7,
+      "anchor_lon": 45.0
     },
     {
       "partner": "Iraqi aligned militias",
@@ -227,7 +250,9 @@
     {
       "partner": "regional pressure networks",
       "location": "Hormuz Maritime Front",
-      "function": "distributed signaling and disruption capacity"
+      "function": "distributed signaling and disruption capacity",
+      "anchor_lat": 26.7,
+      "anchor_lon": 56.1
     }
   ],
   "chokepoints": [

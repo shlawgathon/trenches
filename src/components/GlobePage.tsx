@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ZoomIn, ZoomOut, RotateCcw, Columns2, Maximize, MessageSquare, Eye, EyeOff, GitBranch, Grid2x2 } from "lucide-react";
+import { ZoomIn, ZoomOut, RotateCcw, Columns2, Maximize, MessageSquare, Eye, EyeOff, GitBranch, Grid2x2, Github } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import { NewsFeed } from "@/src/components/NewsFeed";
 import { ActivityLog } from "@/src/components/ActivityLog";
@@ -38,14 +38,16 @@ const INTEL_HIDDEN_LAYERS = [
   "road-secondary-tertiary",
 ];
 
-const AGENT_MAP_NODES: Record<string, { label: string; lngLat: [number, number]; color: string; flag: string; secondaryColor: string }> = {
-  us: { label: "United States", lngLat: [-77.0369, 38.9072], color: "#b22234", secondaryColor: "#3c3b6e", flag: "🇺🇸" },
-  israel: { label: "Israel", lngLat: [35.2137, 31.7683], color: "#005eb8", secondaryColor: "#ffffff", flag: "🇮🇱" },
-  iran: { label: "Iran", lngLat: [51.389, 35.6892], color: "#239f40", secondaryColor: "#da0000", flag: "🇮🇷" },
-  hezbollah: { label: "Hezbollah", lngLat: [35.5018, 33.8938], color: "#f4c542", secondaryColor: "#1f7a1f", flag: "🇱🇧" },
-  gulf: { label: "Gulf", lngLat: [54.3773, 24.4539], color: "#00732f", secondaryColor: "#ce1126", flag: "🇦🇪" },
-  oversight: { label: "Oversight", lngLat: [2.3522, 48.8566], color: "#1f4e79", secondaryColor: "#f4c542", flag: "🏳️‍⚖️" },
+const AGENT_MAP_NODES: Record<string, { label: string; lngLat: [number, number]; color: string; secondaryColor: string; flag: string }> = {
+  us: { label: "United States", lngLat: [-77.0369, 38.9072], color: "#ff6b6b", secondaryColor: "#ff6b6b", flag: "🇺🇸" },
+  israel: { label: "Israel", lngLat: [35.2137, 31.7683], color: "#4da3ff", secondaryColor: "#4da3ff", flag: "🇮🇱" },
+  iran: { label: "Iran", lngLat: [51.389, 35.6892], color: "#45d483", secondaryColor: "#45d483", flag: "🇮🇷" },
+  hezbollah: { label: "Hezbollah", lngLat: [35.5018, 33.8938], color: "#ffb84d", secondaryColor: "#ffb84d", flag: "🇱🇧" },
+  gulf: { label: "Gulf", lngLat: [54.3773, 24.4539], color: "#58d1c9", secondaryColor: "#58d1c9", flag: "🇦🇪" },
+  oversight: { label: "Oversight", lngLat: [2.3522, 48.8566], color: "#c18cff", secondaryColor: "#c18cff", flag: "🏳️‍⚖️" },
 };
+const MAP_NODE_IDS = Object.keys(AGENT_MAP_NODES).filter((id) => id !== "oversight");
+const REPO_URL = "https://github.com/shlawgathon/trenches";
 
 const ACTION_HEAT: Record<AgentAction["type"], number> = {
   hold: 2,
@@ -82,13 +84,13 @@ const ASSET_LAYERS = [
 
 
 const ASSET_LAYER_STYLE: Record<(typeof ASSET_LAYERS)[number], { size: number; opacity: number }> = {
-  locations: { size: 7, opacity: 0.95 },
-  fronts: { size: 8, opacity: 0.92 },
-  infrastructure: { size: 6, opacity: 0.9 },
-  strategic_sites: { size: 9, opacity: 1 },
-  alliance_anchors: { size: 8, opacity: 0.95 },
-  chokepoints: { size: 10, opacity: 1 },
-  geospatial_anchors: { size: 7, opacity: 0.95 },
+  locations: { size: 5, opacity: 0.96 },
+  fronts: { size: 5, opacity: 0.92 },
+  infrastructure: { size: 4, opacity: 0.9 },
+  strategic_sites: { size: 6, opacity: 0.98 },
+  alliance_anchors: { size: 5, opacity: 0.92 },
+  chokepoints: { size: 6, opacity: 0.96 },
+  geospatial_anchors: { size: 5, opacity: 0.92 },
 };
 
 type HardCodedEntityAsset = {
@@ -156,6 +158,7 @@ const HARD_CODED_ENTITY_ASSETS: HardCodedEntityAsset[] = Object.entries(ENTITY_A
 export default function GlobePage() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  const popupRef = useRef<mapboxgl.Popup | null>(null);
   const nodeMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const assetMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const heatMarkersRef = useRef<mapboxgl.Marker[]>([]);
@@ -175,8 +178,9 @@ export default function GlobePage() {
   const [matrixMode, setMatrixMode] = useState<MatrixMode>("absolute");
   const [matrixPos, setMatrixPos] = useState({ x: 0, y: 0 });
   const [gitTreePos, setGitTreePos] = useState({ x: 0, y: 0 });
-  const [dragTarget, setDragTarget] = useState<"matrix" | "git" | "chat" | null>(null);
+  const [dragTarget, setDragTarget] = useState<"matrix" | "git" | "chat" | "coverage" | null>(null);
   const [chatPos, setChatPos] = useState({ x: 0, y: 0 });
+  const [coveragePos, setCoveragePos] = useState({ x: 0, y: 0 });
   const [showCountryHeat, setShowCountryHeat] = useState(true);
   const [visible, setVisible] = useState({
     topBar: true,
@@ -248,7 +252,7 @@ export default function GlobePage() {
     if (!selectedAgent || !session) return null;
     return session.observations[selectedAgent];
   }, [selectedAgent, session]);
-  const startDragging = useCallback((target: "matrix" | "git" | "chat") => {
+  const startDragging = useCallback((target: "matrix" | "git" | "chat" | "coverage") => {
     setDragTarget(target);
   }, []);
 
@@ -261,8 +265,10 @@ export default function GlobePage() {
         setMatrixPos((prev) => ({ x: prev.x + movement.x, y: prev.y + movement.y }));
       } else if (dragTarget === "git") {
         setGitTreePos((prev) => ({ x: prev.x + movement.x, y: prev.y + movement.y }));
-      } else {
+      } else if (dragTarget === "chat") {
         setChatPos((prev) => ({ x: prev.x + movement.x, y: prev.y + movement.y }));
+      } else {
+        setCoveragePos((prev) => ({ x: prev.x + movement.x, y: prev.y + movement.y }));
       }
     };
 
@@ -298,6 +304,13 @@ export default function GlobePage() {
     });
 
     mapRef.current = map;
+    popupRef.current = new mapboxgl.Popup({
+      closeButton: false,
+      closeOnClick: true,
+      anchor: "left",
+      offset: [10, 0],
+      className: "asset-name-popup",
+    });
 
     map.on("load", () => {
       setMapReady(true);
@@ -328,6 +341,8 @@ export default function GlobePage() {
       assetMarkersRef.current = [];
       heatMarkersRef.current.forEach((marker) => marker.remove());
       heatMarkersRef.current = [];
+      popupRef.current?.remove();
+      popupRef.current = null;
       map.remove();
       mapRef.current = null;
       setMapReady(false);
@@ -368,7 +383,8 @@ export default function GlobePage() {
     nodeMarkersRef.current.forEach((marker) => marker.remove());
     nodeMarkersRef.current = [];
 
-    for (const [agentId, meta] of Object.entries(AGENT_MAP_NODES)) {
+    for (const agentId of MAP_NODE_IDS) {
+      const meta = AGENT_MAP_NODES[agentId];
       const intensity = intensityByAgent.get(agentId) ?? 10;
       const markerEl = document.createElement("button");
       markerEl.type = "button";
@@ -376,6 +392,7 @@ export default function GlobePage() {
       markerEl.style.border = "none";
       markerEl.style.padding = "0";
       markerEl.style.cursor = "pointer";
+      markerEl.title = `${meta.label}`;
       markerEl.setAttribute("aria-label", `${meta.flag} ${meta.label} model intensity ${Math.round(intensity)}`);
 
       const pulse = document.createElement("div");
@@ -383,25 +400,26 @@ export default function GlobePage() {
       pulse.style.width = `${20 + intensity * 0.25}px`;
       pulse.style.height = `${20 + intensity * 0.25}px`;
       pulse.style.borderRadius = "999px";
-      pulse.style.background = `${meta.color}40`;
-      pulse.style.boxShadow = `0 0 ${8 + intensity * 0.3}px ${meta.color}`;
-      pulse.style.animation = `pulse-${agentId} ${Math.max(1.2, 3 - intensity / 45)}s ease-out infinite`;
+      pulse.style.background = `${meta.color}22`;
+      pulse.style.boxShadow = `0 0 ${4 + intensity * 0.1}px ${meta.color}55`;
+      pulse.style.animation = `pulse-${agentId} ${Math.max(1.8, 3.8 - intensity / 70)}s ease-out infinite`;
 
       const core = document.createElement("div");
       core.style.position = "absolute";
       core.style.top = "50%";
       core.style.left = "50%";
       core.style.transform = "translate(-50%, -50%)";
-      core.style.width = "18px";
-      core.style.height = "18px";
+      core.style.width = "14px";
+      core.style.height = "14px";
       core.style.borderRadius = "999px";
       core.style.display = "flex";
       core.style.alignItems = "center";
       core.style.justifyContent = "center";
-      core.style.fontSize = "11px";
-      core.style.background = meta.secondaryColor;
-      core.style.border = `1px solid ${selectedAgent === agentId ? "#fff" : `${meta.color}AA`}`;
-      core.textContent = meta.flag;
+      core.style.fontSize = "0";
+      core.style.background = meta.color;
+      core.style.border = `1px solid ${selectedAgent === agentId ? "#ffffff" : `${meta.color}DD`}`;
+      core.style.boxShadow = `0 0 12px ${meta.color}99`;
+      core.textContent = "";
 
       pulse.appendChild(core);
       markerEl.appendChild(pulse);
@@ -409,15 +427,21 @@ export default function GlobePage() {
       const styleTag = document.createElement("style");
       styleTag.textContent = `
         @keyframes pulse-${agentId} {
-          0% { transform: scale(0.85); opacity: 0.9; }
-          70% { transform: scale(1.35); opacity: 0.25; }
-          100% { transform: scale(1.55); opacity: 0; }
+          0% { transform: scale(0.92); opacity: 0.34; }
+          70% { transform: scale(1.1); opacity: 0.1; }
+          100% { transform: scale(1.2); opacity: 0; }
         }
       `;
       markerEl.appendChild(styleTag);
 
       markerEl.onclick = () => {
         setSelectedAgent(agentId);
+        popupRef.current
+          ?.setLngLat(meta.lngLat)
+          .setHTML(
+            `<div style="background:${meta.color};color:#071014;padding:4px 8px;border-radius:999px;border:1px solid ${meta.color};font:600 10px ui-monospace, SFMono-Regular, Menlo, monospace;letter-spacing:0.08em;text-transform:uppercase;box-shadow:0 4px 16px rgba(0,0,0,0.25);white-space:nowrap;">${escapeHtml(meta.label)}</div>`,
+          )
+          .addTo(map);
       };
 
       const marker = new mapboxgl.Marker({ element: markerEl, anchor: "center" })
@@ -440,15 +464,29 @@ export default function GlobePage() {
       if (!entityMeta) continue;
 
       const layerStyle = ASSET_LAYER_STYLE[asset.layer];
-      const markerEl = document.createElement("div");
+      const markerEl = document.createElement("button");
+      markerEl.type = "button";
       markerEl.style.width = `${layerStyle.size}px`;
       markerEl.style.height = `${layerStyle.size}px`;
       markerEl.style.borderRadius = "999px";
+      markerEl.style.cursor = "pointer";
+      markerEl.style.padding = "0";
       markerEl.style.background = entityMeta.color;
-      markerEl.style.opacity = String(layerStyle.opacity);
-      markerEl.style.boxShadow = `0 0 7px ${entityMeta.color}`;
-      markerEl.style.border = `1px solid ${entityMeta.secondaryColor}`;
+      markerEl.style.opacity = String(Math.min(layerStyle.opacity, 0.9));
+      markerEl.style.boxShadow = `0 0 6px ${entityMeta.color}77`;
+      markerEl.style.border = `1px solid ${entityMeta.color}`;
+      markerEl.style.filter = "brightness(1.08) saturate(1.05)";
       markerEl.title = `${entityMeta.flag} ${entityMeta.label}: ${asset.label} (${asset.layer}) | lat ${asset.latitude.toFixed(2)}, lon ${asset.longitude.toFixed(2)}`;
+      markerEl.setAttribute("aria-label", `${entityMeta.label} asset ${asset.label}`);
+      markerEl.onclick = () => {
+        setSelectedAgent(null);
+        popupRef.current
+          ?.setLngLat(asset.lngLat)
+          .setHTML(
+            `<div style="background:${entityMeta.color};color:#071014;padding:4px 8px;border-radius:999px;border:1px solid ${entityMeta.color};font:600 10px ui-monospace, SFMono-Regular, Menlo, monospace;letter-spacing:0.08em;text-transform:uppercase;box-shadow:0 4px 16px rgba(0,0,0,0.25);white-space:nowrap;">${escapeHtml(asset.label)}</div>`,
+          )
+          .addTo(map);
+      };
 
       const marker = new mapboxgl.Marker({ element: markerEl, anchor: "center" })
         .setLngLat(asset.lngLat)
@@ -474,14 +512,15 @@ export default function GlobePage() {
     heatMarkersRef.current.forEach((marker) => marker.remove());
     heatMarkersRef.current = [];
 
-    for (const [agentId, meta] of Object.entries(AGENT_MAP_NODES)) {
+    for (const agentId of MAP_NODE_IDS) {
+      const meta = AGENT_MAP_NODES[agentId];
       const intensity = intensityByAgent.get(agentId) ?? 10;
       const heatEl = document.createElement("div");
-      heatEl.style.width = `${50 + intensity * 0.9}px`;
-      heatEl.style.height = `${50 + intensity * 0.9}px`;
+      heatEl.style.width = `${26 + intensity * 0.16}px`;
+      heatEl.style.height = `${26 + intensity * 0.16}px`;
       heatEl.style.borderRadius = "999px";
-      heatEl.style.background = `radial-gradient(circle, ${meta.color}55 0%, ${meta.color}22 50%, transparent 72%)`;
-      heatEl.style.filter = "blur(6px)";
+      heatEl.style.background = `radial-gradient(circle, ${meta.color}14 0%, ${meta.color}08 42%, transparent 68%)`;
+      heatEl.style.filter = "blur(2px)";
       heatEl.style.pointerEvents = "none";
 
       const marker = new mapboxgl.Marker({ element: heatEl, anchor: "center" })
@@ -558,6 +597,27 @@ export default function GlobePage() {
           )}
         </div>
       </div>}
+
+      <div className="pointer-events-none absolute top-6 left-6 z-20">
+        <div
+          className="pointer-events-auto flex items-center gap-2 border border-border/40 bg-card/60 px-3 py-2 text-[10px] font-mono text-muted-foreground backdrop-blur-xl"
+          style={{
+            boxShadow:
+              "0 0 8px rgba(0,0,0,0.03), 0 2px 6px rgba(0,0,0,0.08), inset 0 0 6px 6px rgba(255,255,255,0.04), 0 0 12px rgba(0,0,0,0.15)",
+          }}
+        >
+          <span>Alazar & Jerry</span>
+          <a
+            href={REPO_URL}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Open GitHub repository"
+            className="inline-flex items-center text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <Github className="h-3.5 w-3.5" />
+          </a>
+        </div>
+      </div>
 
       {visible.matrix && (
         <div className="absolute top-24 right-6 z-20 w-[380px]" style={{ transform: `translate(${matrixPos.x}px, ${matrixPos.y}px)` }}>
@@ -723,11 +783,16 @@ export default function GlobePage() {
       )}
 
 
-      <div className="absolute left-6 bottom-52 z-20 w-[280px] border border-border/40 bg-card/70 p-2 backdrop-blur-xl">
+      <div className="absolute left-6 bottom-52 z-20 w-[280px]" style={{ transform: `translate(${coveragePos.x}px, ${coveragePos.y}px)` }}>
+        <div className="mb-1 flex cursor-move items-center justify-between border border-border/30 bg-card/70 px-2 py-1 text-[9px] font-mono uppercase text-muted-foreground" onMouseDown={() => startDragging("coverage")}>
+          <span>Drag Coverage</span>
+        </div>
+        <div className="border border-border/40 bg-card/70 p-2 backdrop-blur-xl">
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-foreground/80">Asset Coordinate Coverage</p>
         <div className="space-y-1">
           {assetValidationByEntity.map((item) => {
             const meta = AGENT_MAP_NODES[item.entityId];
+            if (item.entityId === "oversight") return null;
             return (
               <div key={item.entityId} className="flex items-center justify-between border border-border/30 px-2 py-1 text-[10px] font-mono">
                 <span className="truncate" style={{ color: meta?.color ?? "#fff" }}>{meta?.flag} {meta?.label}</span>
@@ -735,6 +800,7 @@ export default function GlobePage() {
               </div>
             );
           })}
+        </div>
         </div>
       </div>
 
@@ -762,6 +828,15 @@ function StatusPill({ label, value, warn }: { label: string; value: string; warn
       <span className={warn ? "text-primary font-bold" : "text-foreground"}>{value}</span>
     </div>
   );
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 export type NewsItem = {
