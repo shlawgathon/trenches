@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-03-07T18:37:38.021Z",
-  "sourceCount": 120,
+  "generatedAt": "2026-03-08T18:55:23.372Z",
+  "sourceCount": 121,
   "sources": [
     {
       "id": "us-reuters-us",
@@ -1547,6 +1547,26 @@
         "logistics-corridor"
       ],
       "rationale": "Tracks corridor disruptions, interdiction, and sustainment movement between the Bekaa and Syria."
+    },
+    {
+      "id": "hezbollah-lebanon-border-feed",
+      "agentId": "hezbollah",
+      "delivery": "training_core",
+      "name": "Lebanon Border Feed",
+      "kind": "rss",
+      "endpoint": {
+        "kind": "url",
+        "url": "https://news.google.com/rss/search?q=(Hezbollah+OR+%22south+Lebanon%22+OR+%22Blue+Line%22)+Israel+Lebanon+when:3d&hl=en-US&gl=US&ceid=US:en"
+      },
+      "auth": "none",
+      "allowlistStatus": "allowed",
+      "tags": [
+        "hezbollah",
+        "rss",
+        "lebanon",
+        "border"
+      ],
+      "rationale": "Google News RSS lane for Hezbollah, south Lebanon, and Blue Line escalation coverage."
     },
     {
       "id": "gulf-arabian-business",

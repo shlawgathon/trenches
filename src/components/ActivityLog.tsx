@@ -164,7 +164,7 @@ export function ActivityLog({
             {collapsed ? (
               <>
                 <ChevronLeft className="h-4 w-4" />
-                <span className="text-[9px] font-mono tracking-wider uppercase [writing-mode:vertical-lr]">Activity</span>
+                <span className="text-[9px] font-mono tracking-wider uppercase [writing-mode:vertical-lr]">Entity Activity</span>
               </>
             ) : (
               <ChevronRight className="h-4 w-4" />
@@ -174,14 +174,14 @@ export function ActivityLog({
           <div className={cn("flex min-w-0 flex-1 flex-col transition-opacity duration-300", collapsed ? "opacity-0 pointer-events-none" : "opacity-100")}>
             <div className="flex items-center gap-2 border-b border-border/30 px-4 py-3">
               <Users className="h-3.5 w-3.5 shrink-0 text-primary" />
-              <span className="whitespace-nowrap text-[10px] font-semibold tracking-[0.2em] text-foreground/80 uppercase font-sans">Agent Activity</span>
+              <span className="whitespace-nowrap text-[10px] font-semibold tracking-[0.2em] text-foreground/80 uppercase font-sans">Entity Activity</span>
               <span className="ml-auto text-[9px] font-mono text-muted-foreground">{visibleItems.length}</span>
             </div>
 
             <div ref={listRef} className="flex-1 overflow-y-auto scrollbar-thin">
               {visibleItems.length === 0 ? (
                 <div className="flex h-full items-center justify-center p-6">
-                  <p className="text-center text-xs font-mono text-muted-foreground">No agent actions recorded.<br />Awaiting simulation step.</p>
+                  <p className="text-center text-xs font-mono text-muted-foreground">No entity actions recorded.<br />Awaiting simulation step.</p>
                 </div>
               ) : (
                 <div className="divide-y divide-border/20">

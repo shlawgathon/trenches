@@ -73,6 +73,7 @@ AGENT_TRAINING_SOURCE_BUNDLES: dict[str, list[str]] = {
         "Blue Line Incident Tracker",
         "South Lebanon Strike Heat",
         "Bekaa Transit Corridor Watch",
+        "Lebanon Border Feed",
     ],
     "gulf": [
         "Arabian Business",

@@ -1127,6 +1127,16 @@ const sources: DataSourceSpec[] = [
     tags: ["hezbollah", "bekaa", "logistics-corridor"],
     rationale: "Tracks corridor disruptions, interdiction, and sustainment movement between the Bekaa and Syria.",
   }),
+  rssSource({
+    id: "hezbollah-lebanon-border-feed",
+    agentId: "hezbollah",
+    delivery: "training_core",
+    name: "Lebanon Border Feed",
+    url: "https://news.google.com/rss/search?q=(Hezbollah+OR+%22south+Lebanon%22+OR+%22Blue+Line%22)+Israel+Lebanon+when:3d&hl=en-US&gl=US&ceid=US:en",
+    allowlistStatus: "allowed",
+    tags: ["hezbollah", "rss", "lebanon", "border"],
+    rationale: "Google News RSS lane for Hezbollah, south Lebanon, and Blue Line escalation coverage.",
+  }),
 
   rssSource({
     id: "gulf-arabian-business",
