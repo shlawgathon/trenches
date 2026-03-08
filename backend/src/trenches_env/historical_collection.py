@@ -68,6 +68,26 @@ AGENT_QUERY_TERMS: dict[str, tuple[str, ...]] = {
     "oversight": ("regional escalation", "cyber", "shipping", "humanitarian", "ceasefire", "attribution"),
 }
 
+PREFERRED_SOURCE_IDS: dict[str, tuple[str, ...]] = {
+    "us": ("us-reuters-us", "us-usni-news", "us-politico"),
+    "israel": ("israel-times-of-israel", "israel-haaretz"),
+    "iran": ("iran-iran-international", "iran-fars-news", "iran-al-arabiya"),
+    "hezbollah": (),
+    "gulf": ("gulf-reuters-business", "gulf-arab-news", "gulf-the-national-gcc"),
+    "oversight": (),
+}
+
+FALLBACK_COLLECTION_PROFILES: dict[str, tuple[tuple[str, str, tuple[str, ...], tuple[str, ...]], ...]] = {
+    "hezbollah": (
+        ("hezbollah-reuters", "Reuters Middle East", ("reuters.com",), ("hezbollah", "Lebanon", "Israel", "rocket", "drone")),
+        ("hezbollah-aljazeera", "Al Jazeera", ("aljazeera.com",), ("hezbollah", "Lebanon", "Israel", "border")),
+    ),
+    "oversight": (
+        ("oversight-reuters", "Reuters World", ("reuters.com",), ("regional escalation", "shipping", "cyber", "humanitarian")),
+        ("oversight-un-news", "UN News", ("news.un.org",), ("regional escalation", "humanitarian", "ceasefire", "displacement")),
+    ),
+}
+
 TOPIC_IMPACT_FACTORS: dict[str, tuple[float, float, float]] = {
     "shipping": (1.0, 1.2, 1.5),
     "commodities": (0.5, 1.2, 1.0),
@@ -223,6 +243,7 @@ def _extract_domains_from_source(source: SourceSpec) -> list[str]:
 
 def build_source_profiles_for_agent(agent_id: str) -> list[HistoricalSourceProfile]:
     profiles: list[HistoricalSourceProfile] = []
+    preferred_order = {source_id: index for index, source_id in enumerate(PREFERRED_SOURCE_IDS.get(agent_id, ()))}
     for source in get_sources_for_agent(agent_id, delivery="training_core"):
         if source.kind not in {"rss", "api", "scrape"}:
             continue
@@ -238,7 +259,20 @@ def build_source_profiles_for_agent(agent_id: str) -> list[HistoricalSourceProfi
                 domains=domains,
                 tags=list(source.tags),
                 query_terms=list(AGENT_QUERY_TERMS.get(agent_id, ())),
-                priority=_priority_for_source(source),
+                priority=_priority_for_source(source) + (20 - preferred_order[source.id] if source.id in preferred_order else 0),
+            )
+        )
+    for source_id, source_name, domains, query_terms in FALLBACK_COLLECTION_PROFILES.get(agent_id, ()):
+        profiles.append(
+            HistoricalSourceProfile(
+                agent_id=agent_id,
+                source_id=source_id,
+                source_name=source_name,
+                rationale="Fallback historical collection profile for GDELT-backed replay building.",
+                domains=list(domains),
+                tags=[agent_id, "historical-fallback"],
+                query_terms=list(query_terms),
+                priority=5,
             )
         )
     profiles.sort(key=lambda item: (-item.priority, item.source_name))
@@ -246,10 +280,24 @@ def build_source_profiles_for_agent(agent_id: str) -> list[HistoricalSourceProfi
 
 
 def build_gdelt_query(profile: HistoricalSourceProfile) -> str:
-    domain_clause = " OR ".join(f"domainis:{domain}" for domain in profile.domains[:4])
-    terms = " OR ".join(json.dumps(term) for term in profile.query_terms[:8])
+    domains = profile.domains[:4]
+    if len(domains) == 1:
+        domain_clause = f"domainis:{domains[0]}"
+    else:
+        domain_clause = " OR ".join(f"domainis:{domain}" for domain in domains)
+        if domain_clause:
+            domain_clause = f"({domain_clause})"
+    valid_terms = []
+    for term in profile.query_terms[:8]:
+        normalized = re.sub(r"[^A-Za-z0-9]+", "", term)
+        if len(normalized) < 5:
+            continue
+        valid_terms.append(term)
+    terms = " OR ".join(json.dumps(term) for term in valid_terms)
+    if terms:
+        terms = f"({terms})"
     if domain_clause and terms:
-        return f"({domain_clause}) AND ({terms})"
+        return f"{domain_clause} AND {terms}"
     if terms:
         return terms
     return domain_clause

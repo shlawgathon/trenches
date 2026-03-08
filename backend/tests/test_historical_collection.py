@@ -3,10 +3,12 @@ from datetime import UTC, datetime
 from trenches_env.historical_collection import (
     CollectedHistoricalArticle,
     article_to_historical_event,
+    build_gdelt_query,
     build_replay_definition,
     build_source_profiles_for_agent,
     resolve_window,
 )
+from trenches_env.historical_collection import HistoricalSourceProfile
 from trenches_env.historical_replay import HistoricalReplayDefinition
 
 
@@ -16,6 +18,14 @@ def test_build_source_profiles_uses_manifest_domains() -> None:
     assert profiles
     assert any("reuters.com" in profile.domains for profile in profiles)
     assert all(profile.query_terms for profile in profiles)
+
+
+def test_build_source_profiles_include_fallbacks_for_entities_without_url_feeds() -> None:
+    profiles = build_source_profiles_for_agent("hezbollah")
+
+    assert profiles
+    assert any(profile.source_id == "hezbollah-reuters" for profile in profiles)
+    assert any("reuters.com" in profile.domains for profile in profiles)
 
 
 def test_resolve_window_clamps_future_end_to_current_day() -> None:
@@ -46,6 +56,23 @@ def test_article_to_historical_event_matches_replay_schema() -> None:
     assert event.source_type == "gdelt_historical_collection"
     assert event.public_summary == article.title
     assert event.impact.actor_metric_deltas["us"]
+
+
+def test_gdelt_query_single_domain_avoids_invalid_parentheses() -> None:
+    profile = HistoricalSourceProfile(
+        agent_id="us",
+        source_id="us-reuters-us",
+        source_name="Reuters US",
+        rationale="wire",
+        domains=["reuters.com"],
+        query_terms=["Hormuz", "shipping"],
+        priority=1,
+    )
+
+    query = build_gdelt_query(profile)
+
+    assert query.startswith("domainis:reuters.com AND ")
+    assert "(\"Hormuz\" OR \"shipping\")" in query
 
 
 def test_build_replay_definition_outputs_valid_replay_file_shape() -> None:

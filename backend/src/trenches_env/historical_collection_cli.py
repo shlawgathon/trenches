@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import json
+import sys
+import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -24,6 +27,8 @@ from trenches_env.historical_collection import (
 )
 
 GDELT_DOC_API = "https://api.gdeltproject.org/api/v2/doc/doc"
+GDELT_MIN_INTERVAL_SECONDS = 5.2
+GDELT_MAX_ATTEMPTS = 3
 
 
 def _parse_args() -> argparse.Namespace:
@@ -42,8 +47,43 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--max-records-per-query", type=int, default=50)
     parser.add_argument("--max-events", type=int, default=128)
+    parser.add_argument("--max-sources-per-agent", type=int, default=2)
     parser.add_argument("--timeout-seconds", type=float, default=30.0)
     return parser.parse_args()
+
+
+def _decode_gdelt_payload(response: httpx.Response) -> dict[str, Any]:
+    try:
+        return response.json()
+    except json.JSONDecodeError as exc:
+        message = response.text.strip()
+        raise RuntimeError(f"GDELT returned a non-JSON response: {message[:280]}") from exc
+
+
+def _request_gdelt(
+    client: httpx.Client,
+    *,
+    params: dict[str, Any],
+) -> dict[str, Any]:
+    last_error: Exception | None = None
+    for attempt in range(1, GDELT_MAX_ATTEMPTS + 1):
+        response = client.get(GDELT_DOC_API, params=params)
+        if response.status_code == 429:
+            last_error = RuntimeError("GDELT rate limited the request.")
+            time.sleep(GDELT_MIN_INTERVAL_SECONDS * (attempt + 1))
+            continue
+        response.raise_for_status()
+        try:
+            payload = _decode_gdelt_payload(response)
+            time.sleep(GDELT_MIN_INTERVAL_SECONDS)
+            return payload
+        except RuntimeError as exc:
+            last_error = exc
+            message = str(exc)
+            if "Please limit requests to one every 5 seconds" not in message:
+                raise
+            time.sleep(GDELT_MIN_INTERVAL_SECONDS * attempt)
+    raise RuntimeError(f"GDELT request failed after {GDELT_MAX_ATTEMPTS} attempts: {last_error}")
 
 
 def _fetch_gdelt_articles(
@@ -52,9 +92,10 @@ def _fetch_gdelt_articles(
     agent_id: str,
     window: HistoricalCollectionWindow,
     max_records_per_query: int,
+    max_sources_per_agent: int,
 ) -> list[CollectedHistoricalArticle]:
     articles: list[CollectedHistoricalArticle] = []
-    for profile in build_source_profiles_for_agent(agent_id):
+    for profile in build_source_profiles_for_agent(agent_id)[:max_sources_per_agent]:
         query = build_gdelt_query(profile)
         if not query:
             continue
@@ -68,9 +109,15 @@ def _fetch_gdelt_articles(
                 "enddatetime": format_gdelt_datetime(month_window.end_date - timedelta(days=1), end_of_day=True),
                 "sort": "datedesc",
             }
-            response = client.get(GDELT_DOC_API, params=params)
-            response.raise_for_status()
-            payload = response.json()
+            try:
+                payload = _request_gdelt(client, params=params)
+            except Exception as exc:
+                print(
+                    f"[historical-collector] skip agent={agent_id} source={profile.source_id} "
+                    f"window={month_window.window_id}: {exc}",
+                    file=sys.stderr,
+                )
+                continue
             for item in payload.get("articles", []):
                 url = str(item.get("url") or "").strip()
                 title = str(item.get("title") or "").strip()
@@ -110,6 +157,7 @@ def _collect_for_agent(
     raw_dir: Path,
     max_records_per_query: int,
     max_events: int,
+    max_sources_per_agent: int,
 ) -> list[Path]:
     written: list[Path] = []
     for window_id in windows:
@@ -119,6 +167,7 @@ def _collect_for_agent(
             agent_id=agent_id,
             window=resolved_window,
             max_records_per_query=max_records_per_query,
+            max_sources_per_agent=max_sources_per_agent,
         )
         replay = build_replay_definition(
             training_agent=agent_id,
@@ -152,6 +201,7 @@ def main() -> None:
                     raw_dir=raw_dir,
                     max_records_per_query=args.max_records_per_query,
                     max_events=args.max_events,
+                    max_sources_per_agent=args.max_sources_per_agent,
                 )
             )
 
