@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import GlobePage from "@/src/components/GlobePage";
 
 export default function HomePage() {
-  redirect("/map");
+  return <GlobePage />;
 }
