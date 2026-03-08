@@ -142,6 +142,7 @@ export default function GlobePage() {
   const popupRef = useRef<mapboxgl.Popup | null>(null);
   const nodeMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const assetMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const hasFittedBoundsRef = useRef(false);
   const topBarRef = useRef<HTMLDivElement>(null);
   const topBarAnimatedRef = useRef(false);
 
@@ -719,6 +720,16 @@ export default function GlobePage() {
         .addTo(map);
 
       assetMarkersRef.current.push(marker);
+    }
+
+    // Auto-fit map to show all asset markers on first load
+    if (entityAssets.length > 0 && !hasFittedBoundsRef.current) {
+      const bounds = new mapboxgl.LngLatBounds(entityAssets[0].lngLat, entityAssets[0].lngLat);
+      for (const asset of entityAssets) {
+        bounds.extend(asset.lngLat);
+      }
+      map.fitBounds(bounds, { padding: 80, maxZoom: 6, duration: 1500 });
+      hasFittedBoundsRef.current = true;
     }
 
     return () => {
