@@ -32,6 +32,25 @@ class ShippingFeedFetcher:
         )
 
 
+class SlowHtmlFetcher:
+    def fetch(self, url: str) -> tuple[str, str]:
+        time.sleep(0.15)
+        return (
+            f"""
+            <html>
+              <head>
+                <title>Snapshot for {url}</title>
+                <meta name="description" content="Background hydration snapshot for {url}" />
+              </head>
+              <body>
+                <h1>Snapshot for {url}</h1>
+              </body>
+            </html>
+            """,
+            "text/html; charset=utf-8",
+        )
+
+
 def build_live_manager() -> SessionManager:
     harvester = SourceHarvester(fetcher=ShippingFeedFetcher(), auto_start=False)
     env = FogOfWarDiplomacyEnv(source_harvester=harvester)
@@ -53,6 +72,9 @@ def test_session_lifecycle() -> None:
 
     assert live_session.live.enabled is True
     assert live_session.live.source_queue_sizes["us"] == len(AGENT_LIVE_SOURCE_BUNDLES["us"])
+    assert live_session.live.hydration.total >= live_session.live.hydration.ready
+    assert live_session.live.hydration.pending >= 0
+    assert live_session.live.hydration.phase in {"seed", "background", "steady"}
 
     response = manager.step_session(
         session.session_id,
@@ -197,6 +219,29 @@ def test_background_runner_advances_live_sessions_without_dashboard_polling() ->
     assert current.world.turn >= 1
     assert current.live.last_auto_step_at is not None
     assert current.reaction_log
+
+
+def test_get_session_returns_cached_snapshot_while_background_runner_hydrates() -> None:
+    harvester = SourceHarvester(fetcher=SlowHtmlFetcher(), auto_start=False, batch_size=4)
+    manager = SessionManager(env=FogOfWarDiplomacyEnv(source_harvester=harvester))
+    session = manager.create_session(seed=7)
+    manager.set_live_mode(
+        session.session_id,
+        LiveControlRequest(enabled=True, auto_step=False, poll_interval_ms=1_000),
+    )
+    manager.start_background_runner(tick_interval_seconds=0.01)
+
+    try:
+        time.sleep(0.03)
+        started = time.perf_counter()
+        current = manager.get_session(session.session_id)
+        elapsed = time.perf_counter() - started
+    finally:
+        manager.stop_background_runner()
+
+    assert elapsed < 0.1
+    assert current.live.hydration.total > 0
+    assert current.live.hydration.phase in {"seed", "background", "steady"}
 
 
 def test_ingest_news_generates_structured_reaction_log() -> None:

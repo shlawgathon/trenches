@@ -76,6 +76,14 @@ type InteractionFocus = {
   agent: string | null;
 };
 
+type HydrationStatus = {
+  phase: "seed" | "background" | "steady";
+  total: number;
+  ready: number;
+  pending: number;
+  error: number;
+};
+
 export function NewsFeed({
   items,
   onRegisterToggle,
@@ -83,6 +91,7 @@ export function NewsFeed({
   interactionFocus,
   onInteractionFocus,
   bottomOffset = 80,
+  hydration = null,
 }: {
   items: NewsItem[];
   onRegisterToggle?: (fn: (collapsed: boolean) => void) => void;
@@ -90,6 +99,7 @@ export function NewsFeed({
   interactionFocus?: InteractionFocus | null;
   onInteractionFocus?: (focus: InteractionFocus | null) => void;
   bottomOffset?: number;
+  hydration?: HydrationStatus | null;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [filterAgent, setFilterAgent] = useState<string | null>(null);
@@ -186,6 +196,17 @@ export function NewsFeed({
               <span className="ml-auto text-[9px] font-mono text-muted-foreground">{filteredItems.length}</span>
             </div>
 
+            {hydration && (
+              <div className="flex items-center gap-2 border-b border-border/20 px-4 py-2 text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
+                <span className={cn("rounded-sm border px-1.5 py-0.5", hydration.phase !== "steady" ? "border-primary/40 text-primary" : "border-border/40")}>
+                  {hydration.phase}
+                </span>
+                <span>{hydration.ready}/{hydration.total} ready</span>
+                {hydration.pending > 0 && <span>{hydration.pending} pending</span>}
+                {hydration.error > 0 && <span>{hydration.error} error</span>}
+              </div>
+            )}
+
             {/* Agent filter bar */}
             <div className="flex items-center gap-1 border-b border-border/20 px-3 py-1.5 overflow-x-auto">
                 {(["us", "israel", "iran", "hezbollah", "gulf"] as const).map((a) => {
@@ -246,7 +267,7 @@ export function NewsFeed({
                         data-item-id={item.id}
                         className={cn(
                           "group px-4 py-3 transition-colors hover:bg-muted/20 cursor-pointer",
-                          highlighted && "bg-primary/10 ring-1 ring-primary/40"
+                          highlighted && "bg-muted/15"
                         )}
                         onMouseEnter={() => onInteractionFocus?.({ turn: item.turn, agent: item.agent ?? null })}
                         onMouseLeave={() => onInteractionFocus?.(null)}
@@ -307,4 +328,3 @@ export function NewsFeed({
     </div>
   );
 }
-

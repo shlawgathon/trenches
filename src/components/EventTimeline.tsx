@@ -53,12 +53,11 @@ const TYPE_COLORS: Record<TimelineEventType, string> = {
 const SPEEDS: PlaybackSpeed[] = [0.5, 1, 2, 4];
 
 const COLLAPSED_HEIGHT = 48;
-const EXPANDED_HEIGHT = 180;
-const TIMELINE_PLOT_LEFT = 236;
-const TIMELINE_PLOT_RIGHT = 24;
+const EXPANDED_HEIGHT = 220;
+const TURN_WIDTH = 20; // px per turn
 
 type TimelineViewMode = "timeline" | "console";
-type ConsoleEntryKind = "action" | "reaction" | "source" | "event";
+type ConsoleEntryKind = "action" | "reaction" | "source" | "event" | "provider";
 
 type ConsoleEntry = {
     id: string;
@@ -100,7 +99,7 @@ function EventMarker({
         <div
             ref={ref}
             className={cn("absolute top-1/2 -translate-y-1/2 cursor-pointer transition-transform duration-150 hover:scale-150", active && "scale-150") }
-            style={{ left: `${position * 100}%` }}
+            style={{ left: position }}
             onMouseEnter={() => {
                 if (ref.current) onHover(event, ref.current.getBoundingClientRect());
             }}
@@ -246,7 +245,12 @@ export function EventTimeline({
 }: EventTimelineProps) {
     const panelRef = useRef<HTMLDivElement>(null);
     const trackRef = useRef<HTMLDivElement>(null);
+    const filterRowRef = useRef<HTMLDivElement>(null);
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const trackScrollRef = useRef<HTMLDivElement>(null);
     const playIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const [compactFilters, setCompactFilters] = useState(false);
+    const syncingScroll = useRef(false);
 
     const [collapsed, setCollapsed] = useState(false);
     const [currentTurn, setCurrentTurn] = useState(0);
@@ -291,12 +295,28 @@ export function EventTimeline({
     const totalPredictions = events.filter((e) => e.type === "prediction").length;
     const hasActiveFilters = !!(filterAgent || filterType || filterTurnFrom !== null || filterTurnTo !== null);
 
-    // Sync current turn with session
+    // Sync current turn with session — only auto-advance if user is "following" (at/near latest turn)
+    const prevMaxTurnRef = useRef(maxTurn);
     useEffect(() => {
-        if (session && !isDragging && !playing) {
-            setCurrentTurn(session.world.turn);
+        const prevMax = prevMaxTurnRef.current;
+        prevMaxTurnRef.current = maxTurn;
+        if (!session || isDragging || playing) return;
+        // Only auto-advance if user was at (or past) the previous max turn
+        if (currentTurn >= prevMax) {
+            setCurrentTurn(maxTurn);
         }
     }, [session?.world.turn]);
+
+    // Resize observer for compact filter mode
+    useEffect(() => {
+        const el = panelRef.current;
+        if (!el) return;
+        const ro = new ResizeObserver(([entry]) => {
+            setCompactFilters(entry.contentRect.width < 500);
+        });
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
 
     // Collapse/expand
     const applyCollapse = useCallback((next: boolean) => {
@@ -344,8 +364,9 @@ export function EventTimeline({
     const handleTrackClick = (e: React.MouseEvent) => {
         if (!trackRef.current || maxTurn === 0) return;
         const rect = trackRef.current.getBoundingClientRect();
-        const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-        const turn = Math.round(ratio * maxTurn);
+        const scrollLeft = trackScrollRef.current?.scrollLeft ?? 0;
+        const clickX = e.clientX - rect.left + scrollLeft - TIMELINE_PAD;
+        const turn = Math.max(0, Math.min(maxTurn, Math.round(clickX / TURN_WIDTH)));
         setCurrentTurn(turn);
         onTurnChange?.(turn);
     };
@@ -356,8 +377,9 @@ export function EventTimeline({
         (e: MouseEvent) => {
             if (!trackRef.current || maxTurn === 0) return;
             const rect = trackRef.current.getBoundingClientRect();
-            const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-            const turn = Math.round(ratio * maxTurn);
+            const scrollLeft = trackScrollRef.current?.scrollLeft ?? 0;
+            const clickX = e.clientX - rect.left + scrollLeft - TIMELINE_PAD;
+            const turn = Math.max(0, Math.min(maxTurn, Math.round(clickX / TURN_WIDTH)));
             setCurrentTurn(turn);
             onTurnChange?.(turn);
         },
@@ -399,11 +421,16 @@ export function EventTimeline({
         onTurnChange?.(maxTurn);
     };
 
-    // Tension chart for scrubber background
+    // Fixed-width timeline calculations
+    const TIMELINE_PAD = 44; // px padding at left (clears PRED/REAL labels)
+    const innerWidth = Math.max(maxTurn, 1) * TURN_WIDTH + TIMELINE_PAD * 2;
+    const turnToX = (turn: number) => TIMELINE_PAD + turn * TURN_WIDTH;
+
+    // Tension chart for scrubber background (pixel-based SVG)
     const tensionPath = snapshots.length > 1
         ? snapshots
             .map((s, i) => {
-                const x = (s.turn / Math.max(maxTurn, 1)) * 100;
+                const x = turnToX(s.turn);
                 const y = 100 - Math.min(s.tensionAfter, 100);
                 return `${i === 0 ? "M" : "L"} ${x} ${y}`;
             })
@@ -412,8 +439,25 @@ export function EventTimeline({
 
     // Current snapshot info
     const currentSnapshot = snapshots.find((s) => s.turn === currentTurn);
-
     const progress = maxTurn > 0 ? (currentTurn / maxTurn) * 100 : 0;
+
+    // Auto-scroll to keep current turn visible
+    useEffect(() => {
+        const el = scrollRef.current;
+        if (!el || collapsed) return;
+        const targetX = turnToX(currentTurn) - el.clientWidth / 2;
+        el.scrollTo({ left: Math.max(0, targetX), behavior: "smooth" });
+    }, [currentTurn, collapsed, maxTurn]);
+
+    // Sync scroll between dot area and scrubber track
+    const handleSyncScroll = (source: "dots" | "track") => (e: React.UIEvent<HTMLDivElement>) => {
+        if (syncingScroll.current) return;
+        syncingScroll.current = true;
+        const scrollLeft = (e.target as HTMLDivElement).scrollLeft;
+        const other = source === "dots" ? trackScrollRef.current : scrollRef.current;
+        if (other) other.scrollLeft = scrollLeft;
+        requestAnimationFrame(() => { syncingScroll.current = false; });
+    };
 
     const eventMatchesInteraction = (event: TimelineEvent): boolean => {
         if (!interactionFocus) return false;
@@ -443,168 +487,311 @@ export function EventTimeline({
                         borderWidth={2}
                     />
                     <div
-                        className="relative flex h-full flex-col overflow-hidden rounded-[inherit] bg-card/25 backdrop-blur-lg"
+                        className="relative flex h-full flex-col rounded-[inherit] bg-card/25 backdrop-blur-lg"
                         style={{
                             boxShadow:
                                 "0 0 8px rgba(0,0,0,0.03), 0 2px 6px rgba(0,0,0,0.08), inset 0 0 6px 6px rgba(255,255,255,0.04), 0 0 12px rgba(0,0,0,0.15)",
                         }}
                     >
                         {/* Header row */}
-                        <div
-                            className="flex shrink-0 cursor-pointer items-center gap-2 border-b border-border/30 px-4 py-3 hover:bg-muted/10"
-                            onClick={() => applyCollapse(!collapsed)}
-                        >
-                            <button
-                                onClick={(e) => { e.stopPropagation(); applyCollapse(!collapsed); }}
-                                className="flex h-5 w-5 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
-                                title={collapsed ? "Expand timeline" : "Collapse timeline"}
+                        <div className="shrink-0 border-b border-border/30">
+                            {/* Top line: collapse toggle, title, stats, mode switch */}
+                            <div
+                                className="flex cursor-pointer items-center gap-2 px-4 py-2 hover:bg-muted/10"
+                                onClick={() => applyCollapse(!collapsed)}
                             >
-                                {collapsed ? (
-                                    <ChevronUp className="h-3.5 w-3.5" />
-                                ) : (
-                                    <ChevronDown className="h-3.5 w-3.5" />
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); applyCollapse(!collapsed); }}
+                                    className="flex h-5 w-5 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                                    title={collapsed ? "Expand timeline" : "Collapse timeline"}
+                                >
+                                    {collapsed ? (
+                                        <ChevronUp className="h-3.5 w-3.5" />
+                                    ) : (
+                                        <ChevronDown className="h-3.5 w-3.5" />
+                                    )}
+                                </button>
+
+                                <span className="whitespace-nowrap text-[10px] font-semibold tracking-[0.2em] text-foreground/80 uppercase font-sans">
+                                    Timeline
+                                </span>
+
+                                <span className="text-[9px] font-mono text-muted-foreground">
+                                    T{currentTurn}/{maxTurn}
+                                </span>
+
+                                {currentSnapshot && (
+                                    <>
+                                        <div className="mx-1 h-4 w-px bg-border/40" />
+                                        <span
+                                            className={cn(
+                                                "text-[9px] font-mono",
+                                                currentSnapshot.escalation
+                                                    ? "text-primary"
+                                                    : "text-muted-foreground"
+                                            )}
+                                        >
+                                            ⚡ {currentSnapshot.tensionAfter.toFixed(0)}
+                                        </span>
+                                        {currentSnapshot.hasOversight && (
+                                            <span className="text-[9px] font-mono text-primary">
+                                                🛡 OVERSIGHT
+                                            </span>
+                                        )}
+                                    </>
                                 )}
-                            </button>
 
-                            <span className="whitespace-nowrap text-[10px] font-semibold tracking-[0.2em] text-foreground/80 uppercase font-sans">
-                                Timeline
-                            </span>
+                                {hasBranches && (
+                                    <div className="flex items-center gap-1 text-[9px] font-mono text-destructive">
+                                        <GitBranch className="h-3 w-3" />
+                                        <span>BRANCH</span>
+                                    </div>
+                                )}
 
-                            <span className="text-[9px] font-mono text-muted-foreground">
-                                T{currentTurn}/{maxTurn}
-                            </span>
+                                {totalPredictions > 0 && (
+                                    <>
+                                        <div className="mx-1 h-4 w-px bg-border/40" />
+                                        <div className="flex items-center gap-1 text-[9px] font-mono">
+                                            <Trophy className="h-3 w-3 text-secondary" />
+                                            <span className={matchedPredictions > 0 ? "text-secondary" : "text-muted-foreground"}>
+                                                {matchedPredictions}/{totalPredictions}
+                                            </span>
+                                        </div>
+                                    </>
+                                )}
 
-                            {currentSnapshot && (
-                                <>
-                                    <div className="mx-1 h-4 w-px bg-border/40" />
-                                    <span
+                                <div className="ml-auto flex items-center gap-1">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setViewMode("timeline");
+                                        }}
                                         className={cn(
-                                            "text-[9px] font-mono",
-                                            currentSnapshot.escalation
-                                                ? "text-primary"
-                                                : "text-muted-foreground"
+                                            "flex items-center gap-1 border px-2 py-1 text-[8px] font-mono uppercase tracking-[0.18em] transition-colors",
+                                            viewMode === "timeline"
+                                                ? "border-primary/60 bg-primary/15 text-primary"
+                                                : "border-border/30 text-muted-foreground hover:text-foreground"
                                         )}
                                     >
-                                        ⚡ {currentSnapshot.tensionAfter.toFixed(0)}
-                                    </span>
-                                    {currentSnapshot.hasOversight && (
-                                        <span className="text-[9px] font-mono text-primary">
-                                            🛡 OVERSIGHT
-                                        </span>
-                                    )}
-                                </>
-                            )}
+                                        <Activity className="h-3 w-3" />
+                                        Timeline
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setViewMode("console");
+                                        }}
+                                        className={cn(
+                                            "flex items-center gap-1 border px-2 py-1 text-[8px] font-mono uppercase tracking-[0.18em] transition-colors",
+                                            viewMode === "console"
+                                                ? "border-primary/60 bg-primary/15 text-primary"
+                                                : "border-border/30 text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        <TerminalSquare className="h-3 w-3" />
+                                        Console
+                                    </button>
+                                </div>
+                            </div>
 
-                            {hasBranches && (
-                                <div className="flex items-center gap-1 text-[9px] font-mono text-destructive">
-                                    <GitBranch className="h-3 w-3" />
-                                    <span>BRANCH</span>
+                            {/* Filter row: PRED / REAL agent selectors + type filter */}
+                            {!collapsed && viewMode === "timeline" && (
+                                <div ref={filterRowRef} className="flex items-center gap-3 border-t border-border/20 px-4 py-1">
+                                    {/* PRED lane selector */}
+                                    <div className="flex items-center gap-1">
+                                        {!compactFilters && <span className="text-[8px] font-bold font-mono uppercase tracking-widest text-red-400/70 shrink-0 w-7">PRED</span>}
+                                        {(["oversight", "us", "israel", "iran", "hezbollah", "gulf"] as const).map((id) => (
+                                            <button
+                                                key={`top-${id}`}
+                                                onClick={() => setTopAgent(id)}
+                                                title={`Predictions: ${id}`}
+                                                className={cn(
+                                                    "cursor-pointer transition-all border rounded-sm",
+                                                    compactFilters
+                                                        ? "h-4 w-4 flex items-center justify-center"
+                                                        : "h-5 px-1.5 text-[8px] font-mono uppercase leading-none",
+                                                    topAgent === id
+                                                        ? "border-current text-foreground bg-foreground/10"
+                                                        : "border-transparent text-muted-foreground/50 hover:text-muted-foreground/80"
+                                                )}
+                                                style={topAgent === id ? { borderColor: AGENT_COLORS[id] ?? "#888", color: AGENT_COLORS[id] ?? "#888" } : undefined}
+                                            >
+                                                {compactFilters ? (
+                                                    <span
+                                                        className="flex h-4 w-4 items-center justify-center rounded-full text-[7px] font-bold text-black/80"
+                                                        style={{ backgroundColor: AGENT_COLORS[id] ?? "#888", opacity: topAgent === id ? 1 : 0.35 }}
+                                                    >
+                                                        {id[0].toUpperCase()}
+                                                    </span>
+                                                ) : (
+                                                    id === "hezbollah" ? "HEZ" : id === "oversight" ? "OVST" : id.toUpperCase()
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <div className="h-3.5 w-px bg-border/30" />
+
+                                    {/* REAL lane selector */}
+                                    <div className="flex items-center gap-1">
+                                        {!compactFilters && <span className="text-[8px] font-bold font-mono uppercase tracking-widest text-emerald-400/70 shrink-0 w-7">REAL</span>}
+                                        {(["oversight", "us", "israel", "iran", "hezbollah", "gulf"] as const).map((id) => (
+                                            <button
+                                                key={`bot-${id}`}
+                                                onClick={() => setBottomAgent(id)}
+                                                title={`Actuals: ${id}`}
+                                                className={cn(
+                                                    "cursor-pointer transition-all border rounded-sm",
+                                                    compactFilters
+                                                        ? "h-4 w-4 flex items-center justify-center"
+                                                        : "h-5 px-1.5 text-[8px] font-mono uppercase leading-none",
+                                                    bottomAgent === id
+                                                        ? "border-current text-foreground bg-foreground/10"
+                                                        : "border-transparent text-muted-foreground/50 hover:text-muted-foreground/80"
+                                                )}
+                                                style={bottomAgent === id ? { borderColor: AGENT_COLORS[id] ?? "#888", color: AGENT_COLORS[id] ?? "#888" } : undefined}
+                                            >
+                                                {compactFilters ? (
+                                                    <span
+                                                        className="flex h-4 w-4 items-center justify-center rounded-full text-[7px] font-bold text-black/80"
+                                                        style={{ backgroundColor: AGENT_COLORS[id] ?? "#888", opacity: bottomAgent === id ? 1 : 0.35 }}
+                                                    >
+                                                        {id[0].toUpperCase()}
+                                                    </span>
+                                                ) : (
+                                                    id === "hezbollah" ? "HEZ" : id === "oversight" ? "OVST" : id.toUpperCase()
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Type filter + active filter indicator */}
+                                    <div className="ml-auto flex items-center gap-1.5">
+                                        {hasActiveFilters && (
+                                            <button
+                                                onClick={() => {
+                                                    setFilterAgent(null);
+                                                    setFilterType(null);
+                                                    setFilterTurnFrom(null);
+                                                    setFilterTurnTo(null);
+                                                }}
+                                                className="flex items-center gap-0.5 text-[8px] font-mono text-primary/80 hover:text-primary cursor-pointer"
+                                            >
+                                                <X className="h-2.5 w-2.5" /> Clear
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => setShowFilters(!showFilters)}
+                                            className={cn(
+                                                "flex items-center gap-1 border px-1.5 py-0.5 text-[8px] font-mono uppercase tracking-wider transition-colors cursor-pointer",
+                                                showFilters || hasActiveFilters
+                                                    ? "border-primary/40 text-primary bg-primary/10"
+                                                    : "border-border/30 text-muted-foreground hover:text-foreground"
+                                            )}
+                                        >
+                                            <Filter className="h-2.5 w-2.5" />
+                                            {hasActiveFilters ? `${filteredEvents.length}/${events.length}` : "Filter"}
+                                        </button>
+                                    </div>
                                 </div>
                             )}
 
-                            {totalPredictions > 0 && (
-                                <>
-                                    <div className="mx-1 h-4 w-px bg-border/40" />
-                                    <div className="flex items-center gap-1 text-[9px] font-mono">
-                                        <Trophy className="h-3 w-3 text-secondary" />
-                                        <span className={matchedPredictions > 0 ? "text-secondary" : "text-muted-foreground"}>
-                                            {matchedPredictions}/{totalPredictions}
-                                        </span>
+                            {/* Expanded filter panel */}
+                            {!collapsed && showFilters && viewMode === "timeline" && (
+                                <div className="flex items-center gap-3 border-t border-border/20 px-4 py-1.5 bg-muted/5">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-[8px] font-mono uppercase text-muted-foreground">Agent</span>
+                                        <select
+                                            value={filterAgent ?? ""}
+                                            onChange={(e) => setFilterAgent(e.target.value || null)}
+                                            className="h-5 bg-transparent border border-border/30 px-1 text-[9px] font-mono text-foreground/80 cursor-pointer"
+                                        >
+                                            <option value="">All</option>
+                                            {agents.map((a) => (
+                                                <option key={a} value={a}>{a}</option>
+                                            ))}
+                                        </select>
                                     </div>
-                                </>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-[8px] font-mono uppercase text-muted-foreground">Type</span>
+                                        <select
+                                            value={filterType ?? ""}
+                                            onChange={(e) => setFilterType((e.target.value || null) as TimelineEventType | null)}
+                                            className="h-5 bg-transparent border border-border/30 px-1 text-[9px] font-mono text-foreground/80 cursor-pointer"
+                                        >
+                                            <option value="">All</option>
+                                            <option value="prediction">Prediction</option>
+                                            <option value="actual">Actual</option>
+                                            <option value="injection">Injection</option>
+                                        </select>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-[8px] font-mono uppercase text-muted-foreground">Turns</span>
+                                        <input
+                                            type="number"
+                                            min={0}
+                                            max={maxTurn}
+                                            placeholder="from"
+                                            value={filterTurnFrom ?? ""}
+                                            onChange={(e) => setFilterTurnFrom(e.target.value ? Number(e.target.value) : null)}
+                                            className="h-5 w-12 bg-transparent border border-border/30 px-1 text-[9px] font-mono text-foreground/80"
+                                        />
+                                        <span className="text-[8px] text-muted-foreground">–</span>
+                                        <input
+                                            type="number"
+                                            min={0}
+                                            max={maxTurn}
+                                            placeholder="to"
+                                            value={filterTurnTo ?? ""}
+                                            onChange={(e) => setFilterTurnTo(e.target.value ? Number(e.target.value) : null)}
+                                            className="h-5 w-12 bg-transparent border border-border/30 px-1 text-[9px] font-mono text-foreground/80"
+                                        />
+                                    </div>
+                                </div>
                             )}
-
-                            <div className="ml-auto flex items-center gap-1">
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setViewMode("timeline");
-                                    }}
-                                    className={cn(
-                                        "flex items-center gap-1 border px-2 py-1 text-[8px] font-mono uppercase tracking-[0.18em] transition-colors",
-                                        viewMode === "timeline"
-                                            ? "border-primary/60 bg-primary/15 text-primary"
-                                            : "border-border/30 text-muted-foreground hover:text-foreground"
-                                    )}
-                                >
-                                    <Activity className="h-3 w-3" />
-                                    Timeline
-                                </button>
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setViewMode("console");
-                                    }}
-                                    className={cn(
-                                        "flex items-center gap-1 border px-2 py-1 text-[8px] font-mono uppercase tracking-[0.18em] transition-colors",
-                                        viewMode === "console"
-                                            ? "border-primary/60 bg-primary/15 text-primary"
-                                            : "border-border/30 text-muted-foreground hover:text-foreground"
-                                    )}
-                                >
-                                    <TerminalSquare className="h-3 w-3" />
-                                    Console
-                                </button>
-                            </div>
-
                         </div>
-                        {/* Content area with opacity transition matching side panels */}
-                        <div className={cn("flex min-w-0 flex-1 flex-col transition-opacity duration-300", collapsed ? "opacity-0 pointer-events-none" : "opacity-100")}>
-
-                        {/* Scrubber area — hidden when collapsed via overflow */}
-                        <div className={cn(
-                            "flex min-w-0 flex-1 flex-col transition-opacity duration-300",
-                            collapsed ? "opacity-0 pointer-events-none" : "opacity-100"
-                        )}>
+                        {/* Content area */}
+                        <div className={cn("flex min-w-0 flex-1 flex-col overflow-hidden transition-opacity duration-300", collapsed ? "opacity-0 pointer-events-none" : "opacity-100")}>
                             {!collapsed && (viewMode === "timeline" ? (
-                                <div className="flex flex-1 flex-col px-4 py-1">
-                                    {/* Tension backdrop SVG */}
-                                    <div className="relative flex-1">
-                                        {tensionPath && (
-                                            <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                                                <defs>
-                                                    <linearGradient id="tensionGrad" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="0%" stopColor="#e53935" stopOpacity="0.2" />
-                                                        <stop offset="100%" stopColor="#e53935" stopOpacity="0" />
-                                                    </linearGradient>
-                                                </defs>
-                                                <path d={`${tensionPath} L 100 100 L 0 100 Z`} fill="url(#tensionGrad)" />
-                                                <path d={tensionPath} fill="none" stroke="#e53935" strokeWidth="0.8" strokeOpacity="0.5" vectorEffect="non-scaling-stroke" />
-                                                <line x1={progress} y1="0" x2={progress} y2="100" stroke="#e0e0e0" strokeWidth="0.5" strokeOpacity="0.6" vectorEffect="non-scaling-stroke" strokeDasharray="2 2" />
-                                            </svg>
-                                        )}
+                                <div className="flex flex-1 flex-col py-1 overflow-hidden">
+                                    {/* Scrollable dot + tension area */}
+                                    <div
+                                        ref={scrollRef}
+                                        className="relative flex-1 overflow-x-auto overflow-y-hidden scrollbar-thin"
+                                        onScroll={handleSyncScroll("dots")}
+                                    >
+                                        <div className="relative h-full" style={{ width: innerWidth, minWidth: "100%" }}>
+                                            {/* Tension backdrop SVG */}
+                                            {tensionPath && (
+                                                <svg className="absolute inset-0 h-full" style={{ width: innerWidth }} viewBox={`0 0 ${innerWidth} 100`} preserveAspectRatio="none">
+                                                    <defs>
+                                                        <linearGradient id="tensionGrad" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="0%" stopColor="#e53935" stopOpacity="0.2" />
+                                                            <stop offset="100%" stopColor="#e53935" stopOpacity="0" />
+                                                        </linearGradient>
+                                                    </defs>
+                                                    <path d={`${tensionPath} L ${innerWidth} 100 L 0 100 Z`} fill="url(#tensionGrad)" />
+                                                    <path d={tensionPath} fill="none" stroke="#e53935" strokeWidth="0.8" strokeOpacity="0.5" vectorEffect="non-scaling-stroke" />
+                                                    <line x1={turnToX(currentTurn)} y1="0" x2={turnToX(currentTurn)} y2="100" stroke="#e0e0e0" strokeWidth="0.5" strokeOpacity="0.6" vectorEffect="non-scaling-stroke" strokeDasharray="2 2" />
+                                                </svg>
+                                            )}
 
-                                        {/* Top row: agent selector + prediction dots */}
-                                        <div className="absolute inset-x-0 top-[4%] flex items-center gap-1.5 px-2">
-                                            <span className="text-[8px] font-bold font-mono uppercase tracking-widest text-red-400/70 shrink-0 w-8">PRED</span>
-                                            {(["oversight", "us", "israel", "iran", "hezbollah", "gulf"] as const).map((id) => (
-                                                <button
-                                                    key={`top-${id}`}
-                                                    onClick={() => setTopAgent(id)}
-                                                    className={cn(
-                                                        "h-5 px-1.5 text-[8px] font-mono uppercase leading-none cursor-pointer transition-all border rounded-sm",
-                                                        topAgent === id
-                                                            ? "border-current text-foreground bg-foreground/10"
-                                                            : "border-transparent text-muted-foreground/50 hover:text-muted-foreground/80"
-                                                    )}
-                                                    style={topAgent === id ? { borderColor: AGENT_COLORS[id] ?? "#888", color: AGENT_COLORS[id] ?? "#888" } : undefined}
-                                                >
-                                                    {id === "hezbollah" ? "HEZ" : id === "oversight" ? "OVST" : id.toUpperCase()}
-                                                </button>
-                                            ))}
-                                        </div>
+                                            {/* Lane labels (sticky on left) */}
+                                            <span className="sticky left-3 top-[10%] z-10 inline-block text-[7px] font-bold font-mono uppercase tracking-widest text-red-400/40 select-none" style={{ position: "absolute", top: "10%" }}>PRED</span>
+                                            <span className="sticky left-3 top-[58%] z-10 inline-block text-[7px] font-bold font-mono uppercase tracking-widest text-emerald-400/40 select-none" style={{ position: "absolute", top: "58%" }}>REAL</span>
 
-                                        {/* Top row dots */}
-                                        <div className="absolute top-[22%] h-0" style={{ left: TIMELINE_PLOT_LEFT, right: TIMELINE_PLOT_RIGHT }}>
-                                            {filteredEvents
-                                                .filter((e) => e.type === "prediction" && e.agent === topAgent)
-                                                .map((event) => {
-                                                    const pos = maxTurn > 0 ? event.turn / maxTurn : 0;
-                                                    return (
+                                            {/* Lane divider */}
+                                            <div className="absolute top-[47%] h-px bg-border/30" style={{ width: innerWidth }} />
+
+                                            {/* Top row dots (predictions) */}
+                                            <div className="absolute top-[15%] h-0" style={{ width: innerWidth }}>
+                                                {filteredEvents
+                                                    .filter((e) => e.type === "prediction" && e.agent === topAgent)
+                                                    .map((event) => (
                                                         <EventMarker
                                                             key={event.id}
                                                             event={event}
-                                                            position={pos}
+                                                            position={turnToX(event.turn)}
                                                             isMatched={!!event.matchedPredictionId}
                                                             active={eventMatchesInteraction(event)}
                                                             onHover={(ev, rect) => {
@@ -615,44 +802,18 @@ export function EventTimeline({
                                                             onLeave={() => { setHoveredEvent(null); setTooltipPos(null); onInteractionFocus?.(null); }}
                                                             onClick={(ev) => { setCurrentTurn(ev.turn); onTurnChange?.(ev.turn); }}
                                                         />
-                                                    );
-                                                })}
-                                        </div>
+                                                    ))}
+                                            </div>
 
-                                        {/* Lane divider */}
-                                        <div className="absolute top-[47%] h-px bg-border/30" style={{ left: TIMELINE_PLOT_LEFT, right: TIMELINE_PLOT_RIGHT }} />
-
-                                        {/* Bottom row: agent selector + actual dots */}
-                                        <div className="absolute inset-x-0 top-[52%] flex items-center gap-1.5 px-2">
-                                            <span className="text-[8px] font-bold font-mono uppercase tracking-widest text-emerald-400/70 shrink-0 w-8">REAL</span>
-                                            {(["oversight", "us", "israel", "iran", "hezbollah", "gulf"] as const).map((id) => (
-                                                <button
-                                                    key={`bot-${id}`}
-                                                    onClick={() => setBottomAgent(id)}
-                                                    className={cn(
-                                                        "h-5 px-1.5 text-[8px] font-mono uppercase leading-none cursor-pointer transition-all border rounded-sm",
-                                                        bottomAgent === id
-                                                            ? "border-current text-foreground bg-foreground/10"
-                                                            : "border-transparent text-muted-foreground/50 hover:text-muted-foreground/80"
-                                                    )}
-                                                    style={bottomAgent === id ? { borderColor: AGENT_COLORS[id] ?? "#888", color: AGENT_COLORS[id] ?? "#888" } : undefined}
-                                                >
-                                                    {id === "hezbollah" ? "HEZ" : id === "oversight" ? "OVST" : id.toUpperCase()}
-                                                </button>
-                                            ))}
-                                        </div>
-
-                                        {/* Bottom row dots */}
-                                        <div className="absolute top-[72%] h-0" style={{ left: TIMELINE_PLOT_LEFT, right: TIMELINE_PLOT_RIGHT }}>
-                                            {filteredEvents
-                                                .filter((e) => e.type !== "prediction" && e.agent === bottomAgent)
-                                                .map((event) => {
-                                                    const pos = maxTurn > 0 ? event.turn / maxTurn : 0;
-                                                    return (
+                                            {/* Bottom row dots (actuals) */}
+                                            <div className="absolute top-[65%] h-0" style={{ width: innerWidth }}>
+                                                {filteredEvents
+                                                    .filter((e) => e.type !== "prediction" && e.agent === bottomAgent)
+                                                    .map((event) => (
                                                         <EventMarker
                                                             key={event.id}
                                                             event={event}
-                                                            position={pos}
+                                                            position={turnToX(event.turn)}
                                                             isMatched={!!event.matchedPredictionId}
                                                             active={eventMatchesInteraction(event)}
                                                             onHover={(ev, rect) => {
@@ -663,145 +824,125 @@ export function EventTimeline({
                                                             onLeave={() => { setHoveredEvent(null); setTooltipPos(null); onInteractionFocus?.(null); }}
                                                             onClick={(ev) => { setCurrentTurn(ev.turn); onTurnChange?.(ev.turn); }}
                                                         />
-                                                    );
-                                                })}
-                                        </div>
+                                                    ))}
+                                            </div>
 
-                                        {/* Branch fork markers */}
-                                        {filteredEvents
-                                            .filter((e) => e.type === "injection")
-                                            .map((e) => {
-                                                const pos = maxTurn > 0 ? e.turn / maxTurn : 0;
-                                                return (
+                                            {/* Branch fork markers */}
+                                            {filteredEvents
+                                                .filter((e) => e.type === "injection")
+                                                .map((e) => (
                                                     <div
                                                         key={`fork-${e.id}`}
                                                         className="absolute bottom-0 -translate-x-1/2"
-                                                        style={{
-                                                            left: `calc(${TIMELINE_PLOT_LEFT}px + ((100% - ${TIMELINE_PLOT_LEFT + TIMELINE_PLOT_RIGHT}px) * ${pos}))`,
-                                                        }}
+                                                        style={{ left: turnToX(e.turn) }}
                                                     >
                                                         <GitBranch className="h-3 w-3 text-destructive/70" />
                                                     </div>
-                                                );
-                                            })}
+                                                ))}
+
+                                            {/* Turn tick marks */}
+                                            {Array.from({ length: maxTurn + 1 }, (_, i) => (
+                                                <div
+                                                    key={`tick-${i}`}
+                                                    className="absolute top-0 h-full w-px bg-border/10"
+                                                    style={{ left: turnToX(i) }}
+                                                />
+                                            ))}
+                                        </div>
                                     </div>
 
                                     {/* Scrubber track */}
-                                    <div className="mt-1 flex items-center gap-3">
+                                    <div className="flex items-center gap-3 px-4 pt-1">
                                         {/* Playback controls */}
                                         <div className="flex shrink-0 items-center gap-0.5">
-                                            <button
-                                                onClick={rewind}
-                                                className="flex h-6 w-6 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
-                                                title="Rewind"
-                                            >
+                                            <button onClick={rewind} className="flex h-6 w-6 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground" title="Rewind">
                                                 <Rewind className="h-3 w-3" />
                                             </button>
-                                            <button
-                                                onClick={stepBack}
-                                                className="flex h-6 w-6 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
-                                                title="Step back"
-                                            >
+                                            <button onClick={stepBack} className="flex h-6 w-6 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground" title="Step back">
                                                 <SkipBack className="h-3 w-3" />
                                             </button>
                                             <button
                                                 onClick={() => setPlaying(!playing)}
                                                 className={cn(
                                                     "flex h-7 w-7 cursor-pointer items-center justify-center transition-colors",
-                                                    playing
-                                                        ? "text-primary"
-                                                        : "text-muted-foreground hover:text-foreground"
+                                                    playing ? "text-primary" : "text-muted-foreground hover:text-foreground"
                                                 )}
                                                 title={playing ? "Pause" : "Play"}
                                             >
-                                                {playing ? (
-                                                    <Pause className="h-3.5 w-3.5" />
-                                                ) : (
-                                                    <Play className="h-3.5 w-3.5" />
-                                                )}
+                                                {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
                                             </button>
-                                            <button
-                                                onClick={stepForward}
-                                                className="flex h-6 w-6 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
-                                                title="Step forward"
-                                            >
+                                            <button onClick={stepForward} className="flex h-6 w-6 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground" title="Step forward">
                                                 <SkipForward className="h-3 w-3" />
                                             </button>
-                                            <button
-                                                onClick={fastForward}
-                                                className="flex h-6 w-6 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
-                                                title="Fast-forward"
-                                            >
+                                            <button onClick={fastForward} className="flex h-6 w-6 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground" title="Fast-forward">
                                                 <FastForward className="h-3 w-3" />
                                             </button>
                                         </div>
 
-                                        {/* Track */}
+                                        {/* Scrollable track (synced with dot area) */}
                                         <div
-                                            ref={trackRef}
-                                            className="relative h-2 flex-1 cursor-pointer bg-border/20"
-                                            onClick={handleTrackClick}
+                                            ref={trackScrollRef}
+                                            className="flex-1 overflow-x-auto overflow-y-hidden scrollbar-none"
+                                            onScroll={handleSyncScroll("track")}
                                         >
-                                            {/* Progress fill */}
                                             <div
-                                                className="absolute inset-y-0 left-0 bg-primary/40 transition-[width] duration-75"
-                                                style={{ width: `${progress}%` }}
-                                            />
-
-                                            {/* Turn tick marks */}
-                                            {maxTurn <= 50 &&
-                                                Array.from({ length: maxTurn + 1 }, (_, i) => (
-                                                    <div
-                                                        key={i}
-                                                        className="absolute top-0 h-full w-px bg-border/10"
-                                                        style={{ left: `${(i / Math.max(maxTurn, 1)) * 100}%` }}
-                                                    />
-                                                ))}
-
-                                            {/* Escalation markers on track */}
-                                            {snapshots
-                                                .filter((s) => s.escalation)
-                                                .map((s) => (
-                                                    <div
-                                                        key={`esc-${s.turn}`}
-                                                        className="absolute top-0 h-full w-0.5 bg-primary/50"
-                                                        style={{
-                                                            left: `${(s.turn / Math.max(maxTurn, 1)) * 100}%`,
-                                                        }}
-                                                    />
-                                                ))}
-
-                                            {/* Playhead thumb */}
-                                            <div
-                                                className="absolute top-1/2 h-4 w-1.5 -translate-x-1/2 -translate-y-1/2 cursor-grab bg-foreground/90 transition-[left] duration-75 active:cursor-grabbing"
-                                                style={{ left: `${progress}%` }}
-                                                onMouseDown={(e) => {
-                                                    e.preventDefault();
-                                                    handleDragStart();
+                                                ref={trackRef}
+                                                className="relative h-2 cursor-pointer bg-border/20"
+                                                style={{ width: innerWidth, minWidth: "100%" }}
+                                                onClick={(e) => {
+                                                    if (!trackRef.current) return;
+                                                    const rect = trackRef.current.getBoundingClientRect();
+                                                    const scrollLeft = trackScrollRef.current?.scrollLeft ?? 0;
+                                                    const clickX = e.clientX - rect.left + scrollLeft - TIMELINE_PAD;
+                                                    const turn = Math.max(0, Math.min(maxTurn, Math.round(clickX / TURN_WIDTH)));
+                                                    setCurrentTurn(turn);
+                                                    onTurnChange?.(turn);
                                                 }}
-                                            />
+                                            >
+                                                {/* Progress fill */}
+                                                <div
+                                                    className="absolute inset-y-0 left-0 bg-primary/40"
+                                                    style={{ width: turnToX(currentTurn) }}
+                                                />
+
+                                                {/* Escalation markers */}
+                                                {snapshots
+                                                    .filter((s) => s.escalation)
+                                                    .map((s) => (
+                                                        <div
+                                                            key={`esc-${s.turn}`}
+                                                            className="absolute top-0 h-full w-0.5 bg-primary/50"
+                                                            style={{ left: turnToX(s.turn) }}
+                                                        />
+                                                    ))}
+
+                                                {/* Playhead thumb */}
+                                                <div
+                                                    className="absolute top-1/2 h-4 w-1.5 -translate-x-1/2 -translate-y-1/2 cursor-grab bg-foreground/90 active:cursor-grabbing"
+                                                    style={{ left: turnToX(currentTurn) }}
+                                                    onMouseDown={(e) => {
+                                                        e.preventDefault();
+                                                        handleDragStart();
+                                                    }}
+                                                />
+                                            </div>
                                         </div>
 
                                         {/* Speed controls */}
                                         <div className="flex shrink-0 items-center gap-0.5 border-l border-border/20 pl-2">
                                             {SPEEDS.map((s) => (
-                                                <SpeedButton
-                                                    key={s}
-                                                    speed={s}
-                                                    active={speed === s}
-                                                    onClick={() => setSpeed(s)}
-                                                />
+                                                <SpeedButton key={s} speed={s} active={speed === s} onClick={() => setSpeed(s)} />
                                             ))}
                                         </div>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="flex h-full flex-1 flex-col px-4 py-2">
-                                    <div className="mb-2 flex items-center justify-between text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
+                                <div className="flex h-full flex-1 flex-col px-4 py-2 overflow-hidden">
+                                    <div className="mb-1.5 flex items-center justify-between text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
                                         <span>Unified console feed</span>
                                         <span>{consoleEntries.length} entries</span>
                                     </div>
-                                    <div className="scrollbar-thin flex-1 space-y-2 overflow-y-auto pr-1">
+                                    <div className="flex-1 overflow-y-auto scrollbar-thin pr-1">
                                         {consoleEntries.length === 0 ? (
                                             <div className="flex h-full items-center justify-center text-[11px] font-mono text-muted-foreground">
                                                 No console activity yet.
@@ -810,7 +951,7 @@ export function EventTimeline({
                                             consoleEntries.map((entry) => (
                                                 <div
                                                     key={entry.id}
-                                                    className="cursor-pointer border border-border/30 bg-background/20 px-3 py-2 hover:bg-muted/10"
+                                                    className="flex cursor-pointer items-center gap-2 border-b border-border/15 px-1 py-[3px] text-[10px] font-mono hover:bg-muted/10 transition-colors"
                                                     onMouseEnter={() => onInteractionFocus?.({ turn: entry.turn, agent: entry.agent })}
                                                     onMouseLeave={() => onInteractionFocus?.(null)}
                                                     onClick={() => {
@@ -819,41 +960,23 @@ export function EventTimeline({
                                                         onInteractionFocus?.({ turn: entry.turn, agent: entry.agent });
                                                     }}
                                                 >
-                                                    <div className="mb-1 flex items-center gap-2">
-                                                        <span
-                                                            className="inline-flex h-2 w-2 rounded-full"
-                                                            style={{ backgroundColor: entry.accent }}
-                                                        />
-                                                        <span className="text-[9px] font-semibold uppercase tracking-[0.18em] text-foreground/85">
-                                                            {entry.title}
-                                                        </span>
-                                                        <span className="text-[9px] font-mono text-muted-foreground">
-                                                            T{entry.turn}
-                                                        </span>
-                                                        {entry.agent && (
-                                                            <span className="text-[9px] font-mono text-muted-foreground">
-                                                                {entry.agent}
-                                                            </span>
-                                                        )}
-                                                        <span className="ml-auto text-[9px] font-mono text-muted-foreground/70">
-                                                            {formatConsoleTime(entry.timestamp)}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-[11px] leading-relaxed text-foreground/90">
-                                                        {entry.summary}
-                                                    </p>
-                                                    {entry.detail && (
-                                                        <p className="mt-1 text-[10px] font-mono leading-relaxed text-muted-foreground">
-                                                            {entry.detail}
-                                                        </p>
+                                                    <span
+                                                        className="inline-flex h-1.5 w-1.5 shrink-0 rounded-full"
+                                                        style={{ backgroundColor: entry.accent }}
+                                                    />
+                                                    <span className="shrink-0 w-7 text-muted-foreground/70">T{entry.turn}</span>
+                                                    <span className="shrink-0 w-[52px] text-[9px] font-semibold uppercase tracking-wider text-foreground/70">{entry.title}</span>
+                                                    <span className="min-w-0 flex-1 truncate text-foreground/85">{entry.summary}</span>
+                                                    {entry.agent && (
+                                                        <span className="shrink-0 text-muted-foreground/60">{entry.agent}</span>
                                                     )}
+                                                    <span className="shrink-0 text-[9px] text-muted-foreground/50">{formatConsoleTime(entry.timestamp)}</span>
                                                 </div>
                                             ))
                                         )}
                                     </div>
                                 </div>
                             ))}
-                        </div>
                         </div>
 
                         {/* Collapsed label */}
@@ -885,11 +1008,42 @@ function deriveConsoleEntries(session: SessionState | null): ConsoleEntry[] {
 
     const entries: ConsoleEntry[] = [];
 
+    for (const [agentId, binding] of Object.entries(session.model_bindings ?? {})) {
+        if (binding.decision_mode !== "heuristic_fallback" && binding.provider !== "openrouter") {
+            continue;
+        }
+
+        const detailParts = [
+            `provider=${binding.provider}`,
+            `mode=${binding.decision_mode}`,
+            binding.model_name ? `model=${binding.model_name}` : null,
+            binding.base_url ? `base_url=${binding.base_url}` : null,
+        ].filter(Boolean);
+
+        entries.push({
+            id: `provider-${agentId}-${binding.provider}-${binding.decision_mode}-${session.updated_at}`,
+            kind: "provider",
+            turn: session.world.turn,
+            agent: agentId,
+            title: "Provider",
+            summary: binding.provider === "openrouter"
+                ? `${agentId} is using OpenRouter mock fallback`
+                : `${agentId} is on heuristic fallback`,
+            detail: detailParts.join(" · "),
+            timestamp: session.updated_at,
+            accent: binding.decision_mode === "heuristic_fallback" ? "#e53935" : "#ffa000",
+        });
+    }
+
     for (const action of session.action_log ?? []) {
         const providerError = typeof action.metadata?.provider_error === "string" ? action.metadata.provider_error : null;
+        const providerMode = typeof action.metadata?.mode === "string" ? action.metadata.mode : null;
+        const providerName = typeof action.metadata?.provider === "string" ? action.metadata.provider : null;
         const detailParts = [
             action.target ? `target=${action.target}` : null,
             action.reward_total !== undefined ? `reward=${action.reward_total.toFixed(2)}` : null,
+            providerMode ? `mode=${providerMode}` : null,
+            providerName ? `provider=${providerName}` : null,
             providerError ? `provider_error=${providerError}` : null,
         ].filter(Boolean);
 

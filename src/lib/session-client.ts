@@ -1,8 +1,11 @@
 import { HttpClient } from "./http";
 import type {
+  CapabilitiesResponse,
   CreateSessionRequest,
   ExternalSignal,
   LiveControlRequest,
+  ProviderDiagnosticsResponse,
+  ReactionLogEntry,
   ResetSessionRequest,
   SourceMonitorReport,
   SessionState,
@@ -29,6 +32,10 @@ export class SessionClient {
     return this.http.get<{ status: string }>("/healthz");
   }
 
+  async capabilities(): Promise<CapabilitiesResponse> {
+    return this.http.get<CapabilitiesResponse>("/capabilities");
+  }
+
   async createSession(request: CreateSessionRequest = {}): Promise<SessionState> {
     return this.http.post<SessionState>("/sessions", request);
   }
@@ -47,6 +54,14 @@ export class SessionClient {
 
   async getSourceMonitor(sessionId: string): Promise<SourceMonitorReport> {
     return this.http.get<SourceMonitorReport>(`/sessions/${sessionId}/sources/monitor`);
+  }
+
+  async getReactionLog(sessionId: string): Promise<ReactionLogEntry[]> {
+    return this.http.get<ReactionLogEntry[]>(`/sessions/${sessionId}/reactions`);
+  }
+
+  async getProviderDiagnostics(sessionId: string): Promise<ProviderDiagnosticsResponse> {
+    return this.http.get<ProviderDiagnosticsResponse>(`/sessions/${sessionId}/providers/diagnostics`);
   }
 
   async setLiveMode(sessionId: string, request: LiveControlRequest): Promise<SessionState> {

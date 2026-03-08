@@ -11,7 +11,8 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
     environment:
-      NEXT_PUBLIC_API_BASE_URL: http://backend:8000
+      BACKEND_PROXY_TARGET: http://backend:8000
+      NEXT_PUBLIC_API_BASE_URL: /backend-api
       NEXT_PUBLIC_VERCEL_API_BASE: /api
       NEXT_PUBLIC_ENABLE_SOURCE_LOGIC: "true"
     ports:

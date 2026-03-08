@@ -16,6 +16,7 @@ src/trenches_env/openenv_client.py
 src/trenches_env/provider_runtime.py
 src/trenches_env/rl.py
 src/trenches_env/scenarios.py
+src/trenches_env/self_hosted_config.py
 src/trenches_env/server.py
 src/trenches_env/session_manager.py
 src/trenches_env/source_bundles.py

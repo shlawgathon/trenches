@@ -45,11 +45,21 @@ Supported provider names now include:
 
 - `openai`
 - `anthropic`
-- `openrouter`
 - `huggingface`
 - `ollama`
 - `vllm`
 - `custom`
+
+Bundled runtime default:
+
+- the repo now defaults each entity to its corresponding self-hosted `vllm` endpoint from `frontend.md`
+- those bindings use direct OpenAI-compatible `/v1/chat/completions` calls
+- no OpenRouter key is required for the default six-agent deployment
+
+Fallback mock mode:
+
+- if `TRENCHES_MOCK_MODELS=true`, the backend routes entities through the existing OpenRouter mock bindings
+- that path still requires `OPENROUTER_API_KEY`
 
 Hugging Face notes:
 

@@ -12,6 +12,7 @@ type RssItem = {
   source: string;
   agent: string;
   pubDate: string;
+  bootstrapOnly: true;
 };
 
 // Sources whose content is not in English
@@ -125,6 +126,7 @@ export async function GET() {
           source: source.name,
           agent: source.agentId,
           pubDate: item.pubDate || new Date().toISOString(),
+          bootstrapOnly: true,
         });
       }
     } catch {
@@ -141,5 +143,12 @@ export async function GET() {
     return db - da;
   });
 
-  return NextResponse.json({ items: results.slice(0, 40) });
+  return NextResponse.json(
+    { items: results.slice(0, 40) },
+    {
+      headers: {
+        "Cache-Control": "no-store, max-age=0",
+      },
+    },
+  );
 }

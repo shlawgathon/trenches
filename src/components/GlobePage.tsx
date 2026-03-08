@@ -36,7 +36,7 @@ import { EventTimeline, type TimelineInteractionFocus } from "@/src/components/E
 
 import { cn } from "@/src/lib/utils";
 import { GlowingEffect } from "@/src/components/ui/glowing-effect";
-import type { AgentAction, ExternalSignal, SessionState } from "@/src/lib/types";
+import type { AgentAction, EntityModelBinding, ExternalSignal, SessionState } from "@/src/lib/types";
 import { bootstrapPlatform } from "@/src/app/bootstrap";
 import { getMapboxToken } from "@/src/lib/env";
 
@@ -51,7 +51,7 @@ const RIGHT_PANEL_COLLAPSED_W = 64; // 16 + 48
 const TOP_BAR_GAP = 6;          // gap between panel edge and top bar
 const TOP_BAR_MAX_WIDTH = 1600;
 const TOP_BAR_MIN_WIDTH = 420;
-const TOP_BAR_COMPACT_BREAKPOINT = 640;
+const TOP_BAR_COMPACT_BREAKPOINT = 900;
 
 
 const INTEL_HIDDEN_LAYERS = [
@@ -131,10 +131,13 @@ export default function GlobePage() {
   const [chatOpen, setChatOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [timelineTurn, setTimelineTurn] = useState(0);
+  const timelineTurnRef = useRef(0);
   const [interactionFocus, setInteractionFocus] = useState<TimelineInteractionFocus | null>(null);
   const [timelineCollapsed, setTimelineCollapsed] = useState(false);
-  const [viewportWidth, setViewportWidth] = useState(() => (typeof window === "undefined" ? 0 : window.innerWidth));
+  const pendingSessionRef = useRef<SessionState | null>(null);
+  const [viewportWidth, setViewportWidth] = useState(0);
   const [syntheticEvents, setSyntheticEvents] = useState<SyntheticEvent[]>([]);
+  const warnedProviderStatesRef = useRef<Set<string>>(new Set());
   // Snapshot cache: stores SessionState *before* each injection for true rewind
   const snapshotCacheRef = useRef<Map<string, SessionState>>(new Map());
 
@@ -192,7 +195,7 @@ export default function GlobePage() {
   };
 
   // Bottom offset for side panels: just clear the timeline + bottom padding + small gap
-  const sideBarBottom = timelineCollapsed ? 72 : 204;
+  const sideBarBottom = timelineCollapsed ? 72 : 244;
 
   const [visible, setVisible] = useState({
     topBar: true,
@@ -229,15 +232,29 @@ export default function GlobePage() {
   }, [leftPanelOpen, rightPanelOpen, viewportWidth]);
   const topBarCompact = topBarLayout.width < TOP_BAR_COMPACT_BREAKPOINT;
 
-  const applySessionSnapshot = (next: SessionState) => {
+  const applySessionSnapshot = (incoming: SessionState) => {
     setSession((current) => {
-      if (!current) return next;
-      if (next.world.turn > current.world.turn) return next;
-      if (next.world.turn === current.world.turn && next.updated_at >= current.updated_at) return next;
+      if (!current) return incoming;
+      if (incoming.world.turn > current.world.turn) return incoming;
+      if (incoming.world.turn === current.world.turn && incoming.updated_at >= current.updated_at) return incoming;
       return current;
     });
-    setTimelineTurn((current) => Math.max(current, next.world.turn));
+    setTimelineTurn((current) => {
+      const updated = Math.max(current, incoming.world.turn);
+      timelineTurnRef.current = updated;
+      return updated;
+    });
   };
+
+  // If user is rewound, buffer poll updates; when they catch up, flush the buffer
+  const isFollowing = !session || timelineTurn >= (session?.world.turn ?? 0);
+
+  useEffect(() => {
+    if (isFollowing && pendingSessionRef.current) {
+      applySessionSnapshot(pendingSessionRef.current);
+      pendingSessionRef.current = null;
+    }
+  }, [isFollowing]);
 
   useEffect(() => {
     if (!topBarStats.extra.some((stat) => stat.key === selectedExtraStatKey) && topBarStats.extra[0]) {
@@ -274,38 +291,7 @@ export default function GlobePage() {
     };
   }, [topBarLayout]);
 
-  // Fetch real RSS items from our API route
-  const [liveRssItems, setLiveRssItems] = useState<NewsItem[]>([]);
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchRss() {
-      try {
-        const res = await fetch("/api/rss");
-        if (!res.ok) return;
-        const data = await res.json();
-        if (cancelled) return;
-        const items: NewsItem[] = (data.items ?? []).map((item: { title: string; link: string; translateUrl: string | null; source: string; agent: string; pubDate: string }, i: number) => ({
-          id: `rss-${i}-${item.link.slice(-20)}`,
-          source: item.source,
-          summary: item.title,
-          severity: 3,
-          timestamp: item.pubDate,
-          turn: 0,
-          agent: item.agent,
-          type: "event" as const,
-          url: item.link,
-          translateUrl: item.translateUrl,
-        }));
-        setLiveRssItems(items);
-      } catch { /* silently fail */ }
-    }
-    fetchRss();
-    const interval = setInterval(fetchRss, 60_000);
-    return () => { cancelled = true; clearInterval(interval); };
-  }, []);
-
-  // Merge: live RSS first, then simulation items
-  const newsItems = useMemo(() => [...liveRssItems, ...simNewsItems], [liveRssItems, simNewsItems]);
+  const newsItems = useMemo(() => simNewsItems, [simNewsItems]);
 
   const intensityByAgent = useMemo(() => {
     const intensity = new Map<string, number>();
@@ -412,6 +398,9 @@ export default function GlobePage() {
         const rt = await bootstrapPlatform();
         if (cancelled || rt.backendStatus !== "healthy") return;
         const sess = await rt.sessionClient.createSession();
+        if (!cancelled) {
+          applySessionSnapshot(sess);
+        }
         // Enable live mode with auto_step so backend steps when RSS signals arrive
         const liveSession = await rt.sessionClient.setLiveMode(sess.session_id, {
           enabled: true,
@@ -421,23 +410,6 @@ export default function GlobePage() {
         if (!cancelled) {
           applySessionSnapshot(liveSession);
         }
-
-        // Prime the first turn immediately so activity is not blocked on the live polling loop.
-        rt.sessionClient.stepSession(sess.session_id, {
-          actions: {},
-          external_signals: [],
-        }).then((stepped) => {
-          if (!cancelled) {
-            applySessionSnapshot(stepped.session);
-          }
-        }).catch(() => {});
-
-        // Warm-start sources in background without overwriting a newer stepped session.
-        rt.sessionClient.refreshSources(sess.session_id).then((refreshed) => {
-          if (!cancelled && refreshed) {
-            applySessionSnapshot(refreshed);
-          }
-        }).catch(() => {});
       } catch (err) {
         console.warn("[Session bootstrap failed]", err);
       }
@@ -448,17 +420,14 @@ export default function GlobePage() {
     };
   }, []);
 
-  /* ── Hybrid step loop: poll for RSS-driven updates + force-step fallback ── */
+  /* ── Step loop: advance simulation when following, buffer when rewound ── */
   useEffect(() => {
     if (!session) return;
     const sessionId = session.session_id;
 
     let stopped = false;
     let busy = false;
-    let lastStepTurn = session.world.turn;
-    let ticksSinceAdvance = 0;
-    const POLL_MS = 5_000;          // poll every 5s
-    const FORCE_STEP_AFTER = 1;     // force-step after 1 idle poll (5s)
+    const POLL_MS = 5_000;
 
     const interval = setInterval(async () => {
       if (stopped || busy) return;
@@ -467,28 +436,23 @@ export default function GlobePage() {
         const rt = window.__trenches;
         if (!rt) return;
 
-        // 1) Poll getSession — the backend auto-steps if RSS signals pending
-        let latest = await rt.sessionClient.getSession(sessionId);
+        const isFollowing = timelineTurnRef.current >= (session.world.turn ?? 0);
 
-        // 2) If no turn advancement after FORCE_STEP_AFTER polls, force a step
-        //    This ensures the sim advances even when no RSS data arrives
-        if (latest.world.turn <= lastStepTurn) {
-          ticksSinceAdvance++;
-          if (ticksSinceAdvance >= FORCE_STEP_AFTER) {
-            const result = await rt.sessionClient.stepSession(sessionId, {
-              actions: {},
-              external_signals: [],
-            });
-            latest = result.session;
-            ticksSinceAdvance = 0;
+        if (isFollowing) {
+          // Step the simulation forward
+          const result = await rt.sessionClient.stepSession(sessionId, {
+            actions: {},
+            external_signals: [],
+          });
+          if (!stopped) {
+            applySessionSnapshot(result.session);
           }
         } else {
-          ticksSinceAdvance = 0;
-        }
-
-        if (!stopped) {
-          lastStepTurn = latest.world.turn;
-          applySessionSnapshot(latest);
+          // User is rewound — just poll current state, don't advance
+          const latest = await rt.sessionClient.getSession(sessionId);
+          if (!stopped) {
+            pendingSessionRef.current = latest;
+          }
         }
       } catch (err) {
         console.warn("[Step loop error]", err);
@@ -502,6 +466,45 @@ export default function GlobePage() {
       clearInterval(interval);
     };
   }, [session?.session_id]);
+
+  useEffect(() => {
+    if (!session) return;
+
+    for (const [agentId, binding] of Object.entries(session.model_bindings ?? {})) {
+      if (!isFallbackBinding(binding)) continue;
+      const warningKey = `${session.session_id}:${session.updated_at}:${agentId}:${binding.provider}:${binding.decision_mode}`;
+      if (warnedProviderStatesRef.current.has(warningKey)) continue;
+      warnedProviderStatesRef.current.add(warningKey);
+      console.warn("[Trenches provider fallback]", {
+        sessionId: session.session_id,
+        agentId,
+        provider: binding.provider,
+        decisionMode: binding.decision_mode,
+        model: binding.model_name,
+        baseUrl: binding.base_url ?? null,
+        notes: binding.notes,
+      });
+    }
+
+    for (const action of session.action_log ?? []) {
+      const mode = typeof action.metadata?.mode === "string" ? action.metadata.mode : null;
+      const provider = typeof action.metadata?.provider === "string" ? action.metadata.provider : null;
+      if (mode !== "heuristic_fallback" && provider !== "openrouter") continue;
+      const warningKey = `${action.created_at}:${action.actor}:${mode ?? "unknown"}:${provider ?? "unknown"}`;
+      if (warnedProviderStatesRef.current.has(warningKey)) continue;
+      warnedProviderStatesRef.current.add(warningKey);
+      console.warn("[Trenches action fallback]", {
+        sessionId: session.session_id,
+        actor: action.actor,
+        turn: action.turn,
+        actionType: action.action_type,
+        summary: action.summary,
+        mode,
+        provider,
+        providerError: action.metadata?.provider_error ?? null,
+      });
+    }
+  }, [session]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -681,7 +684,7 @@ export default function GlobePage() {
                       </select>
                       <ChevronDown className="pointer-events-none absolute top-1/2 right-2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                     </div>
-                    <StatusPill label={selectedExtraStat.label} value={selectedExtraStat.value} warn={selectedExtraStat.warn} icon={selectedExtraStat.icon} compact={topBarCompact} />
+                    <StatusPill label="" value={selectedExtraStat.value} warn={selectedExtraStat.warn} icon={selectedExtraStat.icon} compact={true} />
                   </div>
                 )}
               </div>
@@ -792,10 +795,10 @@ export default function GlobePage() {
           </div>
         </div>}
 
-        {visible.timeline && <EventTimeline session={session} onTurnChange={setTimelineTurn} interactionFocus={interactionFocus} onInteractionFocus={setInteractionFocus} onRegisterToggle={(fn) => { togglePanelsRef.current[2] = fn; }} embedded onCollapsedChange={setTimelineCollapsed} />}
+        {visible.timeline && <EventTimeline session={session} onTurnChange={(t) => { setTimelineTurn(t); timelineTurnRef.current = t; }} interactionFocus={interactionFocus} onInteractionFocus={setInteractionFocus} onRegisterToggle={(fn) => { togglePanelsRef.current[2] = fn; }} embedded onCollapsedChange={setTimelineCollapsed} />}
       </div>
 
-      {visible.newsFeed && <NewsFeed items={newsItems} interactionFocus={interactionFocus} onInteractionFocus={setInteractionFocus} onRegisterToggle={(fn) => { togglePanelsRef.current[0] = fn; }} onCollapsedChange={(c) => setLeftPanelOpen(!c)} bottomOffset={sideBarBottom} />}
+      {visible.newsFeed && <NewsFeed items={newsItems} hydration={session ? getLiveHydration(session.live) : null} interactionFocus={interactionFocus} onInteractionFocus={setInteractionFocus} onRegisterToggle={(fn) => { togglePanelsRef.current[0] = fn; }} onCollapsedChange={(c) => setLeftPanelOpen(!c)} bottomOffset={sideBarBottom} />}
       {visible.activityLog && <ActivityLog items={activityItems} focusTurn={timelineTurn} interactionFocus={interactionFocus} onInteractionFocus={setInteractionFocus} onRegisterToggle={(fn) => { togglePanelsRef.current[1] = fn; }} onCollapsedChange={(c) => setRightPanelOpen(!c)} bottomOffset={sideBarBottom} />}
 
       {mapError && (
@@ -966,6 +969,29 @@ type TopBarExtraStat = {
   warn?: boolean;
 };
 
+type LiveHydrationView = NonNullable<SessionState["live"]["hydration"]>;
+
+const DEFAULT_LIVE_HYDRATION: LiveHydrationView = {
+  phase: "steady",
+  total: 0,
+  ready: 0,
+  pending: 0,
+  error: 0,
+};
+
+function getLiveHydration(
+  live: SessionState["live"] | null | undefined,
+): LiveHydrationView {
+  const raw = live?.hydration as Partial<LiveHydrationView> | undefined;
+  return {
+    phase: raw?.phase ?? DEFAULT_LIVE_HYDRATION.phase,
+    total: raw?.total ?? DEFAULT_LIVE_HYDRATION.total,
+    ready: raw?.ready ?? DEFAULT_LIVE_HYDRATION.ready,
+    pending: raw?.pending ?? DEFAULT_LIVE_HYDRATION.pending,
+    error: raw?.error ?? DEFAULT_LIVE_HYDRATION.error,
+  };
+}
+
 function deriveTopBarStats(session: SessionState | null, activityCount: number): {
   primary: TopBarExtraStat[];
   extra: TopBarExtraStat[];
@@ -983,9 +1009,13 @@ function deriveTopBarStats(session: SessionState | null, activityCount: number):
   const latentEvents = asObjectArray(world.latent_events);
   const lastActions = asObjectArray(world.last_actions);
   const hiddenIntents = asObjectMap(world.hidden_intents);
-  const liveQueue = Object.values(session.live.source_queue_sizes).reduce((sum, value) => sum + value, 0);
+  const hydration = getLiveHydration(session.live);
+  const liveQueue = hydration.pending;
   const coalitionLinks = Object.values(coalitionGraph).reduce((sum, targets) => sum + targets.length, 0);
   const assetCount = Object.values(assetState).reduce((sum, assets) => sum + Object.keys(assets).length, 0);
+  const hydrationValue = hydration.total > 0
+    ? `${hydration.ready}/${hydration.total}`
+    : "0/0";
 
   const topLevelPrimary = Object.entries(world)
     .filter(([key, value]) => key !== "turn" && typeof value === "number")
@@ -1018,6 +1048,7 @@ function deriveTopBarStats(session: SessionState | null, activityCount: number):
     { key: "avg_consistency", label: "AVG CONSISTENCY", value: formatAverage(behavior), icon: iconForStatKey("avg_consistency"), warn: averageOfMap(behavior) < 0.45 },
     { key: "avg_ema", label: "AVG EMA", value: formatPercent(averageOfMap(emaTension) / 100), icon: iconForStatKey("avg_ema"), warn: averageOfMap(emaTension) > 60 },
     { key: "hidden_intents", label: "HIDDEN INTENTS", value: String(Object.keys(hiddenIntents).length), icon: iconForStatKey("hidden_intents") },
+    { key: "hydration", label: "HYDRATION", value: hydrationValue, icon: iconForStatKey("hydration"), warn: hydration.phase !== "steady" },
     { key: "live_queue", label: "LIVE QUEUE", value: String(liveQueue), icon: iconForStatKey("live_queue"), warn: liveQueue > 0 },
     { key: "recent_traces", label: "RECENT TRACES", value: String(session.recent_traces.length), icon: iconForStatKey("recent_traces") },
   ].filter((stat) => !primary.some((primaryStat) => primaryStat.key === stat.key));
@@ -1059,6 +1090,7 @@ function iconForStatKey(key: string): LucideIcon {
       return Gauge;
     case "hidden_intents":
       return BrainCircuit;
+    case "hydration":
     case "live_queue":
       return Signal;
     default:
@@ -1148,6 +1180,7 @@ export type NewsItem = {
   type: "event" | "intel";
   url: string;
   translateUrl?: string | null;
+  bootstrapOnly?: boolean;
 };
 
 export type ActivityItem = {
@@ -1163,10 +1196,60 @@ export type ActivityItem = {
   timestamp: string;
 };
 
+function newsFingerprint(item: Pick<NewsItem, "source" | "summary">): string {
+  return `${item.source.toLowerCase()}::${item.summary.toLowerCase().replace(/\s+/g, " ").trim()}`;
+}
+
+function dedupeNewsItems(items: NewsItem[]): NewsItem[] {
+  const byFingerprint = new Map<string, NewsItem>();
+
+  for (const item of items) {
+    const fingerprint = newsFingerprint(item);
+    const existing = byFingerprint.get(fingerprint);
+    if (!existing) {
+      byFingerprint.set(fingerprint, item);
+      continue;
+    }
+    const existingTs = new Date(existing.timestamp).getTime() || 0;
+    const nextTs = new Date(item.timestamp).getTime() || 0;
+    const preferNext =
+      (existing.bootstrapOnly && !item.bootstrapOnly)
+      || (existing.bootstrapOnly === item.bootstrapOnly && nextTs >= existingTs);
+    if (preferNext) {
+      byFingerprint.set(fingerprint, item);
+    }
+  }
+
+  return [...byFingerprint.values()].sort((a, b) => {
+    const aTs = new Date(a.timestamp).getTime() || 0;
+    const bTs = new Date(b.timestamp).getTime() || 0;
+    return bTs - aTs;
+  });
+}
+
 function deriveNewsItems(session: SessionState | null): NewsItem[] {
   if (!session) return [];
 
   const items: NewsItem[] = [];
+  const seenPacketIds = new Set<string>();
+  for (const [agentId, obs] of Object.entries(session.observations)) {
+    for (const packet of obs.source_packets) {
+      if (packet.status !== "ok" || !packet.summary || seenPacketIds.has(packet.source_id)) continue;
+      seenPacketIds.add(packet.source_id);
+      items.push({
+        id: `packet-${packet.source_id}`,
+        source: packet.source_name,
+        summary: packet.summary,
+        severity: packet.delivery === "live_demo" ? 0.78 : 0.62,
+        timestamp: packet.fetched_at ?? session.updated_at,
+        turn: session.world.turn,
+        agent: agentId,
+        type: "intel",
+        url: `https://news.google.com/search?q=${encodeURIComponent(`${packet.source_name} ${packet.summary}`.slice(0, 80))}`,
+      });
+    }
+  }
+
   for (const event of session.world.active_events) {
     items.push({
       id: event.id,
@@ -1197,7 +1280,11 @@ function deriveNewsItems(session: SessionState | null): NewsItem[] {
     }
   }
 
-  return items.slice(0, 30);
+  return dedupeNewsItems(items).slice(0, 40);
+}
+
+function isFallbackBinding(binding: EntityModelBinding): boolean {
+  return binding.decision_mode === "heuristic_fallback" || binding.provider === "openrouter";
 }
 
 function deriveActivityItems(session: SessionState | null): ActivityItem[] {

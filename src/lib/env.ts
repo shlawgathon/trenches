@@ -32,7 +32,7 @@ export function getRuntimeEnv(): RuntimeEnv {
   const clientVercelBase = readClientEnv("vercelApiBase");
   const clientSourceLogic = readClientEnv("enableSourceLogic");
   return {
-    apiBaseUrl: (typeof clientApiBase === "string" ? clientApiBase : process.env.NEXT_PUBLIC_API_BASE_URL) || "http://localhost:8000",
+    apiBaseUrl: (typeof clientApiBase === "string" ? clientApiBase : process.env.NEXT_PUBLIC_API_BASE_URL) || "/backend-api",
     vercelApiBase: (typeof clientVercelBase === "string" ? clientVercelBase : process.env.NEXT_PUBLIC_VERCEL_API_BASE) || "/api",
     enableSourceLogic: toBoolean(
       typeof clientSourceLogic === "string" || typeof clientSourceLogic === "boolean"

@@ -9,10 +9,14 @@ from trenches_env.model_runtime import build_entity_model_bindings
 def test_mock_disabled_returns_normal_bindings(monkeypatch) -> None:
     monkeypatch.delenv("TRENCHES_MOCK_MODELS", raising=False)
     bindings = build_entity_model_bindings()
-    # Without any TRENCHES_MODEL_PROVIDER_* set, all should be unconfigured
+    # Without explicit overrides, all entities should default to the bundled self-hosted endpoints.
     for agent_id in AGENT_IDS:
-        assert bindings[agent_id].provider == "none"
-        assert bindings[agent_id].configured is False
+        assert bindings[agent_id].provider == "vllm"
+        assert bindings[agent_id].configured is True
+        assert bindings[agent_id].ready_for_inference is True
+        assert bindings[agent_id].base_url is not None
+        assert bindings[agent_id].base_url.endswith("/v1")
+        assert bindings[agent_id].api_key_env is None
 
 
 def test_mock_enabled_returns_openrouter_bindings(monkeypatch) -> None:
@@ -58,5 +62,7 @@ def test_mock_status_diagnostic(monkeypatch) -> None:
     from trenches_env.mock.config import mock_status
     status = mock_status()
     assert status["mock_enabled"] is True
+    assert status["provider"] == "openrouter"
+    assert status["api_key_env"] == "OPENROUTER_API_KEY"
     assert status["api_key_present"] is True
     assert len(status["entities"]) == 6

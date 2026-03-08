@@ -360,6 +360,7 @@ class FogOfWarDiplomacyEnv:
         last_sync_at = self._source_harvester.last_sync_at()
         if last_sync_at is not None:
             session.live.last_source_sync_at = last_sync_at
+        self._update_live_source_state(session)
         return session
 
     def reset_session(
@@ -409,14 +410,12 @@ class FogOfWarDiplomacyEnv:
             updated.live.source_queue_sizes = {}
         updated.updated_at = datetime.now(timezone.utc)
         if request.enabled:
-            if self._source_warm_start_enabled:
-                self._source_harvester.warm_start_agents(
-                    include_live=True,
-                    max_training_sources=1,
-                    max_live_sources=1,
-                )
-            else:
-                self._source_harvester.refresh_due_batch(include_live=True)
+            self._source_harvester.warm_start_agents(
+                include_live=True,
+                max_training_sources=1,
+                max_live_sources=1,
+            )
+            return self.refresh_session_sources(updated, phase="seed")
         return self.refresh_session_sources(updated)
 
     def step_session(self, session: SessionState, request: StepSessionRequest) -> StepSessionResponse:
@@ -424,11 +423,6 @@ class FogOfWarDiplomacyEnv:
         before_tension = next_session.world.tension_level
         prior_latent_event_ids = {event.event_id for event in next_session.world.latent_events}
         next_session.world.turn += 1
-        if self._should_collect_sources(next_session):
-            if next_session.live.enabled:
-                self._source_harvester.refresh_due_batch(include_live=True)
-            else:
-                self._source_harvester.refresh_due_batch(include_live=False)
 
         self._inject_external_signals(next_session.world, request.external_signals)
         resolved_actions = dict(request.actions)
@@ -488,6 +482,7 @@ class FogOfWarDiplomacyEnv:
                 )
             )
             next_session.reaction_log = next_session.reaction_log[-100:]
+        self._update_live_source_state(next_session, phase="background" if next_session.live.enabled else None)
         next_session.updated_at = datetime.now(timezone.utc)
 
         return StepSessionResponse(
@@ -504,13 +499,17 @@ class FogOfWarDiplomacyEnv:
             ),
         )
 
-    def refresh_session_sources(self, session: SessionState, force: bool = False) -> SessionState:
+    def refresh_session_sources(
+        self,
+        session: SessionState,
+        force: bool = False,
+        *,
+        phase: str | None = None,
+    ) -> SessionState:
         updated = session.model_copy(deep=True)
         if self._should_collect_sources(updated):
             if force:
                 self._source_harvester.refresh_agents(include_live=updated.live.enabled, force=True)
-            elif self._source_warm_start_enabled:
-                self._source_harvester.warm_start_agents(include_live=updated.live.enabled, force=False)
         updated.model_bindings = self._build_model_bindings()
         updated.belief_state = self._update_belief_state(updated)
         updated.observations = self._build_observations(
@@ -523,8 +522,15 @@ class FogOfWarDiplomacyEnv:
         last_sync_at = self._source_harvester.last_sync_at()
         if last_sync_at is not None:
             updated.live.last_source_sync_at = last_sync_at
+        self._update_live_source_state(updated, phase=phase)
         updated.updated_at = datetime.now(timezone.utc)
         return updated
+
+    def background_refresh_session(self, session: SessionState) -> SessionState:
+        updated = session.model_copy(deep=True)
+        if self._should_collect_sources(updated):
+            self._source_harvester.refresh_due_batch(include_live=updated.live.enabled)
+        return self.refresh_session_sources(updated, phase="background" if updated.live.enabled else None)
 
     @staticmethod
     def _should_collect_sources(session: SessionState) -> bool:
@@ -546,7 +552,7 @@ class FogOfWarDiplomacyEnv:
         return scenario_signals_for_turn(scenario_id, turn)
 
     def maybe_auto_step_live_session(self, session: SessionState) -> SessionState:
-        refreshed = self.refresh_session_sources(session)
+        refreshed = self.refresh_session_sources(session, phase="background" if session.live.enabled else None)
         if not refreshed.live.enabled or not refreshed.live.auto_step:
             return refreshed
 
@@ -568,6 +574,37 @@ class FogOfWarDiplomacyEnv:
         next_session.live.reacted_packet_fetched_at.update(reacted_packets)
         next_session.updated_at = datetime.now(timezone.utc)
         return next_session
+
+    def _update_live_source_state(self, session: SessionState, *, phase: str | None = None) -> None:
+        packet_by_id: dict[str, SourcePacket] = {}
+        pending_by_agent: dict[str, int] = {}
+
+        for agent_id, observation in session.observations.items():
+            queue_packets = observation.live_source_packets if session.live.enabled else observation.training_source_packets
+            pending_by_agent[agent_id] = sum(1 for packet in queue_packets if packet.status == "pending")
+            for packet in observation.source_packets:
+                packet_by_id[packet.source_id] = packet
+
+        ready = sum(1 for packet in packet_by_id.values() if packet.status == "ok")
+        pending = sum(1 for packet in packet_by_id.values() if packet.status == "pending")
+        error = sum(1 for packet in packet_by_id.values() if packet.status == "error")
+        total = len(packet_by_id)
+
+        next_phase = phase or session.live.hydration.phase
+        if total == 0 or pending == 0:
+            next_phase = "steady"
+        elif phase is None and next_phase == "steady":
+            next_phase = "background" if ready + error > 0 else "seed"
+
+        hydration_type = type(session.live).HydrationStatus
+        session.live.hydration = hydration_type(
+            phase=next_phase,
+            total=total,
+            ready=ready,
+            pending=pending,
+            error=error,
+        )
+        session.live.source_queue_sizes = pending_by_agent
 
     def _live_auto_step_due(self, session: SessionState, now: datetime) -> bool:
         last_auto_step_at = session.live.last_auto_step_at

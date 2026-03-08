@@ -45,6 +45,34 @@ export type AgentAction = {
   metadata?: Record<string, unknown>;
 };
 
+export type DecisionMode = "heuristic_fallback" | "provider_ready" | "provider_inference";
+
+export type ModelProviderName =
+  | "none"
+  | "openai"
+  | "anthropic"
+  | "openrouter"
+  | "huggingface"
+  | "ollama"
+  | "vllm"
+  | "custom";
+
+export type EntityModelBinding = {
+  agent_id: string;
+  provider: ModelProviderName;
+  model_name: string;
+  base_url?: string | null;
+  api_key_env?: string | null;
+  configured: boolean;
+  ready_for_inference: boolean;
+  decision_mode: DecisionMode;
+  supports_tool_calls: boolean;
+  supports_structured_output: boolean;
+  action_tools: string[];
+  observation_tools: string[];
+  notes: string[];
+};
+
 export type ExternalSignal = {
   source: string;
   headline: string;
@@ -118,6 +146,13 @@ export type WorldState = {
 };
 
 export type LiveSessionConfig = {
+  hydration: {
+    phase: "seed" | "background" | "steady";
+    total: number;
+    ready: number;
+    pending: number;
+    error: number;
+  };
   enabled: boolean;
   auto_step: boolean;
   poll_interval_ms: number;
@@ -218,7 +253,7 @@ export type ReactionActorOutcome = {
   agent_id: string;
   action: AgentAction;
   reward_total: number;
-  decision_mode: "heuristic_fallback" | "provider_ready" | "provider_inference";
+  decision_mode: DecisionMode;
 };
 
 export type ReactionLogEntry = {
@@ -241,7 +276,12 @@ export type SessionState = {
   seed?: number | null;
   world: WorldState;
   observations: Record<string, AgentObservation>;
+  belief_state?: Record<string, unknown>;
   rewards: Record<string, RewardBreakdown>;
+  historical_replay?: Record<string, unknown>;
+  prediction_log?: Record<string, unknown>[];
+  prediction_assessments?: Record<string, unknown>[];
+  model_bindings: Record<string, EntityModelBinding>;
   episode: EpisodeMetadata;
   recent_traces: StepTrace[];
   action_log: ActionLogEntry[];
@@ -253,14 +293,22 @@ export type SessionState = {
 
 export type CreateSessionRequest = {
   seed?: number;
+  training_agent?: string;
   training_stage?: "stage_1_dense" | "stage_2_partial" | "stage_3_sparse";
   max_turns?: number;
+  scenario_id?: string | null;
+  replay_id?: string | null;
+  replay_start_index?: number | null;
 };
 
 export type ResetSessionRequest = {
   seed?: number;
+  training_agent?: string;
   training_stage?: "stage_1_dense" | "stage_2_partial" | "stage_3_sparse";
   max_turns?: number;
+  scenario_id?: string | null;
+  replay_id?: string | null;
+  replay_start_index?: number | null;
 };
 
 export type LiveControlRequest = {
@@ -271,6 +319,7 @@ export type LiveControlRequest = {
 
 export type StepSessionRequest = {
   actions: Record<string, AgentAction>;
+  predictions?: Record<string, unknown>;
   external_signals?: ExternalSignal[];
 };
 
@@ -278,4 +327,41 @@ export type StepSessionResponse = {
   session: SessionState;
   oversight: OversightIntervention;
   done: boolean;
+};
+
+export type ProviderAgentDiagnostics = {
+  agent_id: string;
+  provider: ModelProviderName;
+  model_name: string;
+  configured: boolean;
+  ready_for_inference: boolean;
+  decision_mode: DecisionMode;
+  status: "idle" | "healthy" | "degraded" | "fallback_only";
+  request_count: number;
+  success_count: number;
+  error_count: number;
+  consecutive_failures: number;
+  last_latency_ms?: number | null;
+  avg_latency_ms?: number | null;
+  last_success_at?: string | null;
+  last_error_at?: string | null;
+  last_error?: string | null;
+};
+
+export type ProviderDiagnosticsResponse = {
+  generated_at: string;
+  agents: ProviderAgentDiagnostics[];
+};
+
+export type CapabilitiesResponse = {
+  model_bindings: Record<string, EntityModelBinding>;
+  session_api: boolean;
+  legacy_openenv_tuple_api: boolean;
+  native_openenv_api: boolean;
+  native_openenv_base_path?: string | null;
+  cors: {
+    allow_origins: string[];
+    allow_origin_regex?: string | null;
+    allow_credentials: boolean;
+  };
 };

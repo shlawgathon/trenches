@@ -5,6 +5,7 @@ import os
 from trenches_env.agents import AGENT_IDS
 from trenches_env.models import EntityModelBinding, ModelProviderName
 from trenches_env.rl import AGENT_ALLOWED_ACTIONS
+from trenches_env.self_hosted_config import default_self_hosted_binding
 
 _OBSERVATION_TOOLS = [
     "inspect_public_brief",
@@ -35,17 +36,31 @@ def _provider_name(value: str | None) -> ModelProviderName:
 
 
 def build_entity_model_bindings() -> dict[str, EntityModelBinding]:
-    # --- Mock mode: route all entities to OpenRouter mock ---
+    # --- Mock mode: route all entities to OpenRouter fallback bindings ---
     from trenches_env.mock.config import is_mock_enabled, build_mock_bindings
     if is_mock_enabled():
         return build_mock_bindings()
     # --- Normal mode: per-entity env-based bindings ---
     bindings: dict[str, EntityModelBinding] = {}
     for agent_id in AGENT_IDS:
-        provider = _provider_name(_env_value("TRENCHES_MODEL_PROVIDER", agent_id))
-        model_name = (_env_value("TRENCHES_MODEL_NAME", agent_id) or "").strip()
-        base_url = (_env_value("TRENCHES_MODEL_BASE_URL", agent_id) or "").strip() or None
-        api_key_env = (_env_value("TRENCHES_MODEL_API_KEY_ENV", agent_id) or "").strip() or None
+        defaults = default_self_hosted_binding(agent_id)
+        raw_provider = _env_value("TRENCHES_MODEL_PROVIDER", agent_id)
+        default_provider = defaults.get("provider")
+        provider = _provider_name(raw_provider or default_provider)
+        can_use_self_hosted_defaults = bool(defaults) and (
+            raw_provider is None or provider == default_provider
+        )
+        model_name = (
+            _env_value("TRENCHES_MODEL_NAME", agent_id)
+            or (defaults.get("model_name") if can_use_self_hosted_defaults else "")
+            or ""
+        ).strip()
+        base_url = (
+            _env_value("TRENCHES_MODEL_BASE_URL", agent_id)
+            or (defaults.get("base_url") if can_use_self_hosted_defaults else "")
+            or ""
+        ).strip() or None
+        api_key_env = (_env_value("TRENCHES_MODEL_API_KEY_ENV", agent_id) or defaults.get("api_key_env") or "").strip() or None
         if provider == "huggingface" and api_key_env is None:
             api_key_env = "HF_TOKEN"
         configured = provider != "none" and bool(model_name)
@@ -58,6 +73,8 @@ def build_entity_model_bindings() -> dict[str, EntityModelBinding]:
         notes: list[str] = []
         if not configured:
             notes.append("Provider binding is not configured; heuristic fallback remains active.")
+        elif raw_provider is None and defaults:
+            notes.append("Using bundled self-hosted vLLM endpoint defaults for this entity.")
         if configured and api_key_env is None and provider not in {"ollama", "vllm"}:
             notes.append("No API key environment variable declared for this provider binding.")
         if configured and provider == "huggingface" and api_key_env == "HF_TOKEN":

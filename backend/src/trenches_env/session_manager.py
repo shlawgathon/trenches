@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import threading
-from datetime import datetime, timedelta, timezone
 from time import perf_counter
 
 from trenches_env.benchmark_runner import ScenarioBenchmarkRunner
@@ -32,6 +31,7 @@ class SessionManager:
         self.env = env or FogOfWarDiplomacyEnv()
         self._sessions: dict[str, SessionState] = {}
         self._lock = threading.RLock()
+        self._session_locks: dict[str, threading.RLock] = {}
         self._background_tick_seconds = 1.0
         self._background_stop = threading.Event()
         self._background_thread: threading.Thread | None = None
@@ -83,6 +83,7 @@ class SessionManager:
                 replay_start_index=replay_start_index,
             )
             self._sessions[session.session_id] = session
+            self._session_locks.setdefault(session.session_id, threading.RLock())
             logger.info(
                 "session.created id=%s seed=%s turn=%s stage=%s scenario=%s replay=%s live_capable=%s packets=%s assets=%s duration_ms=%.1f",
                 session.session_id,
@@ -109,8 +110,10 @@ class SessionManager:
         replay_id: str | None = None,
         replay_start_index: int | None = None,
     ) -> SessionState:
-        with self._lock:
-            self._require_session(session_id)
+        session_lock = self._get_session_lock(session_id)
+        with session_lock:
+            with self._lock:
+                self._require_session(session_id)
             started_at = perf_counter()
             session = self.env.reset_session(
                 session_id=session_id,
@@ -122,7 +125,9 @@ class SessionManager:
                 replay_id=replay_id,
                 replay_start_index=replay_start_index,
             )
-            self._sessions[session_id] = session
+            with self._lock:
+                self._sessions[session_id] = session
+                self._session_locks.setdefault(session_id, threading.RLock())
             logger.info(
                 "session.reset id=%s seed=%s turn=%s stage=%s scenario=%s replay=%s duration_ms=%.1f",
                 session_id,
@@ -136,21 +141,34 @@ class SessionManager:
             return session
 
     def get_session(self, session_id: str) -> SessionState:
-        with self._lock:
-            session = self._require_session(session_id)
-            if session.live.enabled and session.live.auto_step:
-                refreshed = self.env.maybe_auto_step_live_session(session)
+        if self._background_runner_active():
+            with self._lock:
+                return self._require_session(session_id)
+
+        session_lock = self._get_session_lock(session_id)
+        with session_lock:
+            with self._lock:
+                session = self._require_session(session_id)
+            if session.live.enabled:
+                if session.live.auto_step:
+                    refreshed = self.env.maybe_auto_step_live_session(session)
+                else:
+                    refreshed = self.env.background_refresh_session(session)
             else:
                 refreshed = self.env.refresh_session_sources(session)
-            self._sessions[session_id] = refreshed
+            with self._lock:
+                self._sessions[session_id] = refreshed
             return refreshed
 
     def set_live_mode(self, session_id: str, request: LiveControlRequest) -> SessionState:
-        with self._lock:
-            current = self._require_session(session_id)
+        session_lock = self._get_session_lock(session_id)
+        with session_lock:
+            with self._lock:
+                current = self._require_session(session_id)
             started_at = perf_counter()
             updated = self.env.configure_live_session(current, request)
-            self._sessions[session_id] = updated
+            with self._lock:
+                self._sessions[session_id] = updated
             logger.info(
                 "session.live id=%s enabled=%s auto_step=%s poll_ms=%s queue_total=%s packets=%s duration_ms=%.1f",
                 session_id,
@@ -164,8 +182,10 @@ class SessionManager:
             return updated
 
     def step_session(self, session_id: str, request: StepSessionRequest) -> StepSessionResponse:
-        with self._lock:
-            current = self._require_session(session_id)
+        session_lock = self._get_session_lock(session_id)
+        with session_lock:
+            with self._lock:
+                current = self._require_session(session_id)
             started_at = perf_counter()
             auto_resolved = False
             # Auto-resolve actions via model inference when none provided
@@ -178,7 +198,8 @@ class SessionManager:
                 )
                 auto_resolved = True
             result = self.env.step_session(current, request)
-            self._sessions[session_id] = result.session
+            with self._lock:
+                self._sessions[session_id] = result.session
             logger.info(
                 (
                     "session.step id=%s turn=%s->%s auto_actions=%s signals=%s actions=%s "
@@ -201,10 +222,12 @@ class SessionManager:
             return result
 
     def ingest_news(self, session_id: str, request: IngestNewsRequest) -> IngestNewsResponse:
-        with self._lock:
-            if not request.signals:
-                raise ValueError("At least one external signal is required.")
-            current = self._require_session(session_id)
+        if not request.signals:
+            raise ValueError("At least one external signal is required.")
+        session_lock = self._get_session_lock(session_id)
+        with session_lock:
+            with self._lock:
+                current = self._require_session(session_id)
             started_at = perf_counter()
             refreshed = self.env.refresh_session_sources(current)
             actions = self.env.resolve_policy_actions(
@@ -216,7 +239,8 @@ class SessionManager:
                 refreshed,
                 StepSessionRequest(actions=actions, external_signals=request.signals),
             )
-            self._sessions[session_id] = result.session
+            with self._lock:
+                self._sessions[session_id] = result.session
             reaction: ReactionLogEntry | None = result.session.reaction_log[-1] if result.session.reaction_log else None
             logger.info(
                 (
@@ -242,11 +266,14 @@ class SessionManager:
             )
 
     def refresh_session_sources(self, session_id: str, force: bool = False) -> SessionState:
-        with self._lock:
-            current = self._require_session(session_id)
+        session_lock = self._get_session_lock(session_id)
+        with session_lock:
+            with self._lock:
+                current = self._require_session(session_id)
             started_at = perf_counter()
             refreshed = self.env.refresh_session_sources(current, force=force)
-            self._sessions[session_id] = refreshed
+            with self._lock:
+                self._sessions[session_id] = refreshed
             logger.info(
                 "session.sources id=%s force=%s packets=%s queue_total=%s duration_ms=%.1f",
                 session_id,
@@ -258,10 +285,13 @@ class SessionManager:
             return refreshed
 
     def source_monitor(self, session_id: str) -> SourceMonitorReport:
-        with self._lock:
-            current = self._require_session(session_id)
+        session_lock = self._get_session_lock(session_id)
+        with session_lock:
+            with self._lock:
+                current = self._require_session(session_id)
             refreshed = self.env.refresh_session_sources(current)
-            self._sessions[session_id] = refreshed
+            with self._lock:
+                self._sessions[session_id] = refreshed
             return self.env.source_monitor(refreshed)
 
     def reaction_log(self, session_id: str) -> list[ReactionLogEntry]:
@@ -270,10 +300,13 @@ class SessionManager:
             return [entry.model_copy(deep=True) for entry in current.reaction_log]
 
     def provider_diagnostics(self, session_id: str) -> ProviderDiagnosticsResponse:
-        with self._lock:
-            current = self._require_session(session_id)
+        session_lock = self._get_session_lock(session_id)
+        with session_lock:
+            with self._lock:
+                current = self._require_session(session_id)
             refreshed = self.env.refresh_session_sources(current)
-            self._sessions[session_id] = refreshed
+            with self._lock:
+                self._sessions[session_id] = refreshed
             logger.info(
                 "session.providers id=%s packets=%s",
                 session_id,
@@ -309,44 +342,70 @@ class SessionManager:
             self._background_stop.wait(self._background_tick_seconds)
 
     def _tick_live_sessions(self) -> None:
-        now = datetime.now(timezone.utc)
         with self._lock:
-            for session_id, session in list(self._sessions.items()):
-                if not self._session_needs_live_tick(session, now):
-                    continue
+            session_ids = [
+                session_id
+                for session_id, session in self._sessions.items()
+                if self._session_needs_live_tick(session)
+            ]
+
+        for session_id in session_ids:
+            session_lock = self._session_locks.get(session_id)
+            if session_lock is None or not session_lock.acquire(blocking=False):
+                continue
+            try:
+                with self._lock:
+                    session = self._sessions.get(session_id)
+                    if session is None:
+                        continue
                 started_at = perf_counter()
-                updated = self.env.maybe_auto_step_live_session(session)
-                self._sessions[session_id] = updated
-                if updated.world.turn != session.world.turn:
+                updated = self.env.background_refresh_session(session)
+                if updated.live.auto_step:
+                    updated = self.env.maybe_auto_step_live_session(updated)
+                with self._lock:
+                    self._sessions[session_id] = updated
+                if (
+                    updated.world.turn != session.world.turn
+                    or updated.live.hydration.pending != session.live.hydration.pending
+                    or updated.live.hydration.ready != session.live.hydration.ready
+                    or updated.live.hydration.error != session.live.hydration.error
+                ):
                     logger.info(
                         (
                             "session.live_tick id=%s turn=%s->%s packets=%s queue_total=%s "
-                            "tension=%.1f->%.1f duration_ms=%.1f"
+                            "hydration=%s/%s/%s duration_ms=%.1f"
                         ),
                         session_id,
                         session.world.turn,
                         updated.world.turn,
                         _summarize_packet_counts(updated),
                         sum(updated.live.source_queue_sizes.values()),
-                        session.world.tension_level,
-                        updated.world.tension_level,
+                        updated.live.hydration.ready,
+                        updated.live.hydration.pending,
+                        updated.live.hydration.error,
                         (perf_counter() - started_at) * 1000.0,
                     )
+            finally:
+                session_lock.release()
 
     @staticmethod
-    def _session_needs_live_tick(session: SessionState, now: datetime) -> bool:
-        if not session.live.enabled or not session.live.auto_step:
-            return False
-        if session.live.last_auto_step_at is None:
-            return True
-        interval = timedelta(milliseconds=max(session.live.poll_interval_ms, 1_000))
-        return now - session.live.last_auto_step_at >= interval
+    def _session_needs_live_tick(session: SessionState) -> bool:
+        return session.live.enabled
 
     def _require_session(self, session_id: str) -> SessionState:
         session = self._sessions.get(session_id)
         if session is None:
             raise KeyError(session_id)
         return session
+
+    def _get_session_lock(self, session_id: str) -> threading.RLock:
+        with self._lock:
+            self._require_session(session_id)
+            return self._session_locks.setdefault(session_id, threading.RLock())
+
+    def _background_runner_active(self) -> bool:
+        thread = self._background_thread
+        return thread is not None and thread.is_alive()
 
 
 def _count_source_packets(session: SessionState) -> int:

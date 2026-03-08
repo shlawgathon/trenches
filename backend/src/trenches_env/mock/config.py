@@ -14,18 +14,14 @@ from trenches_env.models import EntityModelBinding
 from trenches_env.rl import AGENT_ALLOWED_ACTIONS
 
 # ---------------------------------------------------------------------------
-# Per-entity mock models – each entity gets a distinct model to simulate
-# the behavioral diversity of 6 separately fine-tuned Qwen3-8B agents.
-# Sizes match the entity profiles: large / medium-large / medium.
-# Override ALL with TRENCHES_MOCK_MODEL env var if needed.
-# ---------------------------------------------------------------------------
+# Per-entity mock models. Override ALL with TRENCHES_MOCK_MODEL if needed.
 ENTITY_MOCK_MODELS: dict[str, str] = {
-    "us":         "qwen/qwen-2.5-72b-instruct",            # large
-    "israel":     "qwen/qwen-2.5-32b-instruct",            # medium-large
-    "iran":       "mistralai/mistral-small-3.1-24b-instruct",  # medium-large
-    "hezbollah":  "meta-llama/llama-3.1-8b-instruct",      # medium
-    "gulf":       "google/gemma-3-12b-it",                  # medium
-    "oversight":  "deepseek/deepseek-chat-v3-0324",         # medium-large
+    "us": "qwen/qwen-2.5-72b-instruct",
+    "israel": "qwen/qwen-2.5-32b-instruct",
+    "iran": "mistralai/mistral-small-3.1-24b-instruct",
+    "hezbollah": "meta-llama/llama-3.1-8b-instruct",
+    "gulf": "google/gemma-3-12b-it",
+    "oversight": "deepseek/deepseek-chat-v3-0324",
 }
 
 # Per-entity system prompts baked in for mock inference
@@ -83,10 +79,6 @@ def get_api_key_env() -> str:
     return "OPENROUTER_API_KEY"
 
 
-# ---------------------------------------------------------------------------
-# Binding builder
-# ---------------------------------------------------------------------------
-
 _OBSERVATION_TOOLS = [
     "inspect_public_brief",
     "inspect_private_brief",
@@ -97,10 +89,7 @@ _OBSERVATION_TOOLS = [
 
 
 def build_mock_bindings() -> dict[str, EntityModelBinding]:
-    """Build EntityModelBindings for all entities pointing at OpenRouter mock.
-
-    Each entity gets a distinct model unless TRENCHES_MOCK_MODEL overrides all.
-    """
+    """Build EntityModelBindings for all entities pointing at OpenRouter mock."""
     api_key_env = get_api_key_env()
     has_key = bool(os.getenv(api_key_env, "").strip())
 
@@ -141,6 +130,7 @@ def mock_status() -> dict[str, Any]:
             agent_id: get_mock_model_for_entity(agent_id)
             for agent_id in AGENT_IDS
         },
+        "provider": "openrouter",
         "api_key_env": key_env,
         "api_key_present": has_key,
         "entities": list(AGENT_IDS),

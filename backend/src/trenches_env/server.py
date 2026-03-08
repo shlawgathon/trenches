@@ -99,7 +99,7 @@ def _build_env(*, live_source_auto_start: bool, source_warm_start: bool) -> FogO
 def create_app(
     session_manager: SessionManager | None = None,
     *,
-    live_source_auto_start: bool = True,
+    live_source_auto_start: bool = False,
     source_warm_start: bool = True,
 ) -> FastAPI:
     manager = session_manager or SessionManager(

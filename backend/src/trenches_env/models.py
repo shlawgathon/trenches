@@ -27,6 +27,7 @@ SourceMonitorIssueSeverity = Literal["warning", "error"]
 AssetConditionStatus = Literal["operational", "degraded", "malfunctioning", "destroyed"]
 DecisionMode = Literal["heuristic_fallback", "provider_ready", "provider_inference"]
 ModelProviderName = Literal["none", "openai", "anthropic", "openrouter", "huggingface", "ollama", "vllm", "custom"]
+HydrationPhase = Literal["seed", "background", "steady"]
 
 
 def utc_now() -> datetime:
@@ -311,6 +312,13 @@ class WorldState(BaseModel):
 
 
 class LiveSessionConfig(BaseModel):
+    class HydrationStatus(BaseModel):
+        phase: HydrationPhase = "steady"
+        total: int = 0
+        ready: int = 0
+        pending: int = 0
+        error: int = 0
+
     enabled: bool = False
     auto_step: bool = False
     poll_interval_ms: int = 30_000
@@ -319,6 +327,7 @@ class LiveSessionConfig(BaseModel):
     last_auto_step_at: datetime | None = None
     source_queue_sizes: dict[str, int] = Field(default_factory=dict)
     reacted_packet_fetched_at: dict[str, datetime] = Field(default_factory=dict)
+    hydration: HydrationStatus = Field(default_factory=HydrationStatus)
 
 
 class EpisodeMetadata(BaseModel):

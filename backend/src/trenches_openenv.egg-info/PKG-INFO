@@ -40,9 +40,9 @@ CORS is configurable so frontend migrations do not require backend code changes:
 
 If no CORS env vars are set, the backend allows local development origins on `localhost` / `127.0.0.1` for any port.
 
-Entity-model provider bindings are also configurable per agent. The backend does not fake provider readiness:
-if a provider/model is not configured, the runtime reports `heuristic_fallback` explicitly in session state and
-`/capabilities`.
+Entity-model provider bindings are also configurable per agent. The repo now ships with bundled defaults for the
+six self-hosted vLLM agents listed in `frontend.md`, and explicit env overrides still take precedence. If you set
+`TRENCHES_MOCK_MODELS=true`, the backend switches to the old OpenRouter-backed mock bindings instead.
 
 Supported env patterns:
 
@@ -53,11 +53,23 @@ Supported env patterns:
 - `TRENCHES_MODEL_SUPPORTS_TOOL_CALLS=true|false`
 - `TRENCHES_MODEL_SUPPORTS_STRUCTURED_OUTPUT=true|false`
 
+Bundled defaults if you do not set overrides:
+
+- `us` -> `AlazarM/trenches-us-qwen3-8b-real`
+- `israel` -> `AlazarM/trenches-israel-qwen3-8b-real`
+- `iran` -> `AlazarM/trenches-iran-qwen3-8b-real`
+- `hezbollah` -> `AlazarM/trenches-hezbollah-qwen3-8b-real`
+- `gulf` -> `AlazarM/trenches-gulf-qwen3-8b-real`
+- `oversight` -> `AlazarM/trenches-oversight-qwen3-8b-real`
+
+Those defaults target the Cloudflare tunnel endpoints from `frontend.md` and append `/v1` for the OpenAI-compatible
+vLLM API surface. No API key is attached for those bindings.
+
 Per-entity overrides use the uppercase agent suffix, for example:
 
-- `TRENCHES_MODEL_PROVIDER_US=openai`
-- `TRENCHES_MODEL_NAME_US=gpt-4.1`
-- `TRENCHES_MODEL_API_KEY_ENV_US=OPENAI_API_KEY`
+- `TRENCHES_MODEL_PROVIDER_US=vllm`
+- `TRENCHES_MODEL_NAME_US=AlazarM/trenches-us-qwen3-8b-real`
+- `TRENCHES_MODEL_BASE_URL_US=https://random-elephant-ranch-beverage.trycloudflare.com/v1`
 
 Relevant OpenEnv pieces in this package:
 

@@ -211,3 +211,12 @@ body {
 .scrollbar-thin::-webkit-scrollbar-corner {
   background: transparent !important;
 }
+
+/* Hide scrollbar completely (still scrollable) */
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none !important;
+}

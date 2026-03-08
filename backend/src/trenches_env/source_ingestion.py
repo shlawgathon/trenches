@@ -89,6 +89,15 @@ _SOURCE_ID_PROBE_URLS: dict[str, list[str]] = {
     "oversight-worldpop-exposure": ["https://hub.worldpop.org/"],
 }
 
+_STARTUP_BLOCKED_SOURCE_IDS = {
+    "iran-internet-outages",
+    "hezbollah-internet-outages",
+    "gulf-chokepoint-status",
+    "oversight-internet-outages",
+}
+_FAST_STARTUP_SOURCE_KINDS = {"rss", "api", "structured"}
+_DEFERRED_STARTUP_SOURCE_KINDS = {"telegram", "scrape", "video"}
+
 
 class SourceFetchError(RuntimeError):
     pass
@@ -188,13 +197,18 @@ class SourceHarvester:
     ) -> dict[str, int]:
         targets = agent_ids or list(AGENT_IDS)
         refreshed_by_agent = {agent_id: 0 for agent_id in targets}
+        scheduled_sources: list[tuple[str, SourceSpec]] = []
+
         for agent_id in targets:
             for source in self._iter_agent_sources(agent_id, include_live=include_live):
                 packet = self._cache.get(source.id)
                 if not force and packet is not None and not self._is_due(packet, source):
                     continue
-                self._store_packet(self._collect_source(source))
-                refreshed_by_agent[agent_id] += 1
+                scheduled_sources.append((agent_id, source))
+
+        for agent_id, packet in self._collect_sources_concurrently(scheduled_sources):
+            self._store_packet(packet)
+            refreshed_by_agent[agent_id] += 1
         return refreshed_by_agent
 
     def warm_start_agents(
@@ -215,6 +229,7 @@ class SourceHarvester:
                 get_sources_for_agent(agent_id, "training_core"),
                 limit=max_training_sources,
                 force=force,
+                startup_fast_only=True,
             )
             scheduled_sources.extend((agent_id, source) for source in training_sources)
 
@@ -223,21 +238,13 @@ class SourceHarvester:
                     get_sources_for_agent(agent_id, "live_demo"),
                     limit=max_live_sources,
                     force=force,
+                    startup_fast_only=True,
                 )
                 scheduled_sources.extend((agent_id, source) for source in live_sources)
 
-        if not scheduled_sources:
-            return refreshed_by_agent
-
-        max_workers = min(len(scheduled_sources), max(self.batch_size, len(targets), 1))
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            future_to_agent = {
-                executor.submit(self._collect_source, source): agent_id for agent_id, source in scheduled_sources
-            }
-            for future in as_completed(future_to_agent):
-                packet = future.result()
-                self._store_packet(packet)
-                refreshed_by_agent[future_to_agent[future]] += 1
+        for agent_id, packet in self._collect_sources_concurrently(scheduled_sources):
+            self._store_packet(packet)
+            refreshed_by_agent[agent_id] += 1
 
         return refreshed_by_agent
 
@@ -252,20 +259,22 @@ class SourceHarvester:
             for source in get_all_sources()
             if include_live or source.delivery == "training_core"
         ]
-        refreshed = 0
-        if not sources:
-            return refreshed
+        due_sources = [
+            source
+            for source in sources
+            if (packet := self._cache.get(source.id)) is None or self._is_due(packet, source)
+        ]
+        if not due_sources:
+            return 0
 
-        for _ in range(len(sources)):
-            source = sources[self._cursor % len(sources)]
-            self._cursor += 1
-            packet = self._cache.get(source.id)
-            if packet is not None and not self._is_due(packet, source):
-                continue
-            self._store_packet(self._collect_source(source))
+        scheduled_sources = [
+            ("*", source)
+            for source in sorted(due_sources, key=self._background_source_rank)[: self.batch_size]
+        ]
+        refreshed = 0
+        for _, packet in self._collect_sources_concurrently(scheduled_sources):
+            self._store_packet(packet)
             refreshed += 1
-            if refreshed >= self.batch_size:
-                break
         return refreshed
 
     def get_packets_for_agent(
@@ -307,9 +316,14 @@ class SourceHarvester:
         *,
         limit: int,
         force: bool,
+        startup_fast_only: bool = False,
     ) -> list[SourceSpec]:
+        candidates = sorted(sources, key=self._startup_source_rank if startup_fast_only else self._background_source_rank)
+        if startup_fast_only:
+            candidates = [source for source in candidates if self._is_startup_source_candidate(source)]
+
         selected: list[SourceSpec] = []
-        for source in sources:
+        for source in candidates:
             packet = self._cache.get(source.id)
             if not force and packet is not None and not self._is_due(packet, source):
                 continue
@@ -317,6 +331,57 @@ class SourceHarvester:
             if len(selected) >= limit:
                 break
         return selected
+
+    def _collect_sources_concurrently(
+        self,
+        scheduled_sources: list[tuple[str, SourceSpec]],
+    ) -> list[tuple[str, SourcePacket]]:
+        if not scheduled_sources:
+            return []
+
+        max_workers = min(len(scheduled_sources), max(self.batch_size * 2, len(AGENT_IDS), 1))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_source = {
+                executor.submit(self._collect_source, source): agent_id for agent_id, source in scheduled_sources
+            }
+            packets: list[tuple[str, SourcePacket]] = []
+            for future in as_completed(future_to_source):
+                packets.append((future_to_source[future], future.result()))
+        return packets
+
+    @staticmethod
+    def _is_startup_source_candidate(source: SourceSpec) -> bool:
+        if source.id in _STARTUP_BLOCKED_SOURCE_IDS:
+            return False
+        return source.kind in _FAST_STARTUP_SOURCE_KINDS
+
+    @staticmethod
+    def _startup_source_rank(source: SourceSpec) -> tuple[int, int, str]:
+        kind_rank = {
+            "structured": 0,
+            "api": 1,
+            "rss": 2,
+            "telegram": 3,
+            "scrape": 4,
+            "video": 5,
+        }.get(source.kind, 9)
+        blocked_rank = 1 if source.id in _STARTUP_BLOCKED_SOURCE_IDS else 0
+        return (blocked_rank, kind_rank, source.id)
+
+    @staticmethod
+    def _background_source_rank(source: SourceSpec) -> tuple[int, int, int, str]:
+        blocked_rank = 1 if source.id in _STARTUP_BLOCKED_SOURCE_IDS else 0
+        deferred_rank = 1 if source.kind in _DEFERRED_STARTUP_SOURCE_KINDS else 0
+        delivery_rank = 0 if source.delivery == "training_core" else 1
+        kind_rank = {
+            "structured": 0,
+            "api": 1,
+            "rss": 2,
+            "telegram": 3,
+            "scrape": 4,
+            "video": 5,
+        }.get(source.kind, 9)
+        return (blocked_rank, deferred_rank, delivery_rank + kind_rank, source.id)
 
     def _store_packet(self, packet: SourcePacket) -> None:
         with self._lock:
