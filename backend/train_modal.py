@@ -23,10 +23,13 @@ app = modal.App("trenches-grpo-training")
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LOCAL_BACKEND_DIR = REPO_ROOT / "backend"
+LOCAL_BACKEND_SRC_DIR = LOCAL_BACKEND_DIR / "src"
+LOCAL_BACKEND_PACKAGE_DIR = LOCAL_BACKEND_SRC_DIR / "trenches_env"
 LOCAL_ENTITIES_DIR = REPO_ROOT / "entities"
 LOCAL_REPLAY_DIR = LOCAL_BACKEND_DIR / "src" / "trenches_env" / "historical_replays"
 REMOTE_REPO_ROOT = Path("/opt/trenches")
 REMOTE_BACKEND_DIR = REMOTE_REPO_ROOT / "backend"
+REMOTE_BACKEND_SRC_DIR = REMOTE_BACKEND_DIR / "src"
 CHECKPOINTS_DIR = Path("/checkpoints")
 DEFAULT_MODEL_ID = "Qwen/Qwen3-8B"
 DEFAULT_ENTITY_ORDER = ("us", "israel", "iran", "hezbollah", "gulf", "oversight")
@@ -71,10 +74,19 @@ ENTITY_REPLAYS: tuple[tuple[str, str], ...] = tuple(
 training_image = (
     modal.Image.debian_slim(python_version="3.12")
     .apt_install("git")
-    .add_local_dir(str(LOCAL_BACKEND_DIR), remote_path=str(REMOTE_BACKEND_DIR), copy=True)
-    .add_local_dir(str(LOCAL_ENTITIES_DIR), remote_path=str(REMOTE_REPO_ROOT / "entities"), copy=True)
+    .env({"PYTHONPATH": str(REMOTE_BACKEND_SRC_DIR)})
+    .pip_install_from_pyproject(str(LOCAL_BACKEND_DIR / "pyproject.toml"), optional_dependencies=["train"])
     .pip_install("torch>=2.10.0", "vllm==0.12.0")
-    .run_commands("python -m pip install -e '/opt/trenches/backend[train]'")
+    .add_local_dir(
+        str(LOCAL_BACKEND_PACKAGE_DIR),
+        remote_path=str(REMOTE_BACKEND_SRC_DIR / "trenches_env"),
+        ignore=["**/__pycache__/**", "**/*.pyc", ".venv/**"],
+    )
+    .add_local_dir(
+        str(LOCAL_ENTITIES_DIR),
+        remote_path=str(REMOTE_REPO_ROOT / "entities"),
+        ignore=["**/__pycache__/**", "**/*.pyc", ".DS_Store"],
+    )
 )
 
 checkpoints_volume = modal.Volume.from_name(
