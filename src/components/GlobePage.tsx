@@ -80,7 +80,29 @@ const ASSET_LAYERS = [
   "geospatial_anchors",
 ] as const;
 
-const HARD_CODED_ENTITY_ASSETS = Object.entries(ENTITY_ASSET_PACKS).flatMap(([entityId, pack]) => {
+
+const ASSET_LAYER_STYLE: Record<(typeof ASSET_LAYERS)[number], { size: number; opacity: number }> = {
+  locations: { size: 7, opacity: 0.95 },
+  fronts: { size: 8, opacity: 0.92 },
+  infrastructure: { size: 6, opacity: 0.9 },
+  strategic_sites: { size: 9, opacity: 1 },
+  alliance_anchors: { size: 8, opacity: 0.95 },
+  chokepoints: { size: 10, opacity: 1 },
+  geospatial_anchors: { size: 7, opacity: 0.95 },
+};
+
+type HardCodedEntityAsset = {
+  id: string;
+  entityId: string;
+  label: string;
+  layer: (typeof ASSET_LAYERS)[number];
+  lngLat: [number, number];
+  latitude: number;
+  longitude: number;
+  hasDirectCoordinates: boolean;
+};
+
+const HARD_CODED_ENTITY_ASSETS: HardCodedEntityAsset[] = Object.entries(ENTITY_ASSET_PACKS).flatMap(([entityId, pack]) => {
   const locationLookup = new Map<string, [number, number]>();
   for (const record of (pack.locations ?? []) as AssetRecord[]) {
     const name = typeof record.name === "string" ? record.name : undefined;
@@ -101,14 +123,17 @@ const HARD_CODED_ENTITY_ASSETS = Object.entries(ENTITY_ASSET_PACKS).flatMap(([en
         const anchorLat = typeof record.anchor_lat === "number" ? record.anchor_lat : undefined;
         const anchorLon = typeof record.anchor_lon === "number" ? record.anchor_lon : undefined;
         const linkedLocation = typeof record.location === "string" ? locationLookup.get(record.location) : undefined;
-        const lngLat =
-          lat !== undefined && lon !== undefined
-            ? [lon, lat]
-            : anchorLat !== undefined && anchorLon !== undefined
-              ? [anchorLon, anchorLat]
-              : linkedLocation;
 
-        if (!lngLat) {
+        const resolved =
+          lat !== undefined && lon !== undefined
+            ? { lngLat: [lon, lat] as [number, number], hasDirectCoordinates: true }
+            : anchorLat !== undefined && anchorLon !== undefined
+              ? { lngLat: [anchorLon, anchorLat] as [number, number], hasDirectCoordinates: true }
+              : linkedLocation
+                ? { lngLat: linkedLocation, hasDirectCoordinates: false }
+                : null;
+
+        if (!resolved) {
           return null;
         }
 
@@ -116,11 +141,15 @@ const HARD_CODED_ENTITY_ASSETS = Object.entries(ENTITY_ASSET_PACKS).flatMap(([en
         return {
           id: `${entityId}-${layer}-${index}`,
           entityId,
+          layer,
           label,
-          lngLat: lngLat as [number, number],
+          lngLat: resolved.lngLat,
+          longitude: resolved.lngLat[0],
+          latitude: resolved.lngLat[1],
+          hasDirectCoordinates: resolved.hasDirectCoordinates,
         };
       })
-      .filter(Boolean) as Array<{ id: string; entityId: string; label: string; lngLat: [number, number] }>;
+      .filter(Boolean) as HardCodedEntityAsset[];
   });
 });
 
@@ -194,6 +223,19 @@ export default function GlobePage() {
   const matrixAgents = useMemo(() => Object.keys(AGENT_MAP_NODES), []);
   const tensionMatrix = useMemo(() => deriveTensionMatrix(session, matrixAgents, "absolute"), [session, matrixAgents]);
   const tensionDeltaMatrix = useMemo(() => deriveTensionMatrix(session, matrixAgents, "delta"), [session, matrixAgents]);
+
+  const assetValidationByEntity = useMemo(() => {
+    return Object.keys(AGENT_MAP_NODES).map((entityId) => {
+      const entityAssets = HARD_CODED_ENTITY_ASSETS.filter((asset) => asset.entityId === entityId);
+      const directCoordinateCount = entityAssets.filter((asset) => asset.hasDirectCoordinates).length;
+      return {
+        entityId,
+        total: entityAssets.length,
+        directCoordinateCount,
+        inferredCoordinateCount: entityAssets.length - directCoordinateCount,
+      };
+    });
+  }, []);
 
   const selectedAgentActions = useMemo(() => {
     if (!selectedAgent || !session) return [];
@@ -282,6 +324,8 @@ export default function GlobePage() {
     return () => {
       nodeMarkersRef.current.forEach((marker) => marker.remove());
       nodeMarkersRef.current = [];
+      assetMarkersRef.current.forEach((marker) => marker.remove());
+      assetMarkersRef.current = [];
       heatMarkersRef.current.forEach((marker) => marker.remove());
       heatMarkersRef.current = [];
       map.remove();
@@ -395,14 +439,16 @@ export default function GlobePage() {
       const entityMeta = AGENT_MAP_NODES[asset.entityId];
       if (!entityMeta) continue;
 
+      const layerStyle = ASSET_LAYER_STYLE[asset.layer];
       const markerEl = document.createElement("div");
-      markerEl.style.width = "6px";
-      markerEl.style.height = "6px";
+      markerEl.style.width = `${layerStyle.size}px`;
+      markerEl.style.height = `${layerStyle.size}px`;
       markerEl.style.borderRadius = "999px";
       markerEl.style.background = entityMeta.color;
-      markerEl.style.boxShadow = `0 0 5px ${entityMeta.color}`;
+      markerEl.style.opacity = String(layerStyle.opacity);
+      markerEl.style.boxShadow = `0 0 7px ${entityMeta.color}`;
       markerEl.style.border = `1px solid ${entityMeta.secondaryColor}`;
-      markerEl.title = `${entityMeta.flag} ${entityMeta.label}: ${asset.label}`;
+      markerEl.title = `${entityMeta.flag} ${entityMeta.label}: ${asset.label} (${asset.layer}) | lat ${asset.latitude.toFixed(2)}, lon ${asset.longitude.toFixed(2)}`;
 
       const marker = new mapboxgl.Marker({ element: markerEl, anchor: "center" })
         .setLngLat(asset.lngLat)
@@ -415,7 +461,7 @@ export default function GlobePage() {
       assetMarkersRef.current.forEach((marker) => marker.remove());
       assetMarkersRef.current = [];
     };
-  }, [])
+  }, []);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -450,7 +496,7 @@ export default function GlobePage() {
       heatMarkersRef.current = [];
     };
   }, [intensityByAgent, showCountryHeat]);
-;
+
 
   useEffect(() => {
     if (!session) return;
@@ -675,6 +721,22 @@ export default function GlobePage() {
           ))}
         </div>
       )}
+
+
+      <div className="absolute left-6 bottom-52 z-20 w-[280px] border border-border/40 bg-card/70 p-2 backdrop-blur-xl">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-foreground/80">Asset Coordinate Coverage</p>
+        <div className="space-y-1">
+          {assetValidationByEntity.map((item) => {
+            const meta = AGENT_MAP_NODES[item.entityId];
+            return (
+              <div key={item.entityId} className="flex items-center justify-between border border-border/30 px-2 py-1 text-[10px] font-mono">
+                <span className="truncate" style={{ color: meta?.color ?? "#fff" }}>{meta?.flag} {meta?.label}</span>
+                <span className="text-muted-foreground">{item.directCoordinateCount}/{item.total} direct</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       {visible.newsFeed && <NewsFeed items={newsItems} interactionFocus={interactionFocus} onInteractionFocus={setInteractionFocus} onRegisterToggle={(fn) => { togglePanelsRef.current[0] = fn; }} />}
       {visible.activityLog && <ActivityLog items={activityItems} focusTurn={timelineTurn} interactionFocus={interactionFocus} onInteractionFocus={setInteractionFocus} onRegisterToggle={(fn) => { togglePanelsRef.current[1] = fn; }} />}
