@@ -59,14 +59,18 @@ function EventMarker({
     event,
     position,
     isMatched,
+    active,
     onHover,
     onLeave,
+    onClick,
 }: {
     event: TimelineEvent;
     position: number;
     isMatched: boolean;
+    active: boolean;
     onHover: (e: TimelineEvent, rect: DOMRect) => void;
     onLeave: () => void;
+    onClick: (event: TimelineEvent) => void;
 }) {
     const ref = useRef<HTMLDivElement>(null);
     const color = TYPE_COLORS[event.type];
@@ -76,12 +80,13 @@ function EventMarker({
     return (
         <div
             ref={ref}
-            className="absolute top-1/2 -translate-y-1/2 cursor-pointer transition-transform duration-150 hover:scale-150"
+            className={cn("absolute top-1/2 -translate-y-1/2 cursor-pointer transition-transform duration-150 hover:scale-150", active && "scale-150") }
             style={{ left: `${position * 100}%` }}
             onMouseEnter={() => {
                 if (ref.current) onHover(event, ref.current.getBoundingClientRect());
             }}
             onMouseLeave={onLeave}
+            onClick={() => onClick(event)}
         >
             {isInjection ? (
                 <div
@@ -90,6 +95,7 @@ function EventMarker({
                         backgroundColor: `${color}88`,
                         borderColor: color,
                         opacity: isFaded ? 0.35 : 1,
+                        boxShadow: active ? `0 0 8px ${color}` : undefined,
                     }}
                 />
             ) : (
@@ -98,7 +104,7 @@ function EventMarker({
                     style={{
                         backgroundColor: color,
                         opacity: isFaded ? 0.35 : 0.9,
-                        boxShadow: isMatched ? `0 0 6px ${color}` : undefined,
+                        boxShadow: active ? `0 0 10px ${color}` : isMatched ? `0 0 6px ${color}` : undefined,
                     }}
                 />
             )}
@@ -195,16 +201,25 @@ function SpeedButton({
 
 /* ── Main Component ── */
 
+export type TimelineInteractionFocus = {
+    turn: number;
+    agent: string | null;
+};
+
 export type EventTimelineProps = {
     session: SessionState | null;
     onTurnChange?: (turn: number) => void;
     onRegisterToggle?: (fn: (collapsed: boolean) => void) => void;
+    interactionFocus?: TimelineInteractionFocus | null;
+    onInteractionFocus?: (focus: TimelineInteractionFocus | null) => void;
 };
 
 export function EventTimeline({
     session,
     onTurnChange,
     onRegisterToggle,
+    interactionFocus,
+    onInteractionFocus,
 }: EventTimelineProps) {
     const panelRef = useRef<HTMLDivElement>(null);
     const trackRef = useRef<HTMLDivElement>(null);
@@ -367,6 +382,11 @@ export function EventTimeline({
     const currentSnapshot = snapshots.find((s) => s.turn === currentTurn);
 
     const progress = maxTurn > 0 ? (currentTurn / maxTurn) * 100 : 0;
+
+    const eventMatchesInteraction = (event: TimelineEvent): boolean => {
+        if (!interactionFocus) return false;
+        return event.turn === interactionFocus.turn && (!interactionFocus.agent || event.agent === interactionFocus.agent);
+    };
 
     return (
         <>
@@ -645,16 +665,24 @@ export function EventTimeline({
                                                         event={event}
                                                         position={pos}
                                                         isMatched={isMatched}
+                                                        active={eventMatchesInteraction(event)}
                                                         onHover={(ev, rect) => {
                                                             setHoveredEvent(ev);
                                                             setTooltipPos({
                                                                 x: rect.left + rect.width / 2,
                                                                 y: rect.top,
                                                             });
+                                                            onInteractionFocus?.({ turn: ev.turn, agent: ev.agent === "global" ? null : ev.agent });
                                                         }}
                                                         onLeave={() => {
                                                             setHoveredEvent(null);
                                                             setTooltipPos(null);
+                                                            onInteractionFocus?.(null);
+                                                        }}
+                                                        onClick={(ev) => {
+                                                            setCurrentTurn(ev.turn);
+                                                            onTurnChange?.(ev.turn);
+                                                            onInteractionFocus?.({ turn: ev.turn, agent: ev.agent === "global" ? null : ev.agent });
                                                         }}
                                                     />
                                                 );
