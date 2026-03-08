@@ -36,7 +36,7 @@ DEFAULT_ENTITY_ORDER = ("us", "israel", "iran", "hezbollah", "gulf", "oversight"
 DEFAULT_REPLAY_SUFFIX = "_2025_events"
 DEFAULT_BACKEND_PORT = 8000
 DEFAULT_VLLM_SERVER_PORT = 8001
-MODAL_GPU_FALLBACKS = ["H200:2", "H100:2", "A100-80GB:2", "L40S:2"]
+MODAL_GPU_FALLBACKS = ["H200:2"]
 SUPPORTED_TRL_VLLM_VERSION = "0.10.2"
 
 
@@ -164,7 +164,6 @@ def _build_training_command(
         "0.95",
         "--optim",
         "auto",
-        "--quantize-4bit",
         "--max-prompt-length",
         str(max_prompt_length),
         "--max-completion-length",
