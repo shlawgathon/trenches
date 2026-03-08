@@ -290,8 +290,38 @@ export default function GlobePage() {
       tween.kill();
     };
   }, [topBarLayout]);
+  // Fetch real RSS items from our API route
+  const [liveRssItems, setLiveRssItems] = useState<NewsItem[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchRss() {
+      try {
+        const res = await fetch("/api/rss", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        const items: NewsItem[] = (data.items ?? []).map((item: { title: string; link: string; translateUrl: string | null; source: string; agent: string; pubDate: string; bootstrapOnly?: boolean }, i: number) => ({
+          id: `rss-${i}-${item.link.slice(-20)}`,
+          source: item.source,
+          summary: item.title,
+          severity: 3,
+          timestamp: item.pubDate,
+          turn: 0,
+          agent: item.agent,
+          type: "event" as const,
+          url: item.link,
+          translateUrl: item.translateUrl,
+          bootstrapOnly: Boolean(item.bootstrapOnly),
+        }));
+        setLiveRssItems(items);
+      } catch { /* silently fail */ }
+    }
+    fetchRss();
+    const interval = setInterval(fetchRss, 60_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
 
-  const newsItems = useMemo(() => simNewsItems, [simNewsItems]);
+  const newsItems = useMemo(() => dedupeNewsItems(liveRssItems).slice(0, 40), [liveRssItems]);
 
   const intensityByAgent = useMemo(() => {
     const intensity = new Map<string, number>();
@@ -1231,6 +1261,12 @@ function dedupeNewsItems(items: NewsItem[]): NewsItem[] {
     const bTs = new Date(b.timestamp).getTime() || 0;
     return bTs - aTs;
   });
+}
+
+function mergeNewsItems(sessionItems: NewsItem[], bootstrapItems: NewsItem[]): NewsItem[] {
+  const seenFingerprints = new Set(sessionItems.map((item) => newsFingerprint(item)));
+  const fallbackItems = bootstrapItems.filter((item) => !seenFingerprints.has(newsFingerprint(item)));
+  return dedupeNewsItems([...sessionItems, ...fallbackItems]).slice(0, 40);
 }
 
 function deriveNewsItems(session: SessionState | null): NewsItem[] {
