@@ -33,7 +33,7 @@ GIT_REF = "main"
 training_image = (
     modal.Image.debian_slim(python_version="3.12")
     .apt_install("git")
-    .env({"IMAGE_VERSION": "4"})  # bump to force rebuild when main changes
+    .env({"IMAGE_VERSION": "5"})  # bump to force rebuild when main changes
     .run_commands(
         f"git clone --depth 1 --branch {GIT_REF} --single-branch {GIT_REPO_URL} /opt/trenches",
         "uv pip install --system -e '/opt/trenches/backend[train]'",
