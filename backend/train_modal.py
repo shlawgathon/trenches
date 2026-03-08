@@ -179,7 +179,7 @@ def _build_training_command(
     ]
 
 
-def _wait_for_vllm_server(port: int, *, timeout_seconds: float = 240.0) -> None:
+def _wait_for_vllm_server(port: int, *, timeout_seconds: float = 600.0) -> None:
     deadline = time.time() + timeout_seconds
     url = f"http://127.0.0.1:{port}/health"
     last_error = "unknown startup failure"
