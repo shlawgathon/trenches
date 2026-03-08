@@ -36,6 +36,21 @@ DEFAULT_MODEL_ID = "Qwen/Qwen3-8B"
 DEFAULT_ENTITY_ORDER = ("us", "israel", "iran", "hezbollah", "gulf", "oversight")
 DEFAULT_REPLAY_SUFFIX = "_2025_events"
 DEFAULT_BACKEND_PORT = 8000
+
+# Per-entity max_steps scaled to real dataset size:
+# us=1772 events, oversight=3208 → 500 steps (massive/huge)
+# israel=647 → 300 steps (large)
+# gulf=314 → 200 steps (medium)
+# iran=154 → 150 steps (decent)
+# hezbollah=68 → 100 steps (small)
+ENTITY_MAX_STEPS: dict[str, int] = {
+    "us": 500,
+    "oversight": 500,
+    "israel": 300,
+    "gulf": 200,
+    "iran": 150,
+    "hezbollah": 100,
+}
 DEFAULT_VLLM_SERVER_PORT = 8001
 MODAL_GPU_FALLBACKS = ["H200:2"]
 SUPPORTED_TRL_VLLM_VERSION = "0.10.2"
@@ -314,7 +329,7 @@ def _run_training(
 @app.function(
     image=training_image,
     gpu=MODAL_GPU_FALLBACKS,
-    timeout=60 * 60 * 4,
+    timeout=60 * 60 * 8,  # 8 hours max for large entities (us/oversight=500 steps)
     volumes={str(CHECKPOINTS_DIR): checkpoints_volume},
 )
 def train(
@@ -354,8 +369,14 @@ def smoke(entity: str = "us", replay_id: str | None = None) -> None:
 
 @app.local_entrypoint()
 def train_all() -> None:
-    print(f"Launching {len(ENTITY_REPLAYS)} training jobs in parallel")
-    list(train.starmap(ENTITY_REPLAYS))
+    jobs = [
+        (entity, replay_id, ENTITY_MAX_STEPS.get(entity, 100))
+        for entity, replay_id in ENTITY_REPLAYS
+    ]
+    for entity, replay_id, steps in jobs:
+        print(f"  {entity}: {steps} steps (replay={replay_id})")
+    print(f"Launching {len(jobs)} training jobs in parallel")
+    list(train.starmap(jobs))
     print("All training jobs completed.")
     print("Download checkpoints with:")
     print("  modal volume get trenches-checkpoints .")
