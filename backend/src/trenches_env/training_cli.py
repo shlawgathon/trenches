@@ -365,6 +365,22 @@ def _preview_rollouts(
         )
 
 
+class OpenEnvGRPOTrainer:
+    """Force GRPO to use the custom OpenEnv rollout path across generation backends."""
+
+    def _generate_single_turn(self, prompts: list[str]):  # type: ignore[override]
+        if getattr(self, "rollout_func", None) is None:
+            return super()._generate_single_turn(prompts)
+
+        output = self.rollout_func(prompts, self)
+        required_keys = {"prompt_ids", "completion_ids", "logprobs"}
+        missing = required_keys.difference(output)
+        if missing:
+            raise RuntimeError(f"rollout_func is missing required keys: {sorted(missing)}")
+        extra_fields = {key: value for key, value in output.items() if key not in required_keys}
+        return output["prompt_ids"], output["completion_ids"], output["logprobs"], extra_fields
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train a replay-aware OpenEnv policy for Trenches.")
     parser.add_argument("--model-id", default=DEFAULT_MODEL_ID)
@@ -398,6 +414,7 @@ def main() -> None:
     parser.add_argument("--warmup-steps", type=int, default=0, help="Number of warmup steps")
     parser.add_argument("--temperature", type=float, default=0.9, help="Sampling temperature for generation")
     parser.add_argument("--top-k", type=int, default=0, help="Top-k sampling (0 = disabled)")
+    parser.add_argument("--top-p", type=float, default=0.95, help="Top-p sampling")
     parser.add_argument("--save-strategy", default="no", choices=["no", "steps", "epoch"], help="Checkpoint save strategy")
     parser.add_argument("--save-steps", type=int, default=100, help="Save checkpoint every N steps (when save-strategy=steps)")
     args = parser.parse_args()
@@ -406,7 +423,7 @@ def main() -> None:
     torch = imports["torch"]
     AutoTokenizer = imports["AutoTokenizer"]
     GRPOConfig = imports["GRPOConfig"]
-    GRPOTrainer = imports["GRPOTrainer"]
+    GRPOTrainer = type("OpenEnvGRPOTrainer", (OpenEnvGRPOTrainer, imports["GRPOTrainer"]), {})
     generate_rollout_completions = imports["generate_rollout_completions"]
     generation_backend = args.generation_backend
     if generation_backend == "auto":
@@ -546,9 +563,13 @@ def main() -> None:
         "beta": args.beta,
         "warmup_steps": args.warmup_steps,
         "temperature": args.temperature,
+        "top_p": args.top_p,
         "save_strategy": args.save_strategy,
         "save_steps": args.save_steps,
     }
+    if not args.quantize_4bit:
+        training_kwargs["bf16"] = True
+        training_kwargs["model_init_kwargs"] = {"dtype": "bfloat16"}
     if generation_backend == "vllm":
         training_kwargs["vllm_mode"] = "colocate"
 
