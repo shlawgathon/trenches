@@ -76,7 +76,7 @@ training_image = (
     .apt_install("git")
     .env({"PYTHONPATH": str(REMOTE_BACKEND_SRC_DIR)})
     .pip_install_from_pyproject(str(LOCAL_BACKEND_DIR / "pyproject.toml"), optional_dependencies=["train"])
-    .pip_install("torch>=2.10.0", "vllm==0.12.0")
+    .pip_install("vllm==0.12.0")
     .add_local_dir(
         str(LOCAL_BACKEND_PACKAGE_DIR),
         remote_path=str(REMOTE_BACKEND_SRC_DIR / "trenches_env"),
