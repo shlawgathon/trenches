@@ -84,11 +84,20 @@ def train() -> None:
     output_dir = workroot / "output"
     cache_dir = workroot / ".cache"
     uv_cache_dir = cache_dir / "uv"
+    torchinductor_cache_dir = cache_dir / "torchinductor"
+    triton_cache_dir = cache_dir / "triton"
     output_dir.mkdir(parents=True, exist_ok=True)
     uv_cache_dir.mkdir(parents=True, exist_ok=True)
+    torchinductor_cache_dir.mkdir(parents=True, exist_ok=True)
+    triton_cache_dir.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ)
+    env["HOME"] = str(workroot)
+    env["USER"] = env.get("USER", "app") or "app"
+    env["LOGNAME"] = env.get("LOGNAME", env["USER"]) or env["USER"]
     env["XDG_CACHE_HOME"] = str(cache_dir)
     env["UV_CACHE_DIR"] = str(uv_cache_dir)
+    env["TORCHINDUCTOR_CACHE_DIR"] = str(torchinductor_cache_dir)
+    env["TRITON_CACHE_DIR"] = str(triton_cache_dir)
 
     try:
         clone_cmd = ["git", "clone", "--depth", "1"]

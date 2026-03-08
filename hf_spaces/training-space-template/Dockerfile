@@ -4,8 +4,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     TRL_EXPERIMENTAL_SILENCE=1 \
     PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+    HOME=/tmp \
+    USER=app \
+    LOGNAME=app \
     XDG_CACHE_HOME=/tmp/.cache \
     UV_CACHE_DIR=/tmp/.cache/uv \
+    TORCHINDUCTOR_CACHE_DIR=/tmp/.cache/torchinductor \
+    TRITON_CACHE_DIR=/tmp/.cache/triton \
     PORT=7860
 
 RUN apt-get update \
