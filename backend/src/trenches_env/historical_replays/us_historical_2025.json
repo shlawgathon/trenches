@@ -1,0 +1,120 @@
+{
+  "replay_id": "us_historical_2025",
+  "name": "US historical replay 2025-01-01 to 2026-01-01",
+  "description": "Historically collected replay built from allowlisted source domains via the GDELT DOC API. Titles and impacts are heuristic and should be curator-reviewed before production post-training.",
+  "training_agent": "us",
+  "events": [
+    {
+      "event_id": "us-20251028144500-50413da6",
+      "timestamp": "2025-10-28T14:45:00Z",
+      "topic": "diplomacy",
+      "region": "us",
+      "actors": [
+        "us"
+      ],
+      "targets": [
+        "us"
+      ],
+      "severity": "low",
+      "summary": "Venezuela Nobel Prize - winner bets big on Trump as pressure builds on Maduro",
+      "source_type": "gdelt_historical_collection",
+      "confirmed": true,
+      "tags": [
+        "CENTCOM",
+        "Hormuz",
+        "diplomacy",
+        "domestic",
+        "reuters.com",
+        "shipping",
+        "us",
+        "wire"
+      ],
+      "public_summary": "Venezuela Nobel Prize - winner bets big on Trump as pressure builds on Maduro",
+      "impact": {
+        "tension_delta": -1.35,
+        "market_stress_delta": -1.2,
+        "oil_pressure_delta": -0.9,
+        "actor_metric_deltas": {
+          "us": {
+            "regional_access": 1.5,
+            "shipping_security": 1.5
+          },
+          "israel": {
+            "us_resupply_confidence": 1.5,
+            "reserve_endurance": 1.5
+          },
+          "iran": {
+            "deterrence_credibility": 1.5
+          },
+          "hezbollah": {
+            "political_cover": 1.5
+          },
+          "gulf": {
+            "diplomatic_flexibility": 1.5,
+            "shipping_continuity": 1.5
+          },
+          "oversight": {
+            "intervention_legitimacy": 1.5,
+            "autonomy_balance": 1.5
+          }
+        }
+      }
+    },
+    {
+      "event_id": "us-20251231143000-57fa3010",
+      "timestamp": "2025-12-31T14:30:00Z",
+      "topic": "diplomacy",
+      "region": "us",
+      "actors": [
+        "israel"
+      ],
+      "targets": [
+        "us"
+      ],
+      "severity": "low",
+      "summary": "How Israel multi - ton truck bombs ripped through Gaza City",
+      "source_type": "gdelt_historical_collection",
+      "confirmed": true,
+      "tags": [
+        "CENTCOM",
+        "Hormuz",
+        "diplomacy",
+        "domestic",
+        "reuters.com",
+        "shipping",
+        "us",
+        "wire"
+      ],
+      "public_summary": "How Israel multi - ton truck bombs ripped through Gaza City",
+      "impact": {
+        "tension_delta": -1.35,
+        "market_stress_delta": -1.2,
+        "oil_pressure_delta": -0.9,
+        "actor_metric_deltas": {
+          "us": {
+            "regional_access": 1.5,
+            "shipping_security": 1.5
+          },
+          "israel": {
+            "us_resupply_confidence": 1.5,
+            "reserve_endurance": 1.5
+          },
+          "iran": {
+            "deterrence_credibility": 1.5
+          },
+          "hezbollah": {
+            "political_cover": 1.5
+          },
+          "gulf": {
+            "diplomatic_flexibility": 1.5,
+            "shipping_continuity": 1.5
+          },
+          "oversight": {
+            "intervention_legitimacy": 1.5,
+            "autonomy_balance": 1.5
+          }
+        }
+      }
+    }
+  ]
+}

@@ -442,6 +442,10 @@ def main() -> None:
     parser.add_argument("--save-steps", type=int, default=100, help="Save checkpoint every N steps (when save-strategy=steps)")
     args = parser.parse_args()
 
+    # FORCE-DISABLE RSS FEEDS DURING TRAINING to prevent rate limits and speed up rollouts.
+    import os
+    os.environ["TRENCHES_DISABLE_RSS"] = "1"
+
     imports = _required_training_imports()
     torch = imports["torch"]
     AutoTokenizer = imports["AutoTokenizer"]

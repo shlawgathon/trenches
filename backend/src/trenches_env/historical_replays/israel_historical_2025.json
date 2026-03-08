@@ -1,0 +1,7 @@
+{
+  "replay_id": "israel_historical_2025",
+  "name": "ISRAEL historical replay 2025-01-01 to 2026-01-01",
+  "description": "Historically collected replay built from allowlisted source domains via the GDELT DOC API. Titles and impacts are heuristic and should be curator-reviewed before production post-training.",
+  "training_agent": "israel",
+  "events": []
+}

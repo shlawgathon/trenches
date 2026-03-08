@@ -1,0 +1,815 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+    Play,
+    Pause,
+    SkipBack,
+    SkipForward,
+    Rewind,
+    FastForward,
+    GitBranch,
+    ChevronUp,
+    ChevronDown,
+    Filter,
+    X,
+    Trophy,
+} from "lucide-react";
+import gsap from "gsap";
+import { cn } from "@/src/lib/utils";
+import { GlowingEffect } from "@/src/components/ui/glowing-effect";
+import type { SessionState } from "@/src/lib/types";
+import {
+    deriveTimelineEvents,
+    deriveTurnSnapshots,
+    linkPredictionsToOutcomes,
+} from "@/src/lib/timeline-types";
+import type {
+    TimelineEvent,
+    PlaybackSpeed,
+    TimelineEventType,
+} from "@/src/lib/timeline-types";
+
+/* ── Constants ── */
+
+const AGENT_COLORS: Record<string, string> = {
+    us: "#e53935",
+    israel: "#64b5f6",
+    iran: "#689f38",
+    hezbollah: "#ffa000",
+    gulf: "#a1887f",
+    oversight: "#b0b0b0",
+    global: "#888888",
+};
+
+const TYPE_COLORS: Record<TimelineEventType, string> = {
+    prediction: "#e53935",
+    actual: "#689f38",
+    injection: "#ffa000",
+};
+
+const SPEEDS: PlaybackSpeed[] = [0.5, 1, 2, 4];
+
+const COLLAPSED_HEIGHT = 48;
+const EXPANDED_HEIGHT = 180;
+
+/* ── Sub-components ── */
+
+function EventMarker({
+    event,
+    position,
+    isMatched,
+    onHover,
+    onLeave,
+}: {
+    event: TimelineEvent;
+    position: number;
+    isMatched: boolean;
+    onHover: (e: TimelineEvent, rect: DOMRect) => void;
+    onLeave: () => void;
+}) {
+    const ref = useRef<HTMLDivElement>(null);
+    const color = TYPE_COLORS[event.type];
+    const isInjection = event.type === "injection";
+    const isFaded = event.type === "prediction" && !event.matchedPredictionId;
+
+    return (
+        <div
+            ref={ref}
+            className="absolute top-1/2 -translate-y-1/2 cursor-pointer transition-transform duration-150 hover:scale-150"
+            style={{ left: `${position * 100}%` }}
+            onMouseEnter={() => {
+                if (ref.current) onHover(event, ref.current.getBoundingClientRect());
+            }}
+            onMouseLeave={onLeave}
+        >
+            {isInjection ? (
+                <div
+                    className="h-2.5 w-2.5 rotate-45 border"
+                    style={{
+                        backgroundColor: `${color}88`,
+                        borderColor: color,
+                        opacity: isFaded ? 0.35 : 1,
+                    }}
+                />
+            ) : (
+                <div
+                    className={cn("h-2 w-2 rounded-full", isMatched && "ring-1 ring-offset-1 ring-offset-transparent")}
+                    style={{
+                        backgroundColor: color,
+                        opacity: isFaded ? 0.35 : 0.9,
+                        boxShadow: isMatched ? `0 0 6px ${color}` : undefined,
+                    }}
+                />
+            )}
+        </div>
+    );
+}
+
+function EventTooltip({
+    event,
+    position,
+}: {
+    event: TimelineEvent | null;
+    position: { x: number; y: number } | null;
+}) {
+    if (!event || !position) return null;
+
+    const agentColor = AGENT_COLORS[event.agent] ?? "#888";
+    const typeLabel = event.type.toUpperCase();
+
+    return (
+        <div
+            className="pointer-events-none fixed z-50 max-w-[260px] border border-border/40 bg-card/95 px-3 py-2 font-sans backdrop-blur-xl"
+            style={{
+                left: Math.min(position.x, window.innerWidth - 280),
+                top: position.y - 90,
+                boxShadow:
+                    "0 0 8px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.25)",
+            }}
+        >
+            <div className="mb-1 flex items-center gap-2">
+                <div
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ backgroundColor: agentColor }}
+                />
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-foreground/80">
+                    {event.agent}
+                </span>
+                <span
+                    className="ml-auto inline-flex items-center border px-1 py-0.5 text-[8px] font-mono uppercase tracking-wider"
+                    style={{
+                        borderColor: `${TYPE_COLORS[event.type]}60`,
+                        color: TYPE_COLORS[event.type],
+                    }}
+                >
+                    {typeLabel}
+                </span>
+            </div>
+            <p className="text-[11px] leading-relaxed text-foreground/90">
+                {event.summary}
+            </p>
+            <div className="mt-1.5 flex items-center gap-3 text-[9px] font-mono text-muted-foreground">
+                <span>T{event.turn}</span>
+                <span>SEV {(event.severity * 10).toFixed(1)}</span>
+                {event.matchedPredictionId && (
+                    <span className="text-secondary">✓ matched → +reward</span>
+                )}
+                {event.type === "prediction" && !event.matchedPredictionId && (
+                    <span className="text-muted-foreground/50">⊘ unmatched</span>
+                )}
+                {event.type === "injection" && (
+                    <span className="text-destructive">⑂ manual · no reward</span>
+                )}
+                {event.branchId && (
+                    <span className="text-destructive">⑂ branch</span>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function SpeedButton({
+    speed,
+    active,
+    onClick,
+}: {
+    speed: PlaybackSpeed;
+    active: boolean;
+    onClick: () => void;
+}) {
+    return (
+        <button
+            onClick={onClick}
+            className={cn(
+                "px-1.5 py-0.5 text-[9px] font-mono transition-colors cursor-pointer",
+                active
+                    ? "bg-primary/20 text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+            )}
+        >
+            {speed}×
+        </button>
+    );
+}
+
+/* ── Main Component ── */
+
+export type EventTimelineProps = {
+    session: SessionState | null;
+    onTurnChange?: (turn: number) => void;
+    onRegisterToggle?: (fn: (collapsed: boolean) => void) => void;
+};
+
+export function EventTimeline({
+    session,
+    onTurnChange,
+    onRegisterToggle,
+}: EventTimelineProps) {
+    const panelRef = useRef<HTMLDivElement>(null);
+    const trackRef = useRef<HTMLDivElement>(null);
+    const playIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    const [collapsed, setCollapsed] = useState(false);
+    const [currentTurn, setCurrentTurn] = useState(0);
+    const [playing, setPlaying] = useState(false);
+    const [speed, setSpeed] = useState<PlaybackSpeed>(1);
+    const [filterAgent, setFilterAgent] = useState<string | null>(null);
+    const [filterType, setFilterType] = useState<TimelineEventType | null>(null);
+    const [filterTurnFrom, setFilterTurnFrom] = useState<number | null>(null);
+    const [filterTurnTo, setFilterTurnTo] = useState<number | null>(null);
+    const [showFilters, setShowFilters] = useState(false);
+    const [hoveredEvent, setHoveredEvent] = useState<TimelineEvent | null>(null);
+    const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+    const [isDragging, setIsDragging] = useState(false);
+
+    // Derive data
+    const rawEvents = deriveTimelineEvents(session);
+    const events = linkPredictionsToOutcomes(rawEvents);
+    const snapshots = deriveTurnSnapshots(session);
+    const maxTurn = session?.world.turn ?? 0;
+
+    // Filter events
+    const filteredEvents = events.filter((e) => {
+        if (filterAgent && e.agent !== filterAgent) return false;
+        if (filterType && e.type !== filterType) return false;
+        if (filterTurnFrom !== null && e.turn < filterTurnFrom) return false;
+        if (filterTurnTo !== null && e.turn > filterTurnTo) return false;
+        return true;
+    });
+
+    // Unique agents for filter dropdown
+    const agents = [...new Set(events.map((e) => e.agent))];
+
+    // Has branches?
+    const hasBranches = events.some((e) => e.type === "injection");
+
+    // Reward stats
+    const matchedPredictions = events.filter((e) => e.type === "prediction" && e.matchedPredictionId).length;
+    const totalPredictions = events.filter((e) => e.type === "prediction").length;
+    const hasActiveFilters = !!(filterAgent || filterType || filterTurnFrom !== null || filterTurnTo !== null);
+
+    // Sync current turn with session
+    useEffect(() => {
+        if (session && !isDragging && !playing) {
+            setCurrentTurn(session.world.turn);
+        }
+    }, [session?.world.turn]);
+
+    // Collapse/expand
+    const applyCollapse = useCallback((next: boolean) => {
+        setCollapsed(next);
+        if (panelRef.current) {
+            gsap.to(panelRef.current, {
+                height: next ? COLLAPSED_HEIGHT : EXPANDED_HEIGHT,
+                duration: 0.4,
+                ease: "power2.inOut",
+            });
+        }
+    }, []);
+
+    useEffect(() => {
+        onRegisterToggle?.(applyCollapse);
+    }, [onRegisterToggle, applyCollapse]);
+
+    // Playback loop
+    useEffect(() => {
+        if (playing && maxTurn > 0) {
+            const intervalMs = 1000 / speed;
+            playIntervalRef.current = setInterval(() => {
+                setCurrentTurn((prev) => {
+                    const next = prev + 1;
+                    if (next > maxTurn) {
+                        setPlaying(false);
+                        return maxTurn;
+                    }
+                    onTurnChange?.(next);
+                    return next;
+                });
+            }, intervalMs);
+        }
+        return () => {
+            if (playIntervalRef.current) clearInterval(playIntervalRef.current);
+        };
+    }, [playing, speed, maxTurn, onTurnChange]);
+
+    // Scrubber drag handlers
+    const handleTrackClick = (e: React.MouseEvent) => {
+        if (!trackRef.current || maxTurn === 0) return;
+        const rect = trackRef.current.getBoundingClientRect();
+        const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        const turn = Math.round(ratio * maxTurn);
+        setCurrentTurn(turn);
+        onTurnChange?.(turn);
+    };
+
+    const handleDragStart = () => setIsDragging(true);
+
+    const handleDrag = useCallback(
+        (e: MouseEvent) => {
+            if (!trackRef.current || maxTurn === 0) return;
+            const rect = trackRef.current.getBoundingClientRect();
+            const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            const turn = Math.round(ratio * maxTurn);
+            setCurrentTurn(turn);
+            onTurnChange?.(turn);
+        },
+        [maxTurn, onTurnChange]
+    );
+
+    const handleDragEnd = useCallback(() => {
+        setIsDragging(false);
+    }, []);
+
+    useEffect(() => {
+        if (isDragging) {
+            window.addEventListener("mousemove", handleDrag);
+            window.addEventListener("mouseup", handleDragEnd);
+            return () => {
+                window.removeEventListener("mousemove", handleDrag);
+                window.removeEventListener("mouseup", handleDragEnd);
+            };
+        }
+    }, [isDragging, handleDrag, handleDragEnd]);
+
+    // Control helpers
+    const stepBack = () => {
+        const next = Math.max(0, currentTurn - 1);
+        setCurrentTurn(next);
+        onTurnChange?.(next);
+    };
+    const stepForward = () => {
+        const next = Math.min(maxTurn, currentTurn + 1);
+        setCurrentTurn(next);
+        onTurnChange?.(next);
+    };
+    const rewind = () => {
+        setCurrentTurn(0);
+        onTurnChange?.(0);
+    };
+    const fastForward = () => {
+        setCurrentTurn(maxTurn);
+        onTurnChange?.(maxTurn);
+    };
+
+    // Tension chart for scrubber background
+    const tensionPath = snapshots.length > 1
+        ? snapshots
+            .map((s, i) => {
+                const x = (s.turn / Math.max(maxTurn, 1)) * 100;
+                const y = 100 - Math.min(s.tensionAfter, 100);
+                return `${i === 0 ? "M" : "L"} ${x} ${y}`;
+            })
+            .join(" ")
+        : "";
+
+    // Current snapshot info
+    const currentSnapshot = snapshots.find((s) => s.turn === currentTurn);
+
+    const progress = maxTurn > 0 ? (currentTurn / maxTurn) * 100 : 0;
+
+    return (
+        <>
+            <EventTooltip event={hoveredEvent} position={tooltipPos} />
+
+            <div
+                ref={panelRef}
+                className="absolute right-20 bottom-4 left-20 z-30 select-none"
+                style={{ height: collapsed ? COLLAPSED_HEIGHT : EXPANDED_HEIGHT }}
+            >
+                {/* ── Panel wrapper: matches NewsFeed / ActivityLog structure ── */}
+                <div className="relative h-full rounded-md border-[0.75px] border-border/30 p-0">
+                    <GlowingEffect
+                        spread={40}
+                        glow={true}
+                        disabled={false}
+                        proximity={64}
+                        inactiveZone={0.01}
+                        borderWidth={2}
+                    />
+                    <div
+                        className="relative flex h-full flex-col overflow-hidden rounded-[inherit] bg-card/25 backdrop-blur-lg"
+                        style={{
+                            boxShadow:
+                                "0 0 8px rgba(0,0,0,0.03), 0 2px 6px rgba(0,0,0,0.08), inset 0 0 6px 6px rgba(255,255,255,0.04), 0 0 12px rgba(0,0,0,0.15)",
+                        }}
+                    >
+                        {/* Header row */}
+                        <div className="flex shrink-0 items-center gap-2 border-b border-border/30 px-4 py-3">
+                            <button
+                                onClick={() => applyCollapse(!collapsed)}
+                                className="flex h-5 w-5 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                                title={collapsed ? "Expand timeline" : "Collapse timeline"}
+                            >
+                                {collapsed ? (
+                                    <ChevronUp className="h-3.5 w-3.5" />
+                                ) : (
+                                    <ChevronDown className="h-3.5 w-3.5" />
+                                )}
+                            </button>
+
+                            <span className="whitespace-nowrap text-[10px] font-semibold tracking-[0.2em] text-foreground/80 uppercase font-sans">
+                                Timeline
+                            </span>
+
+                            <span className="text-[9px] font-mono text-muted-foreground">
+                                T{currentTurn}/{maxTurn}
+                            </span>
+
+                            {currentSnapshot && (
+                                <>
+                                    <div className="mx-1 h-4 w-px bg-border/40" />
+                                    <span
+                                        className={cn(
+                                            "text-[9px] font-mono",
+                                            currentSnapshot.escalation
+                                                ? "text-primary"
+                                                : "text-muted-foreground"
+                                        )}
+                                    >
+                                        ⚡ {currentSnapshot.tensionAfter.toFixed(0)}
+                                    </span>
+                                    {currentSnapshot.hasOversight && (
+                                        <span className="text-[9px] font-mono text-primary">
+                                            🛡 OVERSIGHT
+                                        </span>
+                                    )}
+                                </>
+                            )}
+
+                            {hasBranches && (
+                                <div className="flex items-center gap-1 text-[9px] font-mono text-destructive">
+                                    <GitBranch className="h-3 w-3" />
+                                    <span>BRANCH</span>
+                                </div>
+                            )}
+
+                            {totalPredictions > 0 && (
+                                <>
+                                    <div className="mx-1 h-4 w-px bg-border/40" />
+                                    <div className="flex items-center gap-1 text-[9px] font-mono">
+                                        <Trophy className="h-3 w-3 text-secondary" />
+                                        <span className={matchedPredictions > 0 ? "text-secondary" : "text-muted-foreground"}>
+                                            {matchedPredictions}/{totalPredictions}
+                                        </span>
+                                    </div>
+                                </>
+                            )}
+
+                            <div className="ml-auto flex items-center gap-1">
+                                <button
+                                    onClick={() => setShowFilters(!showFilters)}
+                                    className={cn(
+                                        "flex h-5 w-5 cursor-pointer items-center justify-center transition-colors",
+                                        showFilters || hasActiveFilters
+                                            ? "text-primary"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    )}
+                                    title="Filters"
+                                >
+                                    <Filter className="h-3 w-3" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Filter bar (conditional) */}
+                        {showFilters && !collapsed && (
+                            <div className="flex shrink-0 items-center gap-2 border-b border-border/20 px-4 py-1.5">
+                                <span className="text-[8px] font-mono uppercase tracking-wider text-muted-foreground">
+                                    Agent:
+                                </span>
+                                <div className="flex gap-1">
+                                    {agents.map((a) => (
+                                        <button
+                                            key={a}
+                                            onClick={() =>
+                                                setFilterAgent(filterAgent === a ? null : a)
+                                            }
+                                            className={cn(
+                                                "cursor-pointer px-1.5 py-0.5 text-[8px] font-mono uppercase tracking-wider transition-colors",
+                                                filterAgent === a
+                                                    ? "text-foreground"
+                                                    : "text-muted-foreground hover:text-foreground"
+                                            )}
+                                            style={
+                                                filterAgent === a
+                                                    ? {
+                                                        backgroundColor: `${AGENT_COLORS[a] ?? "#888"}20`,
+                                                        borderBottom: `1px solid ${AGENT_COLORS[a] ?? "#888"}`,
+                                                    }
+                                                    : undefined
+                                            }
+                                        >
+                                            {a}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="mx-2 h-3 w-px bg-border/30" />
+
+                                <span className="text-[8px] font-mono uppercase tracking-wider text-muted-foreground">
+                                    Type:
+                                </span>
+                                <div className="flex gap-1">
+                                    {(["prediction", "actual", "injection"] as TimelineEventType[]).map(
+                                        (t) => (
+                                            <button
+                                                key={t}
+                                                onClick={() =>
+                                                    setFilterType(filterType === t ? null : t)
+                                                }
+                                                className={cn(
+                                                    "cursor-pointer px-1.5 py-0.5 text-[8px] font-mono uppercase tracking-wider transition-colors",
+                                                    filterType === t
+                                                        ? "text-foreground"
+                                                        : "text-muted-foreground hover:text-foreground"
+                                                )}
+                                                style={
+                                                    filterType === t
+                                                        ? {
+                                                            backgroundColor: `${TYPE_COLORS[t]}20`,
+                                                            borderBottom: `1px solid ${TYPE_COLORS[t]}`,
+                                                        }
+                                                        : undefined
+                                                }
+                                            >
+                                                {t}
+                                            </button>
+                                        )
+                                    )}
+                                </div>
+
+                                <div className="mx-2 h-3 w-px bg-border/30" />
+
+                                <span className="text-[8px] font-mono uppercase tracking-wider text-muted-foreground">
+                                    Turn:
+                                </span>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    max={maxTurn}
+                                    placeholder="from"
+                                    value={filterTurnFrom ?? ""}
+                                    onChange={(e) => setFilterTurnFrom(e.target.value ? Number(e.target.value) : null)}
+                                    className="w-10 bg-transparent text-center text-[9px] font-mono text-foreground outline-none border-b border-border/30 focus:border-primary/50"
+                                />
+                                <span className="text-[8px] text-muted-foreground">–</span>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    max={maxTurn}
+                                    placeholder="to"
+                                    value={filterTurnTo ?? ""}
+                                    onChange={(e) => setFilterTurnTo(e.target.value ? Number(e.target.value) : null)}
+                                    className="w-10 bg-transparent text-center text-[9px] font-mono text-foreground outline-none border-b border-border/30 focus:border-primary/50"
+                                />
+
+                                {hasActiveFilters && (
+                                    <button
+                                        onClick={() => {
+                                            setFilterAgent(null);
+                                            setFilterType(null);
+                                            setFilterTurnFrom(null);
+                                            setFilterTurnTo(null);
+                                        }}
+                                        className="ml-auto cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
+                                        title="Clear all filters"
+                                    >
+                                        <X className="h-3 w-3" />
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Scrubber area — hidden when collapsed via overflow */}
+                        <div className={cn(
+                            "flex min-w-0 flex-1 flex-col transition-opacity duration-300",
+                            collapsed ? "opacity-0 pointer-events-none" : "opacity-100"
+                        )}>
+                            {!collapsed && (
+                                <div className="flex flex-1 flex-col px-4 py-2">
+                                    {/* Tension backdrop SVG */}
+                                    <div className="relative flex-1">
+                                        {tensionPath && (
+                                            <svg
+                                                className="absolute inset-0 h-full w-full"
+                                                viewBox="0 0 100 100"
+                                                preserveAspectRatio="none"
+                                            >
+                                                <defs>
+                                                    <linearGradient
+                                                        id="tensionGrad"
+                                                        x1="0"
+                                                        y1="0"
+                                                        x2="0"
+                                                        y2="1"
+                                                    >
+                                                        <stop offset="0%" stopColor="#e53935" stopOpacity="0.2" />
+                                                        <stop offset="100%" stopColor="#e53935" stopOpacity="0" />
+                                                    </linearGradient>
+                                                </defs>
+                                                <path
+                                                    d={`${tensionPath} L 100 100 L 0 100 Z`}
+                                                    fill="url(#tensionGrad)"
+                                                />
+                                                <path
+                                                    d={tensionPath}
+                                                    fill="none"
+                                                    stroke="#e53935"
+                                                    strokeWidth="0.8"
+                                                    strokeOpacity="0.5"
+                                                    vectorEffect="non-scaling-stroke"
+                                                />
+                                                <line
+                                                    x1={progress}
+                                                    y1="0"
+                                                    x2={progress}
+                                                    y2="100"
+                                                    stroke="#e0e0e0"
+                                                    strokeWidth="0.5"
+                                                    strokeOpacity="0.6"
+                                                    vectorEffect="non-scaling-stroke"
+                                                    strokeDasharray="2 2"
+                                                />
+                                            </svg>
+                                        )}
+
+                                        {/* Event markers */}
+                                        <div className="absolute inset-x-0 top-1/2 h-0">
+                                            {filteredEvents.map((event) => {
+                                                const pos = maxTurn > 0 ? event.turn / maxTurn : 0;
+                                                const isMatched = !!event.matchedPredictionId;
+                                                return (
+                                                    <EventMarker
+                                                        key={event.id}
+                                                        event={event}
+                                                        position={pos}
+                                                        isMatched={isMatched}
+                                                        onHover={(ev, rect) => {
+                                                            setHoveredEvent(ev);
+                                                            setTooltipPos({
+                                                                x: rect.left + rect.width / 2,
+                                                                y: rect.top,
+                                                            });
+                                                        }}
+                                                        onLeave={() => {
+                                                            setHoveredEvent(null);
+                                                            setTooltipPos(null);
+                                                        }}
+                                                    />
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Branch fork markers */}
+                                        {filteredEvents
+                                            .filter((e) => e.type === "injection")
+                                            .map((e) => {
+                                                const pos = maxTurn > 0 ? e.turn / maxTurn : 0;
+                                                return (
+                                                    <div
+                                                        key={`fork-${e.id}`}
+                                                        className="absolute bottom-0 -translate-x-1/2"
+                                                        style={{ left: `${pos * 100}%` }}
+                                                    >
+                                                        <GitBranch className="h-3 w-3 text-destructive/70" />
+                                                    </div>
+                                                );
+                                            })}
+                                    </div>
+
+                                    {/* Scrubber track */}
+                                    <div className="mt-1 flex items-center gap-3">
+                                        {/* Playback controls */}
+                                        <div className="flex shrink-0 items-center gap-0.5">
+                                            <button
+                                                onClick={rewind}
+                                                className="flex h-6 w-6 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                                                title="Rewind"
+                                            >
+                                                <Rewind className="h-3 w-3" />
+                                            </button>
+                                            <button
+                                                onClick={stepBack}
+                                                className="flex h-6 w-6 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                                                title="Step back"
+                                            >
+                                                <SkipBack className="h-3 w-3" />
+                                            </button>
+                                            <button
+                                                onClick={() => setPlaying(!playing)}
+                                                className={cn(
+                                                    "flex h-7 w-7 cursor-pointer items-center justify-center transition-colors",
+                                                    playing
+                                                        ? "text-primary"
+                                                        : "text-muted-foreground hover:text-foreground"
+                                                )}
+                                                title={playing ? "Pause" : "Play"}
+                                            >
+                                                {playing ? (
+                                                    <Pause className="h-3.5 w-3.5" />
+                                                ) : (
+                                                    <Play className="h-3.5 w-3.5" />
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={stepForward}
+                                                className="flex h-6 w-6 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                                                title="Step forward"
+                                            >
+                                                <SkipForward className="h-3 w-3" />
+                                            </button>
+                                            <button
+                                                onClick={fastForward}
+                                                className="flex h-6 w-6 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                                                title="Fast-forward"
+                                            >
+                                                <FastForward className="h-3 w-3" />
+                                            </button>
+                                        </div>
+
+                                        {/* Track */}
+                                        <div
+                                            ref={trackRef}
+                                            className="relative h-2 flex-1 cursor-pointer bg-border/20"
+                                            onClick={handleTrackClick}
+                                        >
+                                            {/* Progress fill */}
+                                            <div
+                                                className="absolute inset-y-0 left-0 bg-primary/40 transition-[width] duration-75"
+                                                style={{ width: `${progress}%` }}
+                                            />
+
+                                            {/* Turn tick marks */}
+                                            {maxTurn <= 50 &&
+                                                Array.from({ length: maxTurn + 1 }, (_, i) => (
+                                                    <div
+                                                        key={i}
+                                                        className="absolute top-0 h-full w-px bg-border/10"
+                                                        style={{ left: `${(i / Math.max(maxTurn, 1)) * 100}%` }}
+                                                    />
+                                                ))}
+
+                                            {/* Escalation markers on track */}
+                                            {snapshots
+                                                .filter((s) => s.escalation)
+                                                .map((s) => (
+                                                    <div
+                                                        key={`esc-${s.turn}`}
+                                                        className="absolute top-0 h-full w-0.5 bg-primary/50"
+                                                        style={{
+                                                            left: `${(s.turn / Math.max(maxTurn, 1)) * 100}%`,
+                                                        }}
+                                                    />
+                                                ))}
+
+                                            {/* Playhead thumb */}
+                                            <div
+                                                className="absolute top-1/2 h-4 w-1.5 -translate-x-1/2 -translate-y-1/2 cursor-grab bg-foreground/90 transition-[left] duration-75 active:cursor-grabbing"
+                                                style={{ left: `${progress}%` }}
+                                                onMouseDown={(e) => {
+                                                    e.preventDefault();
+                                                    handleDragStart();
+                                                }}
+                                            />
+                                        </div>
+
+                                        {/* Speed controls */}
+                                        <div className="flex shrink-0 items-center gap-0.5 border-l border-border/20 pl-2">
+                                            {SPEEDS.map((s) => (
+                                                <SpeedButton
+                                                    key={s}
+                                                    speed={s}
+                                                    active={speed === s}
+                                                    onClick={() => setSpeed(s)}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Collapsed label */}
+                        {collapsed && (
+                            <div className="flex flex-1 items-center gap-3 px-4">
+                                <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">
+                                    Timeline T{currentTurn}/{maxTurn}
+                                </span>
+                                <div className="h-1 flex-1 bg-border/20">
+                                    <div
+                                        className="h-full bg-primary/40"
+                                        style={{ width: `${progress}%` }}
+                                    />
+                                </div>
+                                {playing && (
+                                    <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+}

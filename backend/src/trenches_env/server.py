@@ -81,9 +81,13 @@ def _resolve_cors_settings() -> dict[str, Any]:
 
 
 def _build_env(*, live_source_auto_start: bool, source_warm_start: bool) -> FogOfWarDiplomacyEnv:
-    env = FogOfWarDiplomacyEnv(
-        source_harvester=SourceHarvester(auto_start=live_source_auto_start),
-    )
+    import os
+    if os.getenv("TRENCHES_DISABLE_RSS") == "1":
+        env = FogOfWarDiplomacyEnv(source_harvester=None)
+    else:
+        env = FogOfWarDiplomacyEnv(
+            source_harvester=SourceHarvester(auto_start=live_source_auto_start),
+        )
     if source_warm_start:
         env.enable_source_warm_start()
     return env

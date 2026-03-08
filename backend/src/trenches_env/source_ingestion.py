@@ -325,6 +325,18 @@ class SourceHarvester:
                 self._last_sync_at = packet.fetched_at
 
     def _collect_source(self, source: SourceSpec) -> SourcePacket:
+        import os
+        if source.kind == "rss" and os.getenv("TRENCHES_DISABLE_RSS") == "1":
+            return SourcePacket(
+                source_id=source.id,
+                source_name=source.name,
+                delivery=source.delivery,
+                kind=source.kind,
+                endpoint_kind=source.endpoint.kind,
+                status="error",
+                error="RSS fetching disabled via environment variable during training.",
+            )
+
         probe_urls = self.probe_resolver.resolve_candidates(source)
         if not probe_urls:
             return SourcePacket(
