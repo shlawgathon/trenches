@@ -1949,21 +1949,13 @@ class FogOfWarDiplomacyEnv:
             for agent_id, action in actions.items()
             if action.type in {"strike", "mobilize", "deceive", "sanction"}
         ]
-        action_override = {
-            agent_id: self._build_oversight_override_action(
-                world=world,
-                agent_id=agent_id,
-                action=actions[agent_id],
-                signals=signals,
-            )
-            for agent_id in affected
-        }
+        # Oversight only observes and scores risk — it does NOT override agent actions.
+        # Intervention (action overrides) should only happen via observer or execute/inject.
         return OversightIntervention(
             triggered=True,
             risk_score=risk_score,
             reason="Escalation probability exceeded the intervention threshold.",
             affected_agents=affected or ["us", "israel", "iran", "hezbollah", "gulf"],
-            action_override=action_override,
         )
 
     def _resolve_oversight_actions(

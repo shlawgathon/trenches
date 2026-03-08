@@ -1119,12 +1119,22 @@ function deriveAgentMapNodes(
 ): Record<string, AgentMapNode> {
   const nodes: Record<string, AgentMapNode> = {};
 
+  // Fixed anchor positions — capital / HQ for each nation
+  const AGENT_ANCHORS: Record<string, [number, number]> = {
+    us: [47.5, 29.3],         // CENTCOM — Kuwait / Gulf region
+    israel: [34.78, 32.08],   // Tel Aviv
+    iran: [51.4, 35.7],       // Tehran
+    hezbollah: [35.5, 33.9],  // Beirut / Bekaa
+    gulf: [54.4, 24.5],       // Abu Dhabi / UAE
+  };
+
   for (const [agentId, meta] of Object.entries(AGENT_META)) {
     const assets = entityAssets.filter((asset) => asset.entityId === agentId);
-    if (assets.length === 0) continue;
+    if (assets.length === 0 && !AGENT_ANCHORS[agentId]) continue;
 
-    const longitude = assets.reduce((sum, asset) => sum + asset.longitude, 0) / assets.length;
-    const latitude = assets.reduce((sum, asset) => sum + asset.latitude, 0) / assets.length;
+    const anchor = AGENT_ANCHORS[agentId];
+    const longitude = anchor ? anchor[0] : assets.reduce((sum, asset) => sum + asset.longitude, 0) / assets.length;
+    const latitude = anchor ? anchor[1] : assets.reduce((sum, asset) => sum + asset.latitude, 0) / assets.length;
     const profile = session?.observations[agentId]?.entity_profile as UnknownRecord | undefined;
 
     nodes[agentId] = {
@@ -1487,13 +1497,32 @@ function deriveInteractionArcs(
 ): InteractionArc[] {
   if (!session) return [];
 
+  // Visual target fallback for self-targeting actions (defend, intel_query)
+  const ADVERSARY_FALLBACK: Record<string, string> = {
+    us: "iran",
+    israel: "hezbollah",
+    iran: "israel",
+    hezbollah: "israel",
+    gulf: "iran",
+  };
+
   const arcs: InteractionArc[] = [];
   const seen = new Map<string, InteractionArc>();
+  const minTurn = Math.max(0, maxTurn - 3);
+
+  function resolveTarget(actor: string, actionType: string, rawTarget: string | null | undefined): string | null {
+    if (rawTarget && rawTarget !== actor) return rawTarget;
+    // For self-targeting or null-target actions, use adversary as visual target
+    if (actionType !== "hold" && actionType !== "oversight_review" && actionType !== "negotiate") {
+      return ADVERSARY_FALLBACK[actor] ?? null;
+    }
+    return rawTarget ?? null;
+  }
 
   // Derive from action_log (most recent action per pair wins)
   for (const entry of session.action_log) {
-    if (entry.turn > maxTurn) continue;
-    const target = entry.target;
+    if (entry.turn > maxTurn || entry.turn < minTurn) continue;
+    const target = resolveTarget(entry.actor, entry.action_type, entry.target);
     if (!target || !(target in agentMapNodes) || !(entry.actor in agentMapNodes)) continue;
     if (entry.actor === target) continue;
     if (entry.actor === "oversight" || target === "oversight") continue;
@@ -1519,11 +1548,11 @@ function deriveInteractionArcs(
 
   // Also derive from recent_traces for actions not yet in action_log
   for (const trace of session.recent_traces) {
-    if (trace.turn > maxTurn) continue;
+    if (trace.turn > maxTurn || trace.turn < minTurn) continue;
     for (const [agentId, action] of Object.entries(trace.actions)) {
-      if (!action?.target) continue;
-      const target = action.target;
-      if (!(target in agentMapNodes) || !(agentId in agentMapNodes)) continue;
+      if (!action) continue;
+      const target = resolveTarget(agentId, action.type, action.target);
+      if (!target || !(target in agentMapNodes) || !(agentId in agentMapNodes)) continue;
       if (agentId === target) continue;
       if (agentId === "oversight" || target === "oversight") continue;
       if (action.type === "hold" || action.type === "oversight_review") continue;
