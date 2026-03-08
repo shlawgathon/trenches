@@ -82,21 +82,28 @@ def train() -> None:
     workroot = Path(tempfile.mkdtemp(prefix="trenches-space-"))
     repo_dir = workroot / "trenches"
     output_dir = workroot / "output"
+    cache_dir = workroot / ".cache"
+    uv_cache_dir = cache_dir / "uv"
     output_dir.mkdir(parents=True, exist_ok=True)
+    uv_cache_dir.mkdir(parents=True, exist_ok=True)
+    env = dict(os.environ)
+    env["XDG_CACHE_HOME"] = str(cache_dir)
+    env["UV_CACHE_DIR"] = str(uv_cache_dir)
 
     try:
         clone_cmd = ["git", "clone", "--depth", "1"]
         if git_ref:
             clone_cmd.extend(["--branch", git_ref, "--single-branch"])
         clone_cmd.extend([git_repo_url, str(repo_dir)])
-        run_and_stream(clone_cmd)
+        run_and_stream(clone_cmd, env=env)
 
         python_bin = workroot / ".venv" / "bin" / "python"
         set_status("running", f"Installing training stack for {entity}")
-        run_and_stream(["uv", "venv", str(workroot / ".venv"), "--python", "3.12"])
+        run_and_stream(["uv", "venv", str(workroot / ".venv"), "--python", "3.12"], env=env)
         run_and_stream(
             ["uv", "pip", "install", "--python", str(python_bin), "-e", "backend[train]", "huggingface_hub"],
             cwd=repo_dir,
+            env=env,
         )
         run_and_stream(
             [
@@ -109,9 +116,9 @@ def train() -> None:
                 "vllm",
             ],
             cwd=repo_dir,
+            env=env,
         )
 
-        env = dict(os.environ)
         env["TRL_EXPERIMENTAL_SILENCE"] = "1"
         train_cmd = [
             str(python_bin),

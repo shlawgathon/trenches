@@ -4,6 +4,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     TRL_EXPERIMENTAL_SILENCE=1 \
     PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+    XDG_CACHE_HOME=/tmp/.cache \
+    UV_CACHE_DIR=/tmp/.cache/uv \
     PORT=7860
 
 RUN apt-get update \
