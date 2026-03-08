@@ -42,7 +42,7 @@ COMMON_VARS = {
     "OPTIM": "adamw_bnb_8bit",
     "MAX_PROMPT_LENGTH": "512",
     "MAX_COMPLETION_LENGTH": "64",
-    "VLLM_GPU_MEMORY_UTILIZATION": "0.35",
+    "VLLM_GPU_MEMORY_UTILIZATION": "0.9",
     "VLLM_ENABLE_SLEEP_MODE": "true",
     "SAVE_STRATEGY": "no",
     "UPLOAD_MESSAGE": "Upload Trenches vLLM pilot checkpoint",

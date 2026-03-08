@@ -448,13 +448,14 @@ def main() -> None:
     parser.add_argument(
         "--vllm-gpu-memory-utilization",
         type=float,
-        default=0.35,
-        help="Fraction of GPU memory reserved for vLLM when using the vLLM backend.",
+        default=0.9,
+        help="Fraction of GPU memory reserved for vLLM when using the vLLM backend (0.9 is optimal with sleep mode).",
     )
     parser.add_argument(
         "--vllm-enable-sleep-mode",
-        action="store_true",
-        help="Enable vLLM sleep mode to reduce colocated memory pressure between rollout and optimization.",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Enable vLLM sleep mode so training and generation take turns on GPU (default: on).",
     )
     args = parser.parse_args()
 
@@ -621,7 +622,11 @@ def main() -> None:
     }
     if not args.quantize_4bit:
         training_kwargs["bf16"] = True
-        training_kwargs["model_init_kwargs"] = {"dtype": "bfloat16"}
+        training_kwargs["model_init_kwargs"] = {
+            "dtype": "bfloat16",
+            "device_map": "auto",
+            "torch_dtype": torch.bfloat16,
+        }
     if generation_backend == "vllm":
         training_kwargs["vllm_mode"] = "colocate"
         training_kwargs["vllm_max_model_length"] = args.max_prompt_length + args.max_completion_length
