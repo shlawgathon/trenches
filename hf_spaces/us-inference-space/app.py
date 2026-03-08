@@ -4,12 +4,13 @@ import os
 import threading
 from threading import Thread
 
+os.environ["OMP_NUM_THREADS"] = "1"
+
 import gradio as gr
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, TextIteratorStreamer
 
 
-os.environ["OMP_NUM_THREADS"] = "1"
 MODEL_REPO = os.environ.get("MODEL_REPO", "AlazarM/trenches-us-qwen3-8b-real")
 DEFAULT_SYSTEM_PROMPT = """You are the United States strategic actor in Trenches.
 Respond like a high-capability policy model: concise, analytical, and grounded in statecraft,
@@ -43,7 +44,7 @@ def load_model():
         model = AutoModelForCausalLM.from_pretrained(
             MODEL_REPO,
             device_map="auto",
-            torch_dtype=torch.float16,
+            dtype=torch.float16,
             quantization_config=quantization_config,
         )
         model.eval()
@@ -81,15 +82,23 @@ def respond(
 
     tokenizer, model = load_model()
     messages = build_messages(message, history, system_prompt)
-    inputs = tokenizer.apply_chat_template(
+    encoded = tokenizer.apply_chat_template(
         messages,
         add_generation_prompt=True,
         tokenize=True,
+        return_dict=True,
         return_tensors="pt",
     )
     device = next(model.parameters()).device
-    input_ids = inputs.to(device)
-    attention_mask = torch.ones_like(input_ids)
+    if isinstance(encoded, torch.Tensor):
+        input_ids = encoded.to(device)
+        attention_mask = torch.ones_like(input_ids)
+    else:
+        encoded = {key: value.to(device) for key, value in encoded.items()}
+        input_ids = encoded["input_ids"]
+        attention_mask = encoded.get("attention_mask")
+        if attention_mask is None:
+            attention_mask = torch.ones_like(input_ids)
     streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
 
     generate_kwargs = {

@@ -32,6 +32,7 @@ def main() -> None:
         folder_path=str(SPACE_DIR),
         commit_message="Deploy US Qwen3-8B chat Space",
     )
+    api.add_space_secret(SPACE_REPO, "HF_TOKEN", token)
     api.add_space_variable(SPACE_REPO, "MODEL_REPO", MODEL_REPO)
     api.request_space_hardware(SPACE_REPO, SpaceHardware.T4_SMALL, sleep_time=3600)
     api.restart_space(SPACE_REPO, factory_reboot=True)
