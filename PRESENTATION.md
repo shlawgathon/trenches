@@ -39,13 +39,12 @@ At the product level, Trenches is an operator console plus a simulation backend.
 
 The user sees:
 
-- a full-screen rotating Mapbox globe with fog-of-war styling
-- a top status bar with turn count, live simulation metrics, and map controls
-- a left "Live Intel Feed" sourced from RSS bootstrap items, source packets, events, and public briefs
-- a right "Entity Activity" ledger sourced from backend step traces and rewards
-- a bottom timeline / console surface for playback, event inspection, and provider-source-action review
-- an oversight chat panel that can answer state questions and inject synthetic events with `/inject`
-- a selected-entity context card pinned over the globe when an actor is clicked
+- a globe or theater map
+- live news and reaction feeds
+- recent entity actions
+- a timeline and branch view for what-if exploration
+- a chat panel for injected scenarios
+- per-entity operational context
 
 The backend manages:
 
@@ -87,13 +86,15 @@ The current frontend stack is Next.js 16 with React 19, Tailwind v4, Framer Moti
 
 The frontend acts as a command center, not a consumer-social dashboard. The intended UI language across the docs is tactical, dark, and operator-first:
 
-- globe-first theater view with animated entity markers and highlighted borders
-- top bar with turn, risk, market, and oil-pressure snapshots plus map controls
-- live intel feed with hydration status and per-entity filters
-- entity activity ledger with action type, target, reward, and oversight markers
-- chat panel for oversight queries and synthetic event injection
-- event timeline with timeline mode and console mode
-- selected-entity context panel with current observation summary and latest actions
+- global theater map / globe
+- top bar with simulation stats
+- live news feed
+- activity log
+- chat panel
+- event timeline
+- simulation branch tree
+- inter-agent tension matrix
+- per-entity context panes
 
 The frontend should render different layers differently:
 
@@ -112,20 +113,19 @@ The frontend is responsible for:
 - creating and resetting sessions
 - stepping turns
 - toggling live source mode
-- rendering source-derived intel and action traces from live session state
-- exposing timeline playback and console inspection
-- supporting synthetic scenario injection through the oversight chat surface
-- keeping the globe, side rails, and timeline in sync with the active or rewound turn
+- showing provider readiness and health
+- showing source health
+- visualizing reactions to public news
+- exposing simulation branches and replay inspection
 
 ### Frontend Runtime Flow
 
 1. App boots and calls `/capabilities`.
-2. App creates a session and immediately enables live mode with `auto_step`.
-3. Frontend renders the current `SessionState` onto the globe, feed, activity rail, and timeline.
-4. A five-second loop either advances the simulation or polls state when the viewer is rewound.
-5. User can inject signals through chat or inspect prior turns in timeline / console mode.
-6. Backend returns updated world state, source packets, reactions, traces, and oversight output.
-7. UI re-renders the globe, rails, timeline, and selected-entity context.
+2. App creates or resets a session.
+3. Frontend renders the current `SessionState`.
+4. User steps the simulation or injects signals.
+5. Backend returns updated world state, reward state, oversight output, and reaction/action logs.
+6. UI re-renders map, feeds, matrix, and per-agent panels.
 
 ## 4. Backend Spec
 

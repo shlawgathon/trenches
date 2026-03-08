@@ -321,11 +321,7 @@ export default function GlobePage() {
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
-  const sessionNewsItems = useMemo(() => deriveNewsItems(session), [session]);
-  const newsItems = useMemo(
-    () => mergeNewsItems(sessionNewsItems, liveRssItems),
-    [liveRssItems, sessionNewsItems],
-  );
+  const newsItems = useMemo(() => dedupeNewsItems(liveRssItems).slice(0, 40), [liveRssItems]);
 
   const intensityByAgent = useMemo(() => {
     const intensity = new Map<string, number>();
@@ -636,65 +632,15 @@ export default function GlobePage() {
       markerEl.type = "button";
       markerEl.style.width = `${layerStyle.size}px`;
       markerEl.style.height = `${layerStyle.size}px`;
-      markerEl.style.borderRadius = layerStyle.shape === "rounded-square" ? "5px" : "999px";
+      markerEl.style.borderRadius = "999px";
       markerEl.style.cursor = "pointer";
       markerEl.style.padding = "0";
       markerEl.style.background = entityMeta.color;
       markerEl.style.opacity = String(layerStyle.opacity);
-      markerEl.style.boxShadow = layerStyle.showLabel
-        ? `0 0 14px ${entityMeta.color}, 0 0 24px ${layerStyle.glowColor}66`
-        : `0 0 7px ${entityMeta.color}`;
+      markerEl.style.boxShadow = `0 0 7px ${entityMeta.color}`;
       markerEl.style.border = `1px solid ${layerStyle.borderColor}`;
-      markerEl.style.display = "flex";
-      markerEl.style.alignItems = "center";
-      markerEl.style.justifyContent = "center";
-      markerEl.style.position = "relative";
       markerEl.title = `${entityMeta.flag} ${entityMeta.label}: ${asset.label} (${asset.category}/${asset.section}) status=${asset.status} | lat ${asset.latitude.toFixed(2)}, lon ${asset.longitude.toFixed(2)}`;
       markerEl.setAttribute("aria-label", `${entityMeta.label} asset ${asset.label}`);
-
-      if (layerStyle.showLabel) {
-        const diamondEl = document.createElement("div");
-        diamondEl.style.position = "absolute";
-        diamondEl.style.inset = "0";
-        diamondEl.style.borderRadius = "5px";
-        diamondEl.style.background = entityMeta.color;
-        diamondEl.style.border = `1px solid ${layerStyle.borderColor}`;
-        diamondEl.style.transform = "rotate(45deg)";
-        diamondEl.style.boxShadow = `0 0 14px ${entityMeta.color}, 0 0 24px ${layerStyle.glowColor}66`;
-        markerEl.style.background = "transparent";
-        markerEl.style.border = "none";
-        markerEl.style.boxShadow = "none";
-        markerEl.appendChild(diamondEl);
-
-        const markerCore = document.createElement("div");
-        markerCore.style.position = "relative";
-        markerCore.style.zIndex = "1";
-        markerCore.style.font = "700 8px ui-monospace, SFMono-Regular, Menlo, monospace";
-        markerCore.style.letterSpacing = "0.08em";
-        markerCore.style.color = "#071014";
-        markerCore.textContent = layerStyle.label ?? "";
-        markerEl.appendChild(markerCore);
-
-        const labelEl = document.createElement("div");
-        labelEl.textContent = asset.label;
-        labelEl.style.position = "absolute";
-        labelEl.style.left = "12px";
-        labelEl.style.top = "50%";
-        labelEl.style.transform = "translateY(-50%)";
-        labelEl.style.zIndex = "1";
-        labelEl.style.padding = "2px 6px";
-        labelEl.style.borderRadius = "999px";
-        labelEl.style.border = `1px solid ${entityMeta.color}aa`;
-        labelEl.style.background = "rgba(7, 16, 20, 0.82)";
-        labelEl.style.backdropFilter = "blur(6px)";
-        labelEl.style.color = "#f5f7fb";
-        labelEl.style.font = "600 9px ui-monospace, SFMono-Regular, Menlo, monospace";
-        labelEl.style.whiteSpace = "nowrap";
-        labelEl.style.pointerEvents = "none";
-        labelEl.style.boxShadow = `0 0 12px ${entityMeta.color}55`;
-        markerEl.appendChild(labelEl);
-      }
-
       markerEl.onclick = () => {
         setSelectedAgent(null);
         popupRef.current
@@ -1042,48 +988,13 @@ function deriveAgentMapNodes(
   return nodes;
 }
 
-function getAssetMarkerStyle(asset: SessionEntityAsset): {
-  size: number;
-  opacity: number;
-  borderColor: string;
-  glowColor: string;
-  showLabel: boolean;
-  label: string | null;
-  shape: "circle" | "rounded-square";
-} {
+function getAssetMarkerStyle(asset: SessionEntityAsset): { size: number; opacity: number; borderColor: string } {
   const isStressed = asset.status !== "operational" || (asset.health !== null && asset.health < 80);
-  const isBaseAsset = isBaseCategory(asset.category);
-  const shortLabel = buildAssetShortLabel(asset.label);
   return {
-    size: isBaseAsset ? (isStressed ? 18 : 16) : isStressed ? 9 : 6,
-    opacity: isBaseAsset ? 1 : isStressed ? 1 : 0.82,
-    borderColor: isStressed ? "#ffe082" : isBaseAsset ? "#f8f1ff" : "#ffffff",
-    glowColor: isBaseAsset ? "#ffd166" : "#ffffff",
-    showLabel: isBaseAsset,
-    label: isBaseAsset ? shortLabel : null,
-    shape: isBaseAsset ? "rounded-square" : "circle",
+    size: isStressed ? 9 : 6,
+    opacity: isStressed ? 1 : 0.82,
+    borderColor: isStressed ? "#ffe082" : "#ffffff",
   };
-}
-
-function isBaseCategory(category: string): boolean {
-  const normalized = category.trim().toLowerCase();
-  return (
-    normalized.includes("base")
-    || normalized.includes("naval")
-    || normalized.includes("port")
-    || normalized.includes("logistics")
-    || normalized.includes("command")
-  );
-}
-
-function buildAssetShortLabel(label: string): string {
-  return label
-    .split(/[\s,/()-]+/)
-    .filter(Boolean)
-    .slice(0, 3)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("")
-    .slice(0, 4);
 }
 
 type TopBarExtraStat = {
@@ -1141,16 +1052,15 @@ function deriveTopBarStats(session: SessionState | null, activityCount: number):
   const hydrationValue = hydration.total > 0
     ? `${hydration.ready}/${hydration.total}`
     : "0/0";
-  const resourcePressure = deriveResourcePressure(session);
 
   const topLevelPrimary = Object.entries(world)
     .filter(([key, value]) => key !== "turn" && typeof value === "number")
     .map(([key, value]) => ({
       key,
-      label: key === "oil_pressure" ? "RESOURCE PRESSURE" : humanizeStatKey(key),
-      value: key === "oil_pressure" ? String(Math.round(resourcePressure)) : formatWorldMetric(key, value as number),
+      label: humanizeStatKey(key),
+      value: formatWorldMetric(key, value as number),
       icon: iconForStatKey(key),
-      warn: key === "oil_pressure" ? resourcePressure > 60 : inferWorldMetricWarning(key, value as number),
+      warn: inferWorldMetricWarning(key, value as number),
     }));
 
   const activityStat = {
@@ -1180,48 +1090,6 @@ function deriveTopBarStats(session: SessionState | null, activityCount: number):
   ].filter((stat) => !primary.some((primaryStat) => primaryStat.key === stat.key));
 
   return { primary, extra };
-}
-
-function deriveResourcePressure(session: SessionState): number {
-  const world = session.world;
-  const actorState = world.actor_state ?? {};
-  const activeEvents = world.active_events ?? [];
-
-  const gulfState = actorState.gulf ?? {};
-  const iranState = actorState.iran ?? {};
-  const usState = actorState.us ?? {};
-
-  const shippingEvents = activeEvents.filter((event) => eventMatchesTopic(event, "shipping")).length;
-  const commodityEvents = activeEvents.filter((event) => eventMatchesTopic(event, "commodities")).length;
-  const humanitarianEvents = activeEvents.filter((event) => eventMatchesTopic(event, "humanitarian")).length;
-
-  const demandPressure =
-    Math.max(0, world.market_stress - 25) * 0.22
-    + Math.max(0, world.tension_level - 45) * 0.12;
-  const shippingConstraint =
-    Math.max(0, 78 - (gulfState.shipping_continuity ?? 78)) * 0.45
-    + Math.max(0, 72 - (usState.shipping_security ?? 72)) * 0.28;
-  const supplyRisk =
-    Math.max(0, (iranState.hormuz_leverage ?? 69) - 69) * 0.4
-    + shippingEvents * 3.5
-    + commodityEvents * 4.2
-    + humanitarianEvents * 1.2;
-
-  return clamp(world.oil_pressure + demandPressure + shippingConstraint + supplyRisk, 0, 100);
-}
-
-function eventMatchesTopic(
-  event: SessionState["world"]["active_events"][number],
-  topic: "shipping" | "commodities" | "humanitarian",
-): boolean {
-  const text = `${event.source} ${event.summary}`.toLowerCase();
-  if (topic === "shipping") {
-    return /(shipping|tanker|hormuz|port|maritime|strait|terminal|oil)/.test(text);
-  }
-  if (topic === "commodities") {
-    return /(commodity|gas|lng|mineral|metal|gold|silver|copper|nickel|uranium|phosphate)/.test(text);
-  }
-  return /(humanitarian|aid|civilian|refugee|displacement|relief)/.test(text);
 }
 
 function iconForStatKey(key: string): LucideIcon {
