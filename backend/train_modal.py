@@ -33,7 +33,7 @@ GIT_REF = "main"
 training_image = (
     modal.Image.debian_slim(python_version="3.12")
     .apt_install("git")
-    .env({"IMAGE_VERSION": "3"})  # bump to force rebuild when main changes
+    .env({"IMAGE_VERSION": "4"})  # bump to force rebuild when main changes
     .run_commands(
         f"git clone --depth 1 --branch {GIT_REF} --single-branch {GIT_REPO_URL} /opt/trenches",
         "uv pip install --system -e '/opt/trenches/backend[train]'",
@@ -116,6 +116,7 @@ def _run_training(
         "--save-steps", "25",
         "--output-dir", str(output_dir),
         "--preview-samples", "3",
+        "--no-vllm-enable-sleep-mode",  # H200 has 141GB — all 3 models fit without sleep mode
     ]
 
     print(f"Starting GRPO training for {entity} (colocate mode, single GPU)")
