@@ -212,6 +212,8 @@ export type EventTimelineProps = {
     onRegisterToggle?: (fn: (collapsed: boolean) => void) => void;
     interactionFocus?: TimelineInteractionFocus | null;
     onInteractionFocus?: (focus: TimelineInteractionFocus | null) => void;
+    embedded?: boolean;
+    onCollapsedChange?: (collapsed: boolean) => void;
 };
 
 export function EventTimeline({
@@ -220,6 +222,8 @@ export function EventTimeline({
     onRegisterToggle,
     interactionFocus,
     onInteractionFocus,
+    embedded,
+    onCollapsedChange,
 }: EventTimelineProps) {
     const panelRef = useRef<HTMLDivElement>(null);
     const trackRef = useRef<HTMLDivElement>(null);
@@ -274,6 +278,7 @@ export function EventTimeline({
     // Collapse/expand
     const applyCollapse = useCallback((next: boolean) => {
         setCollapsed(next);
+        onCollapsedChange?.(next);
         if (panelRef.current) {
             gsap.to(panelRef.current, {
                 height: next ? COLLAPSED_HEIGHT : EXPANDED_HEIGHT,
@@ -281,7 +286,7 @@ export function EventTimeline({
                 ease: "power2.inOut",
             });
         }
-    }, []);
+    }, [onCollapsedChange]);
 
     useEffect(() => {
         onRegisterToggle?.(applyCollapse);
@@ -394,8 +399,11 @@ export function EventTimeline({
 
             <div
                 ref={panelRef}
-                className="absolute right-20 bottom-4 left-20 z-30 select-none"
-                style={{ height: collapsed ? COLLAPSED_HEIGHT : EXPANDED_HEIGHT }}
+                className={cn(
+                    "z-40 select-none pointer-events-auto",
+                    embedded ? "relative w-full" : "absolute right-20 bottom-4 left-20"
+                )}
+                style={{ height: EXPANDED_HEIGHT, overflow: "hidden" }}
             >
                 {/* ── Panel wrapper: matches NewsFeed / ActivityLog structure ── */}
                 <div className="relative h-full rounded-md border-[0.75px] border-border/30 p-0">
@@ -415,9 +423,12 @@ export function EventTimeline({
                         }}
                     >
                         {/* Header row */}
-                        <div className="flex shrink-0 items-center gap-2 border-b border-border/30 px-4 py-3">
+                        <div
+                            className="flex shrink-0 cursor-pointer items-center gap-2 border-b border-border/30 px-4 py-3 hover:bg-muted/10"
+                            onClick={() => applyCollapse(!collapsed)}
+                        >
                             <button
-                                onClick={() => applyCollapse(!collapsed)}
+                                onClick={(e) => { e.stopPropagation(); applyCollapse(!collapsed); }}
                                 className="flex h-5 w-5 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
                                 title={collapsed ? "Expand timeline" : "Collapse timeline"}
                             >
@@ -491,6 +502,8 @@ export function EventTimeline({
                                 </button>
                             </div>
                         </div>
+                        {/* Content area with opacity transition matching side panels */}
+                        <div className={cn("flex min-w-0 flex-1 flex-col transition-opacity duration-300", collapsed ? "opacity-0 pointer-events-none" : "opacity-100")}>
 
                         {/* Filter bar (conditional) */}
                         {showFilters && !collapsed && (
@@ -816,6 +829,7 @@ export function EventTimeline({
                                     </div>
                                 </div>
                             )}
+                        </div>
                         </div>
 
                         {/* Collapsed label */}

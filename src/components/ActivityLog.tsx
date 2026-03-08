@@ -62,12 +62,14 @@ export function ActivityLog({
   onRegisterToggle,
   interactionFocus,
   onInteractionFocus,
+  bottomOffset = 80,
 }: {
   items: ActivityItem[];
   focusTurn?: number;
   onRegisterToggle?: (fn: (collapsed: boolean) => void) => void;
   interactionFocus?: InteractionFocus | null;
   onInteractionFocus?: (focus: InteractionFocus | null) => void;
+  bottomOffset?: number;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const visibleItems = focusTurn === undefined ? items : items.filter((item) => item.turn <= focusTurn);
@@ -90,8 +92,24 @@ export function ActivityLog({
 
   const toggle = () => applyCollapse(!collapsed);
 
+  const initialBottomRef = useRef(bottomOffset);
+  const hasMountedRef = useRef(false);
+
+  useEffect(() => {
+    if (!panelRef.current) return;
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+    gsap.to(panelRef.current, {
+      bottom: bottomOffset,
+      duration: 0.4,
+      ease: "power2.inOut",
+    });
+  }, [bottomOffset]);
+
   return (
-    <div ref={panelRef} className="absolute top-6 bottom-6 right-4 z-20 select-none" style={{ width: EXPANDED_WIDTH }}>
+    <div ref={panelRef} className="absolute top-6 right-4 z-20 select-none" style={{ width: EXPANDED_WIDTH, bottom: initialBottomRef.current }}>
       <div className="relative h-full rounded-md border-[0.75px] border-border/30 p-0">
         <GlowingEffect spread={40} glow={true} disabled={false} proximity={64} inactiveZone={0.01} borderWidth={2} />
         <div

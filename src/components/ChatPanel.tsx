@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect, type CSSProperties } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Send, X, Loader2 } from "lucide-react";
 import gsap from "gsap";
 import { cn } from "@/src/lib/utils";
@@ -36,27 +36,45 @@ export function ChatPanel({ open, onClose, sessionId, onHeaderMouseDown, offset 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const panelStyle: CSSProperties = {
-    transform: `translate(calc(-50% + ${offset?.x ?? 0}px), ${offset?.y ?? 0}px)`,
-  };
-
   // GSAP open/close animation
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setVisible(true);
+    }
+  }, [open]);
+
   useEffect(() => {
     if (!panelRef.current) return;
 
-    gsap.fromTo(
-      panelRef.current,
-      { opacity: 0, backdropFilter: "blur(0px)", pointerEvents: "none" },
-      {
-        opacity: 1,
-        backdropFilter: "blur(16px)",
-        pointerEvents: "auto",
-        duration: 0.35,
-        ease: "power3.out",
-      }
-    );
-    setTimeout(() => inputRef.current?.focus(), 350);
-  }, [open]);
+    if (open && visible) {
+      gsap.fromTo(
+        panelRef.current,
+        { opacity: 0, scale: 0.95, y: 10, backdropFilter: "blur(0px)" },
+        {
+          opacity: 1,
+          scale: 1,
+          y: 0,
+          backdropFilter: "blur(16px)",
+          duration: 0.35,
+          ease: "power3.out",
+        }
+      );
+      setTimeout(() => inputRef.current?.focus(), 350);
+    } else if (!open && visible) {
+      gsap.to(panelRef.current, {
+        opacity: 0,
+        scale: 0.95,
+        y: 10,
+        backdropFilter: "blur(0px)",
+        duration: 0.25,
+        ease: "power2.in",
+        onComplete: () => setVisible(false),
+      });
+    }
+  }, [open, visible]);
+
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -78,7 +96,6 @@ export function ChatPanel({ open, onClose, sessionId, onHeaderMouseDown, offset 
     setLoading(true);
 
     try {
-      // Fetch current session state for context
       let context = "";
       if (sessionId) {
         const { apiBaseUrl } = getRuntimeEnv();
@@ -93,7 +110,6 @@ export function ChatPanel({ open, onClose, sessionId, onHeaderMouseDown, offset 
               `Active Events=${state.world?.active_events?.length ?? 0}. ` +
               `Agents: ${Object.keys(state.observations ?? {}).join(", ")}. `;
 
-            // Add recent reactions if available
             try {
               const reactRes = await fetch(`${apiBaseUrl}/sessions/${sessionId}/reactions`);
               if (reactRes.ok) {
@@ -115,7 +131,6 @@ export function ChatPanel({ open, onClose, sessionId, onHeaderMouseDown, offset 
         }
       }
 
-      // Build a local response based on context (no external LLM dependency)
       const assistantMsg: Message = {
         id: `asst-${Date.now()}`,
         role: "assistant",
@@ -123,7 +138,6 @@ export function ChatPanel({ open, onClose, sessionId, onHeaderMouseDown, offset 
         timestamp: Date.now(),
       };
 
-      // Simulate slight delay for UX
       await new Promise((r) => setTimeout(r, 400 + Math.random() * 300));
       setMessages((prev) => [...prev, assistantMsg]);
     } catch {
@@ -148,16 +162,14 @@ export function ChatPanel({ open, onClose, sessionId, onHeaderMouseDown, offset 
     }
   };
 
-
-  if (!open) {
+  if (!visible) {
     return null;
   }
 
   return (
     <div
       ref={panelRef}
-      className="pointer-events-none absolute bottom-20 left-1/2 z-30 w-[540px]"
-      style={panelStyle}
+      className="pointer-events-auto relative z-30 w-[540px]"
     >
       <div
         className="pointer-events-auto flex h-[320px] flex-col overflow-hidden rounded-md border border-border/40 bg-card/40 backdrop-blur-lg"
