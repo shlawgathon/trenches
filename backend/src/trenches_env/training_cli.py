@@ -18,6 +18,7 @@ from trenches_env.server import create_app
 DEFAULT_MODEL_ID = "Qwen/Qwen3-8B"
 DEFAULT_REPLAY_ID = "us_synthetic_seed_2025_2026"
 DEFAULT_TRAINING_STAGE = "stage_1_dense"
+DEFAULT_LORA_TARGET_MODULES = "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj"
 
 
 def _launch_backend(port: int) -> None:
@@ -289,6 +290,15 @@ def _generate_rollout_completions_transformers(
     }
 
 
+def _parse_lora_target_modules(raw_value: str) -> str | list[str]:
+    target_modules = [item.strip() for item in raw_value.split(",") if item.strip()]
+    if not target_modules:
+        raise ValueError("LoRA target modules cannot be empty.")
+    if len(target_modules) == 1 and target_modules[0] == "all-linear":
+        return "all-linear"
+    return target_modules
+
+
 def _preview_rollouts(
     *,
     model: Any,
@@ -376,6 +386,14 @@ def main() -> None:
     parser.add_argument("--no-preview", action="store_true")
     # Post-training plan args
     parser.add_argument("--quantize-4bit", action="store_true", help="Load model with 4-bit NF4 quantization via bitsandbytes (requires CUDA)")
+    parser.add_argument("--lora-r", type=int, default=16, help="LoRA rank used with quantized training")
+    parser.add_argument("--lora-alpha", type=int, default=32, help="LoRA alpha used with quantized training")
+    parser.add_argument("--lora-dropout", type=float, default=0.05, help="LoRA dropout used with quantized training")
+    parser.add_argument(
+        "--lora-target-modules",
+        default=DEFAULT_LORA_TARGET_MODULES,
+        help='Comma-separated LoRA target modules, or "all-linear"',
+    )
     parser.add_argument("--beta", type=float, default=0.04, help="KL coefficient for GRPO")
     parser.add_argument("--warmup-steps", type=int, default=0, help="Number of warmup steps")
     parser.add_argument("--temperature", type=float, default=0.9, help="Sampling temperature for generation")
@@ -400,8 +418,15 @@ def main() -> None:
 
     # Model loading — optionally with 4-bit quantization
     model_ref = args.model_id
+    peft_config = None
     if args.quantize_4bit:
         from transformers import AutoModelForCausalLM, BitsAndBytesConfig
+        try:
+            from peft import LoraConfig, TaskType
+        except ModuleNotFoundError as exc:
+            raise RuntimeError(
+                "Missing PEFT dependency. Install backend[train] so quantized training can attach LoRA adapters."
+            ) from exc
 
         bnb_config = BitsAndBytesConfig(
             load_in_4bit=True,
@@ -413,6 +438,20 @@ def main() -> None:
             args.model_id,
             quantization_config=bnb_config,
             device_map="auto",
+        )
+        peft_config = LoraConfig(
+            task_type=TaskType.CAUSAL_LM,
+            inference_mode=False,
+            r=args.lora_r,
+            lora_alpha=args.lora_alpha,
+            lora_dropout=args.lora_dropout,
+            bias="none",
+            target_modules=_parse_lora_target_modules(args.lora_target_modules),
+        )
+        print(
+            "Attaching LoRA adapters for quantized training "
+            f"(r={args.lora_r}, alpha={args.lora_alpha}, dropout={args.lora_dropout}, "
+            f"targets={args.lora_target_modules})"
         )
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_id)
@@ -522,6 +561,7 @@ def main() -> None:
         train_dataset=train_dataset,
         rollout_func=rollout_func,
         args=training_args,
+        peft_config=peft_config,
     )
 
     train_result = trainer.train()
