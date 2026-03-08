@@ -31,6 +31,7 @@ The simulator is built as a Dockerized OpenEnv environment, extending `openenv.E
 - **Training Integration**: Compatible with RL libraries like TRL (Hugging Face) or TorchForge. Agents train in loops: Reset env → Step with prompts → Update policies via rewards.
 
 Processing of data (e.g., RSS feeds) occurs in the World Monitor sidecar:
+
 - **Ingestion**: World Monitor polls feeds in real-time (e.g., every 5-10 minutes via cron-like jobs) and stores in a lightweight DB (e.g., SQLite or Redis cache).
 - **Filtering and Distribution**: On env `step()` or `reset()`, the OpenEnv server requests agent-specific subsets (e.g., via `/api/geopolitics/v1/filter?agent=US&keywords=polls`). No agent processes the full dataset—each gets tailored snippets (e.g., US: Polymarket polls; Iran: Telegram proxy reports), maintaining fog of war.
 - **Event Injection**: Parsed data triggers stochastic events (e.g., if "strike" in headline, increase tension by 20% with probability 0.7).
@@ -42,34 +43,35 @@ Agents do not have individual dashboards; instead, they access data/tools via pe
 Exactly 6 agents are defined to capture the crisis's core dynamics without combinatorial overload:
 
 1. **US (Trump Admin / CENTCOM)**: Focuses on alliances, sanctions, and domestic stability. Identity: "Hawkish strategist prioritizing oil and polls; defeat enemies via superior force while avoiding backlash."
-    - Model: DeepSeek-V3.2 (256K+ context, agentic reasoning).
-    - Personalized Data/Tools: Polymarket polls, Bloomberg US feeds, sanctions imposition API.
+   - Model: DeepSeek-V3.2 (256K+ context, agentic reasoning).
+   - Personalized Data/Tools: Polymarket polls, Bloomberg US feeds, sanctions imposition API.
 
 2. **Israel (Netanyahu / IDF)**: Emphasizes regime change and border security. Identity: "Defensive aggressor; eliminate threats decisively, model allies' incentives to form unbreakable coalitions."
-    - Model: Qwen3.5-397B-A17B (ultra-long context for multi-step strikes).
-    - Personalized Data/Tools: OREF alerts, ACLED Lebanon data, strike simulation tools.
+   - Model: Qwen3-8B (post-trained per entity via GRPO).
+   - Personalized Data/Tools: OREF alerts, ACLED Lebanon data, strike simulation tools.
 
 3. **Iran (IRGC / Interim Leadership)**: Coordinates retaliation and proxies. Identity: "Resilient defender; use asymmetry and deception to weaken foes, survive escalations at all costs."
-    - Model: GLM-4.7 (tool integration for proxy dynamics).
-    - Personalized Data/Tools: Telegram OSINT, GDELT Iran events, missile launch tools.
+   - Model: GLM-4.7 (tool integration for proxy dynamics).
+   - Personalized Data/Tools: Telegram OSINT, GDELT Iran events, missile launch tools.
 
 4. **Hezbollah (Proxy Swarm Leader)**: Handles asymmetric attacks. Identity: "Opportunistic insurgent; swarm enemies with minimal resources, infer hidden weaknesses for strikes."
-    - Model: Kimi-K2.5 (MoE for swarm tactics).
-    - Personalized Data/Tools: Border webcams, ACLED clashes, drone activation tools.
+   - Model: Kimi-K2.5 (MoE for swarm tactics).
+   - Personalized Data/Tools: Border webcams, ACLED clashes, drone activation tools.
 
 5. **Gulf Coalition (Saudi/UAE/Qatar)**: Balances energy security and neutrality. Identity: "Pragmatic hedger; protect markets by allying selectively, defeat disruptions through economic leverage."
-    - Model: MiniMax-M2.5 (economic reasoning).
-    - Personalized Data/Tools: Commodity dashboard, AIS vessel tracking, blockade evasion tools.
+   - Model: MiniMax-M2.5 (economic reasoning).
+   - Personalized Data/Tools: Commodity dashboard, AIS vessel tracking, blockade evasion tools.
 
 6. **Oversight Agent (Fleet AI Meta-Layer)**: Monitors without negotiating. Identity: "Impartial auditor; explain drifts probabilistically, intervene to align without bias."
-    - Model: Ministral 14B Reasoning (efficient for meta-analysis).
-    - Personalized Data/Tools: Full synthesized briefs, hotspot scores, intervention APIs.
+   - Model: Ministral 14B Reasoning (efficient for meta-analysis).
+   - Personalized Data/Tools: Full synthesized briefs, hotspot scores, intervention APIs.
 
 Each agent's "identity" is embedded via system prompts in LLM inference, ensuring focus on "defeating enemies" (adversarial goals) while building strength (e.g., coalitions). During training, agents "forget" irrelevant knowledge, optimizing solely for crisis survival via RL.
 
 ## Data Integration with World Monitor
 
 Forked from https://github.com/koala73/worldmonitor (AGPL-3.0), this service provides the backbone for live intel:
+
 - **Sources**: 435+ RSS (media outlets like Reuters, Sky News), 26 Telegram OSINT channels, 30+ HLS video streams, 22 webcams (e.g., Gulf hotspots), structured feeds (ACLED conflicts, Polymarket markets, GDELT events, NASA FIRMS fires).
 - **Processing**: Self-hosted in Docker; uses Vite/Tauri for frontend (optional), but we leverage its 22 proto-first APIs (e.g., `/api/geopolitics/v1/list-hotspots`) and WebSockets for real-time pushes.
 - **Per-Agent Filtering**: Agents query tailored endpoints (e.g., US: `?filter=polls+us`; Iran: `?filter=proxies+iran`). No full requests—agents decide what to pull based on prompts (e.g., "If tension >50%, query RSS for enemy movements").
@@ -110,6 +112,7 @@ The simulator is built as a Dockerized OpenEnv environment, extending `openenv.E
 - **Training Integration**: Compatible with RL libraries like TRL (Hugging Face) or TorchForge. Agents train in loops: Reset env → Step with prompts → Update policies via rewards.
 
 Processing of data (e.g., RSS feeds) occurs in the World Monitor sidecar:
+
 - **Ingestion**: World Monitor polls feeds in real-time (e.g., every 5-10 minutes via cron-like jobs) and stores in a lightweight DB (e.g., SQLite or Redis cache).
 - **Filtering and Distribution**: On env `step()` or `reset()`, the OpenEnv server requests agent-specific subsets (e.g., via `/api/geopolitics/v1/filter?agent=US&keywords=polls`). No agent processes the full dataset—each gets tailored snippets (e.g., US: Polymarket polls; Iran: Telegram proxy reports), maintaining fog of war.
 - **Event Injection**: Parsed data triggers stochastic events (e.g., if "strike" in headline, increase tension by 20% with probability 0.7).
@@ -121,34 +124,35 @@ Agents do not have individual dashboards; instead, they access data/tools via pe
 Exactly 6 agents are defined to capture the crisis's core dynamics without combinatorial overload:
 
 1. **US (Trump Admin / CENTCOM)**: Focuses on alliances, sanctions, and domestic stability. Identity: "Hawkish strategist prioritizing oil and polls; defeat enemies via superior force while avoiding backlash."
-    - Model: DeepSeek-V3.2 (256K+ context, agentic reasoning).
-    - Personalized Data/Tools: Polymarket polls, Bloomberg US feeds, sanctions imposition API.
+   - Model: DeepSeek-V3.2 (256K+ context, agentic reasoning).
+   - Personalized Data/Tools: Polymarket polls, Bloomberg US feeds, sanctions imposition API.
 
 2. **Israel (Netanyahu / IDF)**: Emphasizes regime change and border security. Identity: "Defensive aggressor; eliminate threats decisively, model allies' incentives to form unbreakable coalitions."
-    - Model: Qwen3.5-397B-A17B (ultra-long context for multi-step strikes).
-    - Personalized Data/Tools: OREF alerts, ACLED Lebanon data, strike simulation tools.
+   - Model: Qwen3-8B (post-trained per entity via GRPO).
+   - Personalized Data/Tools: OREF alerts, ACLED Lebanon data, strike simulation tools.
 
 3. **Iran (IRGC / Interim Leadership)**: Coordinates retaliation and proxies. Identity: "Resilient defender; use asymmetry and deception to weaken foes, survive escalations at all costs."
-    - Model: GLM-4.7 (tool integration for proxy dynamics).
-    - Personalized Data/Tools: Telegram OSINT, GDELT Iran events, missile launch tools.
+   - Model: GLM-4.7 (tool integration for proxy dynamics).
+   - Personalized Data/Tools: Telegram OSINT, GDELT Iran events, missile launch tools.
 
 4. **Hezbollah (Proxy Swarm Leader)**: Handles asymmetric attacks. Identity: "Opportunistic insurgent; swarm enemies with minimal resources, infer hidden weaknesses for strikes."
-    - Model: Kimi-K2.5 (MoE for swarm tactics).
-    - Personalized Data/Tools: Border webcams, ACLED clashes, drone activation tools.
+   - Model: Kimi-K2.5 (MoE for swarm tactics).
+   - Personalized Data/Tools: Border webcams, ACLED clashes, drone activation tools.
 
 5. **Gulf Coalition (Saudi/UAE/Qatar)**: Balances energy security and neutrality. Identity: "Pragmatic hedger; protect markets by allying selectively, defeat disruptions through economic leverage."
-    - Model: MiniMax-M2.5 (economic reasoning).
-    - Personalized Data/Tools: Commodity dashboard, AIS vessel tracking, blockade evasion tools.
+   - Model: MiniMax-M2.5 (economic reasoning).
+   - Personalized Data/Tools: Commodity dashboard, AIS vessel tracking, blockade evasion tools.
 
 6. **Oversight Agent (Fleet AI Meta-Layer)**: Monitors without negotiating. Identity: "Impartial auditor; explain drifts probabilistically, intervene to align without bias."
-    - Model: Ministral 14B Reasoning (efficient for meta-analysis).
-    - Personalized Data/Tools: Full synthesized briefs, hotspot scores, intervention APIs.
+   - Model: Ministral 14B Reasoning (efficient for meta-analysis).
+   - Personalized Data/Tools: Full synthesized briefs, hotspot scores, intervention APIs.
 
 Each agent's "identity" is embedded via system prompts in LLM inference, ensuring focus on "defeating enemies" (adversarial goals) while building strength (e.g., coalitions). During training, agents "forget" irrelevant knowledge, optimizing solely for crisis survival via RL.
 
 ## Data Integration with World Monitor
 
 Forked from https://github.com/koala73/worldmonitor (AGPL-3.0), this service provides the backbone for live intel:
+
 - **Sources**: 435+ RSS (media outlets like Reuters, Sky News), 26 Telegram OSINT channels, 30+ HLS video streams, 22 webcams (e.g., Gulf hotspots), structured feeds (ACLED conflicts, Polymarket markets, GDELT events, NASA FIRMS fires).
 - **Processing**: Self-hosted in Docker; uses Vite/Tauri for frontend (optional), but we leverage its 22 proto-first APIs (e.g., `/api/geopolitics/v1/list-hotspots`) and WebSockets for real-time pushes.
 - **Per-Agent Filtering**: Agents query tailored endpoints (e.g., US: `?filter=polls+us`; Iran: `?filter=proxies+iran`). No full requests—agents decide what to pull based on prompts (e.g., "If tension >50%, query RSS for enemy movements").
@@ -165,9 +169,9 @@ Agents train in an RL loop using OpenEnv's interfaces, with each having independ
 \[ r_t = 0.3 \cdot C_t + 0.4 \cdot E_t + 0.2 \cdot M_t + 0.1 \cdot B_t \]
 
 - \( C_t \): Coalition Stability (\( \frac{\# \text{allied} - \# \text{betrayals}}{\# \text{agents}} \)).
-- \( E_t \): Escalation Penalty (\( - \sigma(2 \cdot \Delta \text{tension}_t) \)).
+- \( E_t \): Escalation Penalty (\( - \sigma(2 \cdot \Delta \text{tension}\_t) \)).
 - \( M_t \): Market Gain (\( \frac{\Delta \text{oil} + \Delta \text{sanctions}}{2} \)).
-- \( B_t \): Belief Alignment (\( 1 - |I_{\text{inferred}} - I_{\text{true}}| \)).
+- \( B*t \): Belief Alignment (\( 1 - |I*{\text{inferred}} - I\_{\text{true}}| \)).
 
 Oversight scales rewards by 0.5 on high risk. Normalized to [-1, 1]; aggregated over 1000+ turn episodes.
 
@@ -177,7 +181,7 @@ Oversight uses belief propagation for risk:
 
 1. Belief Update: \( B'(s') = \eta \sum_s P(o_t | a_t, s') T(s, a_t, s') B(s) \).
 
-2. Risk Score: \( R(a_t) = \sum_{s'} B'(s') \cdot U(s', a_t) \cdot \sigma(2 \cdot (I_{\text{self}} - I_{\text{other}})) \).
+2. Risk Score: \( R(a*t) = \sum*{s'} B'(s') \cdot U(s', a*t) \cdot \sigma(2 \cdot (I*{\text{self}} - I\_{\text{other}})) \).
 
 Intervene if \( R > 0.5 \). Implemented in NumPy for efficiency.
 
@@ -203,9 +207,9 @@ Agents train in an RL loop using OpenEnv's interfaces, with each having independ
 \[ r_t = 0.3 \cdot C_t + 0.4 \cdot E_t + 0.2 \cdot M_t + 0.1 \cdot B_t \]
 
 - \( C_t \): Coalition Stability (\( \frac{\# \text{allied} - \# \text{betrayals}}{\# \text{agents}} \)).
-- \( E_t \): Escalation Penalty (\( - \sigma(2 \cdot \Delta \text{tension}_t) \)).
+- \( E_t \): Escalation Penalty (\( - \sigma(2 \cdot \Delta \text{tension}\_t) \)).
 - \( M_t \): Market Gain (\( \frac{\Delta \text{oil} + \Delta \text{sanctions}}{2} \)).
-- \( B_t \): Belief Alignment (\( 1 - |I_{\text{inferred}} - I_{\text{true}}| \)).
+- \( B*t \): Belief Alignment (\( 1 - |I*{\text{inferred}} - I\_{\text{true}}| \)).
 
 Oversight scales rewards by 0.5 on high risk. Normalized to [-1, 1]; aggregated over 1000+ turn episodes.
 
@@ -215,7 +219,7 @@ Oversight uses belief propagation for risk:
 
 1. Belief Update: \( B'(s') = \eta \sum_s P(o_t | a_t, s') T(s, a_t, s') B(s) \).
 
-2. Risk Score: \( R(a_t) = \sum_{s'} B'(s') \cdot U(s', a_t) \cdot \sigma(2 \cdot (I_{\text{self}} - I_{\text{other}})) \).
+2. Risk Score: \( R(a*t) = \sum*{s'} B'(s') \cdot U(s', a*t) \cdot \sigma(2 \cdot (I*{\text{self}} - I\_{\text{other}})) \).
 
 Intervene if \( R > 0.5 \). Implemented in NumPy for efficiency.
 

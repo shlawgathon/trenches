@@ -6,10 +6,10 @@ colorTo: gray
 sdk: docker
 app_port: 7860
 ---
+
 <img width="512" height="512" alt="Image Background Remover (1)" src="https://github.com/user-attachments/assets/a1ab0df2-435f-444b-b8a1-36b1a64b55e8" />
 
 # Trenches
-
 
 A multi-agent crisis simulator built on [OpenEnv](https://github.com/openenv-ai/openenv). LLM agents navigate a fog-of-war geopolitical scenario — negotiating coalitions, managing deception, and responding to live global events — while a dedicated oversight agent monitors for dangerous escalation.
 
@@ -17,14 +17,14 @@ A multi-agent crisis simulator built on [OpenEnv](https://github.com/openenv-ai/
 
 Trenches drops six LLM-powered actors into a volatile 2026 Middle East crisis. Each agent operates under partial observability with role-specific intelligence, tools, and incentives. A scalable oversight mechanism intervenes when escalation risk crosses critical thresholds.
 
-| Agent             | Role                                            | Model             |
-| ----------------- | ----------------------------------------------- | ----------------- |
-| 🇺🇸 United States  | Hawkish superpower balancing polls & projection | DeepSeek-V3.2     |
-| 🇮🇱 Israel         | Regional actor with strike autonomy             | Qwen3.5-397B-A17B |
-| 🇮🇷 Iran           | Adversary leveraging proxies & deception        | GLM-4.7           |
-| 🪖 Hezbollah      | Non-state militia with asymmetric tactics       | Kimi-K2.5         |
-| 🛢️ Gulf Coalition | Economic bloc protecting oil & stability        | MiniMax-M2.5      |
-| 🔍 Oversight      | Monitors all actors, intervenes on escalation   | Ministral 14B     |
+| Agent             | Role                                            | Model    |
+| ----------------- | ----------------------------------------------- | -------- |
+| 🇺🇸 United States  | Hawkish superpower balancing polls & projection | Qwen3-8B |
+| 🇮🇱 Israel         | Regional actor with strike autonomy             | Qwen3-8B |
+| 🇮🇷 Iran           | Adversary leveraging proxies & deception        | Qwen3-8B |
+| 🪖 Hezbollah      | Non-state militia with asymmetric tactics       | Qwen3-8B |
+| 🛢️ Gulf Coalition | Economic bloc protecting oil & stability        | Qwen3-8B |
+| 🔍 Oversight      | Monitors all actors, intervenes on escalation   | Qwen3-8B |
 
 ## Key Features
 
@@ -82,9 +82,3 @@ trenches/
 ## License
 
 MIT
-
-
-
-
-
-
