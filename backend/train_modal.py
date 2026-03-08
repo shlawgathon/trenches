@@ -116,7 +116,6 @@ def _run_training(
         "--save-steps", "25",
         "--output-dir", str(output_dir),
         "--preview-samples", "3",
-        "--no-vllm-enable-sleep-mode",  # H200 has 141GB — all 3 models fit without sleep mode
     ]
 
     print(f"Starting GRPO training for {entity} (colocate mode, single GPU)")
