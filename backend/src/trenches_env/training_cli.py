@@ -479,53 +479,53 @@ def main() -> None:
     base_prompt = _build_base_prompt(args.training_agent)
 
     def rollout_func(prompts: list[str], trainer: Any) -> dict[str, list[Any]]:
-        clients: list[TrenchesEnvClient] = []
-        grounded_prompts: list[str] = []
-
-        for index, prompt in enumerate(prompts):
-            client = TrenchesEnvClient(base_url=f"http://127.0.0.1:{args.port}/openenv")
-            reset_result = client.reset(
-                training_agent=args.training_agent,
-                training_stage=args.training_stage,
-                max_turns=1,
-                replay_id=args.replay_id,
-                episode_id=f"train-{index}-{int(time.time() * 1000)}",
-            )
-            observation = reset_result.observation
-            clients.append(client)
-            grounded_prompts.append(
-                _render_observation_prompt(prompt or base_prompt, args.training_agent, observation)
-            )
-
-        if generation_backend == "vllm":
-            outputs = generate_rollout_completions(trainer, grounded_prompts)
-            rollout_outputs = {
-                "prompt_ids": [output["prompt_ids"] for output in outputs],
-                "completion_ids": [output["completion_ids"] for output in outputs],
-                "logprobs": [output["logprobs"] for output in outputs],
-            }
-        else:
-            rollout_outputs = _generate_rollout_completions_transformers(
-                trainer=trainer,
-                prompts=grounded_prompts,
-                tokenizer=tokenizer,
-                max_prompt_length=args.max_prompt_length,
-                max_completion_length=args.max_completion_length,
-            )
-        completion_ids = rollout_outputs["completion_ids"]
-        completions = tokenizer.batch_decode(completion_ids, skip_special_tokens=True)
-
+        prompt_ids: list[list[int]] = []
+        completion_ids: list[list[int]] = []
+        logprobs: list[list[float]] = []
         env_rewards: list[float] = []
         forecast_rewards: list[float] = []
-        for client, completion in zip(clients, completions, strict=True):
-            action, prediction = _parse_turn_output(args.training_agent, completion)
-            step_result = client.step(
-                TrenchesOpenEnvAction(
-                    action=action,
-                    prediction=prediction,
-                    external_signals=[],
+
+        for index, prompt in enumerate(prompts):
+            with TrenchesEnvClient(base_url=f"http://127.0.0.1:{args.port}/openenv") as client:
+                reset_result = client.reset(
+                    training_agent=args.training_agent,
+                    training_stage=args.training_stage,
+                    max_turns=1,
+                    replay_id=args.replay_id,
+                    episode_id=f"train-{index}-{int(time.time() * 1000)}",
                 )
-            )
+                grounded_prompt = _render_observation_prompt(
+                    prompt or base_prompt,
+                    args.training_agent,
+                    reset_result.observation,
+                )
+                if generation_backend == "vllm":
+                    rollout_output = generate_rollout_completions(trainer, [grounded_prompt])[0]
+                else:
+                    rollout_output = {
+                        key: value[0]
+                        for key, value in _generate_rollout_completions_transformers(
+                            trainer=trainer,
+                            prompts=[grounded_prompt],
+                            tokenizer=tokenizer,
+                            max_prompt_length=args.max_prompt_length,
+                            max_completion_length=args.max_completion_length,
+                        ).items()
+                    }
+
+                completion_text = tokenizer.decode(rollout_output["completion_ids"], skip_special_tokens=True)
+                action, prediction = _parse_turn_output(args.training_agent, completion_text)
+                step_result = client.step(
+                    TrenchesOpenEnvAction(
+                        action=action,
+                        prediction=prediction,
+                        external_signals=[],
+                    )
+                )
+
+            prompt_ids.append(list(rollout_output["prompt_ids"]))
+            completion_ids.append(list(rollout_output["completion_ids"]))
+            logprobs.append([float(value) for value in rollout_output["logprobs"]])
             step_reward = step_result.reward if step_result.reward is not None else 0.0
             step_obs = step_result.observation
             forecast_total = step_obs.reward_breakdown.forecast_total if step_obs.reward_breakdown is not None else 0.0
@@ -533,9 +533,9 @@ def main() -> None:
             forecast_rewards.append(float(forecast_total))
 
         return {
-            "prompt_ids": rollout_outputs["prompt_ids"],
+            "prompt_ids": prompt_ids,
             "completion_ids": completion_ids,
-            "logprobs": rollout_outputs["logprobs"],
+            "logprobs": logprobs,
             "env_reward": env_rewards,
             "forecast_reward": forecast_rewards,
         }
