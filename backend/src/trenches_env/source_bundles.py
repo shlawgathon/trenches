@@ -54,6 +54,10 @@ AGENT_TRAINING_SOURCE_BUNDLES: dict[str, list[str]] = {
         "Iran Stock Index",
     ],
     "hezbollah": [
+        "Reuters Middle East",
+        "Al Jazeera Middle East",
+        "L'Orient-Le Jour",
+        "Naharnet",
         "Abu Ali Express",
         "Abu Ali Express EN",
         "Lebanon Update",
