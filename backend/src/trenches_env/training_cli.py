@@ -415,6 +415,8 @@ def main() -> None:
     parser.add_argument("--max-steps", type=int, default=4)
     parser.add_argument("--num-generations", type=int, default=4)
     parser.add_argument("--generation-backend", choices=["auto", "vllm", "transformers"], default="auto")
+    parser.add_argument("--vllm-mode", choices=["server", "colocate"], default="colocate",
+                        help="vLLM mode: 'server' (separate GPU) or 'colocate' (shared GPU)")
     parser.add_argument("--max-prompt-length", type=int, default=1024)
     parser.add_argument("--max-completion-length", type=int, default=220)
     parser.add_argument("--per-device-train-batch-size", type=int, default=1)
@@ -454,6 +456,12 @@ def main() -> None:
             "vLLM requires total*utilization <= free_memory at init, so this must "
             "account for training + reference model weights already on GPU."
         ),
+    )
+    parser.add_argument(
+        "--vllm-server-port",
+        type=int,
+        default=8000,
+        help="Port for vLLM server in server mode (default: 8000).",
     )
     parser.add_argument(
         "--vllm-enable-sleep-mode",
@@ -545,7 +553,7 @@ def main() -> None:
     # The ref model will be loaded but then offloaded before vLLM init with sleep mode.
     #
     # Without sleep mode: all 3 models coexist, so utilization must be conservative.
-    if generation_backend == "vllm" and torch.cuda.is_available():
+    if generation_backend == "vllm" and args.vllm_mode == "colocate" and torch.cuda.is_available():
         free_bytes, total_bytes = torch.cuda.mem_get_info(0)
         free_gib = free_bytes / (1024 ** 3)
         total_gib = total_bytes / (1024 ** 3)
@@ -685,10 +693,14 @@ def main() -> None:
     if not args.quantize_4bit:
         training_kwargs["bf16"] = True
     if generation_backend == "vllm":
-        training_kwargs["vllm_mode"] = "colocate"
-        training_kwargs["vllm_max_model_length"] = args.max_prompt_length + args.max_completion_length
-        training_kwargs["vllm_gpu_memory_utilization"] = args.vllm_gpu_memory_utilization
-        training_kwargs["vllm_enable_sleep_mode"] = args.vllm_enable_sleep_mode
+        training_kwargs["vllm_mode"] = args.vllm_mode
+        if args.vllm_mode == "server":
+            training_kwargs["vllm_server_host"] = f"localhost"
+            training_kwargs["vllm_server_base_url"] = f"http://localhost:{args.vllm_server_port}"
+        elif args.vllm_mode == "colocate":
+            training_kwargs["vllm_max_model_length"] = args.max_prompt_length + args.max_completion_length
+            training_kwargs["vllm_gpu_memory_utilization"] = args.vllm_gpu_memory_utilization
+            training_kwargs["vllm_enable_sleep_mode"] = args.vllm_enable_sleep_mode
 
     training_args = GRPOConfig(**training_kwargs)
 

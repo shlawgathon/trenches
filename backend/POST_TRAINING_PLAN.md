@@ -2,15 +2,24 @@
 
 ## Overview
 
-6 HF A100 Spaces running in parallel. Total wall time: **1 hour**. Total cost: **$15**. Base model: **Qwen/Qwen3-8B** (no quantization).
+6 Modal A100-80GB×2 containers running in parallel. Total wall time: **~1 hour**. Total cost: **~$33**. Base model: **Qwen/Qwen3-8B** (full precision, vLLM server mode).
 
 GRPO post-training on OpenEnv. Qwen3-8B already knows how to reason — we're aligning it to each entity's policy behavior through the environment reward signal.
 
+## Infrastructure
+
+**Modal** with vLLM **server mode** (2 GPUs per entity):
+
+- **GPU 0**: vLLM server (dedicated inference GPU — full 80GB for model + KV cache)
+- **GPU 1**: GRPO training (dedicated training GPU — full 80GB for policy + ref + optimizer)
+
+No memory contention. No sleep mode hacks. Full vLLM speed.
+
 ## Cost
 
-| Item      | Rate     | Quantity      | Cost    |
-| --------- | -------- | ------------- | ------- |
-| A100 80GB | $2.50/hr | 6 Spaces × 1h | **$15** |
+| Item          | Rate      | Quantity        | Cost     |
+| ------------- | --------- | --------------- | -------- |
+| A100-80GB × 2 | ~$5.56/hr | 6 entities × 1h | **~$33** |
 
 ## Optimal Hyperparameters
 
@@ -20,43 +29,35 @@ Researched from TRL docs, DeepSeek-R1 paper, Open-R1 recipe, and TRL OpenEnv exa
 # Model
 model_id: Qwen/Qwen3-8B
 # No quantization — full precision on A100 80GB.
-# Quantization noise actually aids exploration (QeRL paper).
 
 # GRPO Core (from DeepSeek-R1 + Open-R1 recipes)
 algorithm: GRPO
 loss_type: grpo
 beta: 0.001 # KL coefficient (DeepSeek-R1 uses 0.001)
-num_generations:
-  16 # DeepSeek-R1: "sample 16 outputs per prompt"
-  # More generations = better group-relative advantage signal
-max_steps: 100 # 1 hour on A100 with these settings
+num_generations: 16 # DeepSeek-R1: "sample 16 outputs per prompt"
+max_steps: 100 # 1 hour on A100 with vLLM server mode
 warmup_steps: 10 # Stabilize early training
 
 # Learning Rate
-learning_rate:
-  5e-6 # Open-R1 + OpenEnv Sudoku example both use 5e-6
-  # Higher than our earlier 5e-7; research shows
-  # post-training converges faster with this range
+learning_rate: 5e-6 # Open-R1 + OpenEnv Sudoku example both use 5e-6
 
 # Batching
-per_device_train_batch_size: 1 # Memory-safe for 9B 4-bit
-gradient_accumulation_steps: 8 # Effective batch = 8 (from TRL Sudoku OpenEnv example)
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 8 # Effective batch = 8
 
 # Context
 max_prompt_length: 1536
 max_completion_length: 256
 
-# Generation Sampling (from TRL OpenEnv Sudoku)
-temperature: 0.8 # Balanced exploration vs exploitation
-top_k: 10 # Focused sampling
+# Generation
+generation_backend: vllm
+vllm_mode: server # Separate GPU for vLLM — no memory contention
+temperature: 0.8
+top_k: 10
 
 # Saving
 save_strategy: steps
-save_steps: 25 # Checkpoint every 25 steps (4 saves per run)
-
-# Inference
-generation_backend: transformers # vllm if CUDA available
-# If vllm: use_vllm=True, vllm_mode="colocate", vllm_gpu_memory_utilization=0.3
+save_steps: 25 # 4 checkpoints per run
 
 # Preview
 preview_samples: 3
@@ -65,36 +66,30 @@ training_stage: stage_1_dense
 
 ### Why These Settings
 
-| Setting                    | Value                                           | Source/Reasoning                                                                               |
-| -------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `num_generations: 16`      | DeepSeek-R1                                     | More rollouts = better advantage estimation. 16 is the standard for GRPO                       |
-| `beta: 0.001`              | DeepSeek-R1                                     | Low KL penalty allows the model to explore further from base policy                            |
-| `learning_rate: 5e-6`      | Open-R1 + TRL examples                          | 10x higher than our earlier setting; post-training on instruct models converges with higher LR |
-| `gradient_accumulation: 8` | TRL OpenEnv Sudoku                              | Effective batch of 8 stabilizes updates without excessive VRAM                                 |
-| `temperature: 0.8`         | TRL OpenEnv Sudoku                              | Encourages diverse completions during rollout                                                  |
-| `No quantization`          | A100 80GB has enough VRAM for 8B full precision | Full precision avoids quantization noise and simplifies checkpointing                          |
+| Setting                    | Value                  | Source/Reasoning                                      |
+| -------------------------- | ---------------------- | ----------------------------------------------------- |
+| `num_generations: 16`      | DeepSeek-R1            | More rollouts = better advantage estimation           |
+| `beta: 0.001`              | DeepSeek-R1            | Low KL penalty allows exploration                     |
+| `learning_rate: 5e-6`      | Open-R1 + TRL examples | Post-training converges with higher LR                |
+| `gradient_accumulation: 8` | TRL OpenEnv Sudoku     | Effective batch of 8 stabilizes updates               |
+| `temperature: 0.8`         | TRL OpenEnv Sudoku     | Encourages diverse completions                        |
+| `vllm_mode: server`        | Modal 2-GPU            | Eliminates GPU memory contention                      |
+| `No quantization`          | A100 80GB              | Full precision avoids noise, simplifies checkpointing |
 
-## Per-Space Command
-
-Replace `ENTITY` with: `us`, `israel`, `iran`, `hezbollah`, `gulf`, `oversight`
+## Commands
 
 ```bash
-python -m trenches_env.training_cli \
-  --model-id Qwen/Qwen3-8B \
-  --training-agent ENTITY \
-  --replay-id ENTITY_synthetic_seed_2025_2026 \
-  --output-dir checkpoints/ENTITY-qwen3-8b \
-  --generation-backend transformers \
-  --training-stage stage_1_dense \
-  --max-steps 100 \
-  --train-size 256 \
-  --num-generations 16 \
-  --per-device-train-batch-size 1 \
-  --gradient-accumulation-steps 8 \
-  --learning-rate 5e-6 \
-  --max-prompt-length 1536 \
-  --max-completion-length 256 \
-  --preview-samples 3
+# Smoke test (single entity, 1 step)
+modal run backend/train_modal.py::smoke --entity us
+
+# Full training (single entity)
+modal run --detach backend/train_modal.py::train --entity us --replay-id us_synthetic_seed_2025_2026
+
+# Full training (all 6 entities in parallel)
+modal run --detach backend/train_modal.py::train_all
+
+# Download checkpoints
+modal volume get trenches-checkpoints .
 ```
 
 ## HuggingFace Hub Output
@@ -112,10 +107,12 @@ Each checkpoint contains: `config.json`, `model.safetensors`, `tokenizer.json`, 
 
 ## Build Steps
 
-1. ~~Create 5 replay datasets (israel, iran, hezbollah, gulf, oversight)~~ ✅ done (synthetic seed data in `synthetic_historical_replays/`)
-2. ~~Add `--quantize-4bit` to `training_cli.py` (NF4 via bitsandbytes)~~ ✅ done
+1. ~~Create 5 replay datasets (israel, iran, hezbollah, gulf, oversight)~~ ✅ done
+2. ~~Add `--quantize-4bit` to `training_cli.py`~~ ✅ done
 3. ~~Add `beta`, `warmup_steps`, `temperature`, `top_k`, `save_strategy` CLI args~~ ✅ done
 4. ~~Add `bitsandbytes>=0.43.0` to `pyproject.toml`~~ ✅ done
 5. ~~Smoke test locally with tiny-gpt2~~ ✅ done (US + Israel pass)
-6. ~~Smoke test on HF T4 GPU~~ ✅ done ([trenches-training-smoke](https://huggingface.co/spaces/AlazarM/trenches-training-smoke))
-7. Spin up 6 HF A100 Spaces → 1 hour → done
+6. ~~Smoke test on HF T4 GPU~~ ✅ done
+7. ~~Create Modal training script (`train_modal.py`)~~ ✅ done
+8. Smoke test on Modal: `modal run backend/train_modal.py::smoke --entity us`
+9. Spin up 6 Modal containers → 1 hour → done
