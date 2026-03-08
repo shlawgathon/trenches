@@ -6,7 +6,7 @@ colorTo: gray
 sdk: docker
 app_port: 7860
 ---
-<img width="1024" height="559" alt="Image Background Remover (1)" src="https://github.com/user-attachments/assets/a1ab0df2-435f-444b-b8a1-36b1a64b55e8" />
+<img width="512" height="512" alt="Image Background Remover (1)" src="https://github.com/user-attachments/assets/a1ab0df2-435f-444b-b8a1-36b1a64b55e8" />
 
 # Trenches
 
