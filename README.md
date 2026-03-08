@@ -6,8 +6,10 @@ colorTo: gray
 sdk: docker
 app_port: 7860
 ---
+<img width="512" height="512" alt="Image Background Remover (1)" src="https://github.com/user-attachments/assets/a1ab0df2-435f-444b-b8a1-36b1a64b55e8" />
 
 # Trenches
+
 
 A multi-agent crisis simulator built on [OpenEnv](https://github.com/openenv-ai/openenv). LLM agents navigate a fog-of-war geopolitical scenario — negotiating coalitions, managing deception, and responding to live global events — while a dedicated oversight agent monitors for dangerous escalation.
 
@@ -80,3 +82,9 @@ trenches/
 ## License
 
 MIT
+
+
+
+
+
+
