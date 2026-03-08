@@ -21,8 +21,16 @@ DEFAULT_TRAINING_STAGE = "stage_1_dense"
 DEFAULT_LORA_TARGET_MODULES = "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj"
 
 
-def _launch_backend(port: int) -> None:
-    app = create_app()
+def _launch_backend(
+    port: int,
+    *,
+    live_source_auto_start: bool = False,
+    source_warm_start: bool = False,
+) -> None:
+    app = create_app(
+        live_source_auto_start=live_source_auto_start,
+        source_warm_start=source_warm_start,
+    )
     thread = threading.Thread(
         target=lambda: uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning"),
         daemon=True,
@@ -290,6 +298,23 @@ def _generate_rollout_completions_transformers(
     }
 
 
+def _truncate_prompt_for_model(*, tokenizer: Any, prompt: str, max_prompt_length: int) -> str:
+    encoded = tokenizer(
+        prompt,
+        truncation=True,
+        max_length=max_prompt_length,
+        add_special_tokens=False,
+    )
+    input_ids = encoded.get("input_ids", [])
+    if not input_ids:
+        return prompt
+    return tokenizer.decode(
+        input_ids,
+        skip_special_tokens=False,
+        clean_up_tokenization_spaces=False,
+    )
+
+
 def _parse_lora_target_modules(raw_value: str) -> str | list[str]:
     target_modules = [item.strip() for item in raw_value.split(",") if item.strip()]
     if not target_modules:
@@ -431,7 +456,11 @@ def main() -> None:
     if generation_backend == "vllm" and generate_rollout_completions is None:
         raise RuntimeError("The selected vLLM backend requires `trl.experimental.openenv.generate_rollout_completions`.")
 
-    _launch_backend(args.port)
+    _launch_backend(
+        args.port,
+        live_source_auto_start=False,
+        source_warm_start=False,
+    )
 
     # Model loading — optionally with 4-bit quantization
     model_ref = args.model_id
@@ -500,7 +529,12 @@ def main() -> None:
                     reset_result.observation,
                 )
                 if generation_backend == "vllm":
-                    rollout_output = generate_rollout_completions(trainer, [grounded_prompt])[0]
+                    rollout_prompt = _truncate_prompt_for_model(
+                        tokenizer=tokenizer,
+                        prompt=grounded_prompt,
+                        max_prompt_length=args.max_prompt_length,
+                    )
+                    rollout_output = generate_rollout_completions(trainer, [rollout_prompt])[0]
                 else:
                     rollout_output = {
                         key: value[0]
@@ -555,7 +589,6 @@ def main() -> None:
         "gradient_accumulation_steps": args.gradient_accumulation_steps,
         "num_generations": args.num_generations,
         "generation_batch_size": args.num_generations,
-        "max_prompt_length": args.max_prompt_length,
         "max_completion_length": args.max_completion_length,
         "logging_steps": 1,
         "report_to": [],
@@ -572,6 +605,7 @@ def main() -> None:
         training_kwargs["model_init_kwargs"] = {"dtype": "bfloat16"}
     if generation_backend == "vllm":
         training_kwargs["vllm_mode"] = "colocate"
+        training_kwargs["vllm_max_model_length"] = args.max_prompt_length + args.max_completion_length
 
     training_args = GRPOConfig(**training_kwargs)
 

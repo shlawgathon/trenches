@@ -80,11 +80,26 @@ def _resolve_cors_settings() -> dict[str, Any]:
     }
 
 
-def create_app(session_manager: SessionManager | None = None) -> FastAPI:
+def _build_env(*, live_source_auto_start: bool, source_warm_start: bool) -> FogOfWarDiplomacyEnv:
+    env = FogOfWarDiplomacyEnv(
+        source_harvester=SourceHarvester(auto_start=live_source_auto_start),
+    )
+    if source_warm_start:
+        env.enable_source_warm_start()
+    return env
+
+
+def create_app(
+    session_manager: SessionManager | None = None,
+    *,
+    live_source_auto_start: bool = True,
+    source_warm_start: bool = True,
+) -> FastAPI:
     manager = session_manager or SessionManager(
-        env=FogOfWarDiplomacyEnv(
-            source_harvester=SourceHarvester(auto_start=True),
-        ).enable_source_warm_start()
+        env=_build_env(
+            live_source_auto_start=live_source_auto_start,
+            source_warm_start=source_warm_start,
+        )
     )
 
     @asynccontextmanager
@@ -100,9 +115,10 @@ def create_app(session_manager: SessionManager | None = None) -> FastAPI:
     runtime = OpenEnvAdapter(session_manager=manager)
     openenv_app = create_openenv_fastapi_app(
         lambda: TrenchesOpenEnvEnvironment(
-            env=FogOfWarDiplomacyEnv(
-                source_harvester=SourceHarvester(auto_start=False),
-            ).enable_source_warm_start()
+            env=_build_env(
+                live_source_auto_start=live_source_auto_start,
+                source_warm_start=source_warm_start,
+            )
         )
     )
     if openenv_app is not None:
