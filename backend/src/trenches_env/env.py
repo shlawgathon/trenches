@@ -131,6 +131,7 @@ SOURCE_DELIVERY_RELIABILITY = {
 }
 CONTRADICTION_TOPIC_LABELS = {
     "shipping": "shipping disruption",
+    "commodities": "commodity-market disruption",
     "border": "border escalation",
     "corridor": "corridor interdiction",
     "domestic": "domestic stability",
@@ -140,7 +141,24 @@ CONTRADICTION_TOPIC_LABELS = {
     "diplomacy": "diplomatic signaling",
 }
 LATENT_EVENT_TOPIC_KEYWORDS = {
-    "shipping": ("shipping", "tanker", "hormuz", "port", "oil", "maritime", "terminal", "ais", "vessel"),
+    "shipping": ("shipping", "tanker", "hormuz", "oil", "maritime", "terminal", "seaport", "harbor", "ais", "vessel"),
+    "commodities": (
+        "gold",
+        "silver",
+        "copper",
+        "lithium",
+        "nickel",
+        "uranium",
+        "phosphate",
+        "bauxite",
+        "rare earth",
+        "rare-earth",
+        "commodity",
+        "mineral",
+        "metals",
+        "natural gas",
+        "lng",
+    ),
     "border": ("rocket", "missile", "border", "galilee", "idf", "drone", "lebanon", "launch", "intercept"),
     "corridor": ("corridor", "bekaa", "syria", "transfer", "logistics", "interdiction", "sustainment"),
     "domestic": ("sanction", "unrest", "protest", "inflation", "currency", "domestic", "regime"),
@@ -151,17 +169,18 @@ LATENT_EVENT_TOPIC_KEYWORDS = {
 }
 LATENT_EVENT_LINKS = {
     "shipping": ("market",),
+    "commodities": ("market", "shipping"),
     "border": ("humanitarian",),
     "corridor": ("border",),
     "cyber": ("market",),
 }
 BELIEF_TOPIC_PRIORS = {
-    "us": {"shipping": 0.12, "diplomacy": 0.08, "market": 0.06, "border": 0.04},
+    "us": {"shipping": 0.12, "commodities": 0.09, "diplomacy": 0.08, "market": 0.06, "border": 0.04},
     "israel": {"border": 0.14, "corridor": 0.08, "diplomacy": 0.04},
-    "iran": {"corridor": 0.14, "domestic": 0.1, "shipping": 0.06},
+    "iran": {"corridor": 0.14, "domestic": 0.1, "shipping": 0.06, "commodities": 0.08},
     "hezbollah": {"border": 0.12, "corridor": 0.1, "domestic": 0.04},
-    "gulf": {"shipping": 0.16, "market": 0.12, "diplomacy": 0.06},
-    "oversight": {"cyber": 0.12, "shipping": 0.08, "border": 0.08, "domestic": 0.08},
+    "gulf": {"shipping": 0.16, "commodities": 0.12, "market": 0.12, "diplomacy": 0.06},
+    "oversight": {"cyber": 0.12, "shipping": 0.08, "commodities": 0.08, "border": 0.08, "domestic": 0.08},
 }
 BELIEF_PERSISTENCE_FLOOR = 0.12
 BELIEF_MAX_STALE_TURNS = 4
@@ -541,6 +560,8 @@ class FogOfWarDiplomacyEnv:
             severity = max(severity, 0.82)
         if "shipping" in categories:
             severity = max(severity, 0.72)
+        if "commodities" in categories:
+            severity = max(severity, 0.62)
         if "cyber" in categories or "unrest" in categories:
             severity = max(severity, 0.64)
         if "market" in categories:
@@ -583,14 +604,34 @@ class FogOfWarDiplomacyEnv:
             "vessel",
             "hormuz",
             "oil",
-            "port",
             "terminal",
+            "seaport",
+            "harbor",
             "maritime",
             "strait",
             "pipeline",
             "red sea",
         ):
             categories.add("shipping")
+        if self._signal_mentions(
+            text,
+            "gold",
+            "silver",
+            "copper",
+            "lithium",
+            "nickel",
+            "uranium",
+            "phosphate",
+            "bauxite",
+            "rare earth",
+            "rare-earth",
+            "commodity",
+            "mineral",
+            "metals",
+            "natural gas",
+            "lng",
+        ):
+            categories.add("commodities")
         if self._signal_mentions(text, "ceasefire", "talk", "negotiat", "summit", "diplomat", "mediat"):
             categories.add("diplomacy")
         if self._signal_mentions(text, "humanitarian", "aid", "displacement", "relief", "civilian", "refugee"):
@@ -599,7 +640,7 @@ class FogOfWarDiplomacyEnv:
             categories.add("cyber")
         if self._signal_mentions(text, "protest", "unrest", "sanction", "inflation", "currency", "black market"):
             categories.add("unrest")
-        if self._signal_mentions(text, "market", "investor", "trade", "stocks", "shares", "bond"):
+        if self._signal_mentions(text, "market", "investor", "trade", "stocks", "shares", "bond", "price", "futures"):
             categories.add("market")
         return categories or {"general"}
 
@@ -693,6 +734,7 @@ class FogOfWarDiplomacyEnv:
         signal_context = {
             "attack": 0.0,
             "shipping": 0.0,
+            "commodities": 0.0,
             "diplomacy": 0.0,
             "humanitarian": 0.0,
             "cyber": 0.0,
@@ -723,7 +765,7 @@ class FogOfWarDiplomacyEnv:
 
         signal_context["pressure"] = sum(
             signal_context[category]
-            for category in ("attack", "shipping", "diplomacy", "humanitarian", "cyber", "unrest", "market")
+            for category in ("attack", "shipping", "commodities", "diplomacy", "humanitarian", "cyber", "unrest", "market")
         ) + 0.3 * signal_context["general"]
         return signal_context, top_headline
 
@@ -792,6 +834,7 @@ class FogOfWarDiplomacyEnv:
     ) -> float:
         topic_weights = {belief.topic: belief.confidence for belief in belief_state.beliefs[:4]}
         shipping = topic_weights.get("shipping", 0.0)
+        commodities = topic_weights.get("commodities", 0.0)
         border = topic_weights.get("border", 0.0)
         corridor = topic_weights.get("corridor", 0.0)
         diplomacy = topic_weights.get("diplomacy", 0.0)
@@ -801,8 +844,8 @@ class FogOfWarDiplomacyEnv:
         if agent_id in {"us", "gulf"}:
             return {
                 "defend": 0.22 * shipping,
-                "negotiate": 0.16 * diplomacy + 0.08 * shipping,
-                "intel_query": 0.14 * cyber,
+                "negotiate": 0.16 * diplomacy + 0.08 * shipping + 0.10 * commodities,
+                "intel_query": 0.14 * cyber + 0.10 * commodities,
                 "strike": 0.06 * border - 0.12 * diplomacy,
             }.get(action_type, 0.0)
         if agent_id == "israel":
@@ -815,14 +858,14 @@ class FogOfWarDiplomacyEnv:
         if agent_id in {"iran", "hezbollah"}:
             return {
                 "mobilize": 0.16 * corridor + 0.08 * border,
-                "deceive": 0.12 * cyber + 0.08 * corridor,
+                "deceive": 0.12 * cyber + 0.08 * corridor + 0.06 * commodities,
                 "defend": 0.1 * border + 0.08 * domestic,
-                "negotiate": 0.1 * diplomacy - 0.08 * corridor,
+                "negotiate": 0.1 * diplomacy - 0.08 * corridor - 0.04 * commodities,
             }.get(action_type, 0.0)
         return {
-            "oversight_review": 0.18 * (shipping + border + corridor + cyber + domestic),
+            "oversight_review": 0.18 * (shipping + commodities + border + corridor + cyber + domestic),
             "negotiate": 0.12 * diplomacy,
-            "intel_query": 0.1 * cyber,
+            "intel_query": 0.1 * cyber + 0.08 * commodities,
         }.get(action_type, 0.0)
 
     def _live_signal_action_bias(
@@ -833,6 +876,7 @@ class FogOfWarDiplomacyEnv:
     ) -> float:
         attack = signal_context["attack"]
         shipping = signal_context["shipping"]
+        commodities = signal_context["commodities"]
         diplomacy = signal_context["diplomacy"]
         humanitarian = signal_context["humanitarian"]
         cyber = signal_context["cyber"]
@@ -843,9 +887,9 @@ class FogOfWarDiplomacyEnv:
         if agent_id == "us":
             return {
                 "defend": 0.34 * shipping + 0.22 * attack + 0.18 * cyber + 0.14 * market,
-                "negotiate": 0.30 * diplomacy + 0.18 * humanitarian + 0.16 * market + 0.08 * attack,
-                "intel_query": 0.24 * cyber + 0.18 * attack + 0.12 * unrest,
-                "mobilize": 0.16 * attack + 0.12 * shipping,
+                "negotiate": 0.30 * diplomacy + 0.18 * humanitarian + 0.16 * market + 0.08 * attack + 0.10 * commodities,
+                "intel_query": 0.24 * cyber + 0.18 * attack + 0.12 * unrest + 0.12 * commodities,
+                "mobilize": 0.16 * attack + 0.12 * shipping + 0.06 * commodities,
                 "sanction": 0.18 * unrest + 0.10 * cyber,
                 "strike": 0.08 * attack - 0.18 * diplomacy - 0.12 * humanitarian,
                 "deceive": 0.04 * attack - 0.10 * diplomacy,
@@ -866,13 +910,13 @@ class FogOfWarDiplomacyEnv:
 
         if agent_id == "iran":
             return {
-                "mobilize": 0.26 * shipping + 0.18 * attack,
-                "deceive": 0.22 * attack + 0.18 * shipping + 0.14 * cyber,
+                "mobilize": 0.26 * shipping + 0.18 * attack + 0.12 * commodities,
+                "deceive": 0.22 * attack + 0.18 * shipping + 0.14 * cyber + 0.08 * commodities,
                 "defend": 0.26 * unrest + 0.12 * attack,
                 "intel_query": 0.18 * cyber + 0.16 * unrest,
-                "negotiate": 0.14 * diplomacy - 0.14 * attack,
-                "strike": 0.12 * attack + 0.10 * shipping - 0.18 * diplomacy,
-                "hold": 0.08 * diplomacy - 0.06 * shipping,
+                "negotiate": 0.14 * diplomacy - 0.14 * attack - 0.06 * commodities,
+                "strike": 0.12 * attack + 0.10 * shipping + 0.06 * commodities - 0.18 * diplomacy,
+                "hold": 0.08 * diplomacy - 0.06 * shipping - 0.04 * commodities,
                 "sanction": 0.08 * unrest,
             }.get(action_type, 0.0)
 
@@ -891,18 +935,18 @@ class FogOfWarDiplomacyEnv:
         if agent_id == "gulf":
             return {
                 "defend": 0.38 * shipping + 0.18 * attack + 0.16 * market,
-                "negotiate": 0.28 * diplomacy + 0.24 * market + 0.14 * humanitarian,
-                "intel_query": 0.22 * shipping + 0.14 * cyber,
-                "mobilize": 0.16 * attack + 0.10 * shipping - 0.12 * market,
-                "hold": 0.12 * diplomacy - 0.12 * shipping,
-                "strike": 0.04 * attack - 0.24 * market,
-                "sanction": 0.06 * unrest - 0.10 * market,
-                "deceive": -0.12 * market,
+                "negotiate": 0.28 * diplomacy + 0.24 * market + 0.14 * humanitarian + 0.14 * commodities,
+                "intel_query": 0.22 * shipping + 0.14 * cyber + 0.18 * commodities,
+                "mobilize": 0.16 * attack + 0.10 * shipping + 0.04 * commodities - 0.12 * market,
+                "hold": 0.12 * diplomacy - 0.12 * shipping - 0.06 * commodities,
+                "strike": 0.04 * attack + 0.04 * commodities - 0.24 * market,
+                "sanction": 0.06 * unrest + 0.04 * commodities - 0.10 * market,
+                "deceive": 0.04 * commodities - 0.12 * market,
             }.get(action_type, 0.0)
 
         return {
-            "oversight_review": 0.34 * pressure + 0.20 * attack + 0.16 * shipping,
-            "intel_query": 0.24 * cyber + 0.18 * attack + 0.10 * unrest,
+            "oversight_review": 0.34 * pressure + 0.20 * attack + 0.16 * shipping + 0.14 * commodities,
+            "intel_query": 0.24 * cyber + 0.18 * attack + 0.10 * unrest + 0.14 * commodities,
             "negotiate": 0.20 * diplomacy + 0.12 * humanitarian,
             "defend": 0.16 * attack + 0.12 * shipping,
             "hold": 0.08 * diplomacy - 0.08 * pressure,
@@ -950,7 +994,7 @@ class FogOfWarDiplomacyEnv:
             (
                 (category, value)
                 for category, value in signal_context.items()
-                if category in {"attack", "shipping", "diplomacy", "humanitarian", "cyber", "unrest", "market"}
+                if category in {"attack", "shipping", "commodities", "diplomacy", "humanitarian", "cyber", "unrest", "market"}
             ),
             key=lambda item: item[1],
             reverse=True,
@@ -962,6 +1006,7 @@ class FogOfWarDiplomacyEnv:
         return {
             "attack": "cross-border attack reporting",
             "shipping": "shipping-lane disruption reporting",
+            "commodities": "commodity-market disruption reporting",
             "diplomacy": "diplomatic movement",
             "humanitarian": "humanitarian pressure",
             "cyber": "cyber and trace uncertainty",
@@ -1396,6 +1441,9 @@ class FogOfWarDiplomacyEnv:
             if event.topic == "shipping":
                 world.market_stress = self._clamp_percent(world.market_stress + pressure * 0.8)
                 world.oil_pressure = self._clamp_percent(world.oil_pressure + pressure * 1.1)
+            elif event.topic == "commodities":
+                world.market_stress = self._clamp_percent(world.market_stress + pressure * 0.9)
+                world.oil_pressure = self._clamp_percent(world.oil_pressure + pressure * 0.35)
             elif event.topic == "border":
                 world.tension_level = self._clamp_percent(world.tension_level + pressure * 0.9)
             elif event.topic == "corridor":
@@ -1431,7 +1479,7 @@ class FogOfWarDiplomacyEnv:
             self._register_latent_event(world, self._signal_to_latent_event(world, signal))
             world.tension_level = min(100.0, world.tension_level + signal.severity * 8.0)
             world.market_stress = min(100.0, world.market_stress + signal.severity * 6.0)
-            if "oil" in signal.headline.lower() or "shipping" in signal.tags:
+            if self._signal_mentions(signal.headline.lower(), "oil", "gas", "lng") or "shipping" in signal.tags:
                 world.oil_pressure = min(100.0, world.oil_pressure + signal.severity * 10.0)
             self._apply_signal_pressure(world, signal)
             self._apply_signal_asset_effects(world, signal)
@@ -1445,7 +1493,7 @@ class FogOfWarDiplomacyEnv:
             "israel": ("israel", "idf", "oref", "northern front"),
             "iran": ("iran", "tehran", "hormuz", "proxy"),
             "hezbollah": ("hezbollah", "lebanon", "border", "drone"),
-            "gulf": ("gulf", "saudi", "uae", "shipping", "oil"),
+            "gulf": ("gulf", "saudi", "uae", "shipping", "oil", "gold", "silver", "commodity", "lng"),
         }
         affected = [agent_id for agent_id, keywords in mapping.items() if any(keyword in text for keyword in keywords)]
         return affected or ["us", "israel", "iran", "hezbollah", "gulf"]
@@ -2665,6 +2713,30 @@ class FogOfWarDiplomacyEnv:
             self._bump_actor_metric(world, "gulf", "shipping_continuity", -6.8 * severity)
             self._bump_actor_metric(world, "gulf", "investor_confidence", -5.2 * severity)
             self._bump_actor_metric(world, "iran", "hormuz_leverage", 3.0 * severity)
+
+        if self._signal_mentions(
+            text,
+            "gold",
+            "silver",
+            "copper",
+            "lithium",
+            "nickel",
+            "uranium",
+            "phosphate",
+            "bauxite",
+            "rare earth",
+            "rare-earth",
+            "commodity",
+            "mineral",
+            "metals",
+            "natural gas",
+            "lng",
+        ):
+            self._bump_actor_metric(world, "us", "domestic_support", -1.4 * severity)
+            self._bump_actor_metric(world, "gulf", "investor_confidence", -4.8 * severity)
+            self._bump_actor_metric(world, "gulf", "diplomatic_flexibility", -1.8 * severity)
+            self._bump_actor_metric(world, "iran", "hormuz_leverage", 1.2 * severity)
+            self._bump_actor_metric(world, "oversight", "runaway_risk", 1.6 * severity)
 
         if self._signal_mentions(text, "israel", "idf", "blue line", "galilee", "rocket", "drone", "lebanon", "north"):
             self._bump_actor_metric(world, "israel", "homeland_security", -7.0 * severity)

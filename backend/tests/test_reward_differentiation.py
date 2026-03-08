@@ -249,6 +249,45 @@ def test_source_projection_can_express_explicit_contradictions() -> None:
     assert "partial stabilization" in easing_briefs[0].summary
 
 
+def test_precious_metals_and_materials_are_classified_as_commodities() -> None:
+    env = FogOfWarDiplomacyEnv()
+
+    categories = env._classify_signal_categories(
+        "Gold and silver prices jump after lithium and copper export disruptions tighten commodity markets."
+    )
+
+    assert "commodities" in categories
+    assert "market" in categories
+    assert "shipping" not in categories
+
+
+def test_material_shocks_create_commodity_events_and_market_pressure() -> None:
+    env = FogOfWarDiplomacyEnv()
+    session = env.create_session(seed=7, training_stage="stage_3_sparse")
+
+    result = env.step_session(
+        session,
+        StepSessionRequest(
+            actions={},
+            external_signals=[
+                ExternalSignal(
+                    source="commodities-wire",
+                    headline="Gold, silver, copper, and lithium prices jump after regional export disruptions tighten global commodity supply.",
+                    region="gulf",
+                    tags=["gold", "silver", "copper", "lithium", "commodity"],
+                    severity=0.68,
+                )
+            ],
+        ),
+    )
+
+    topics = {event.topic for event in result.session.world.latent_events if event.started_at_turn == result.session.world.turn}
+    assert "commodities" in topics
+    assert "market" in topics
+    assert result.session.world.market_stress > session.world.market_stress
+    assert any(belief.topic == "commodities" for belief in result.session.belief_state["gulf"].beliefs)
+
+
 def test_strike_and_defend_update_asset_health_for_targeted_assets() -> None:
     env = FogOfWarDiplomacyEnv()
     world = env._initial_world()
