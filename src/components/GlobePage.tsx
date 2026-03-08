@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ZoomIn, ZoomOut, RotateCcw, Columns2, Maximize, MessageSquare, Eye, EyeOff } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import { NewsFeed } from "@/src/components/NewsFeed";
 import { ActivityLog } from "@/src/components/ActivityLog";
 import { ChatPanel } from "@/src/components/ChatPanel";
-import { EventTimeline } from "@/src/components/EventTimeline";
+import { EventTimeline, type TimelineInteractionFocus } from "@/src/components/EventTimeline";
 import { SimulationVersionTree, type SimulationBranch } from "@/src/components/SimulationVersionTree";
-import { TensionMatrix, type AgentVisual } from "@/src/components/TensionMatrix";
+import { TensionMatrix, type AgentVisual, type MatrixMode } from "@/src/components/TensionMatrix";
 import { cn } from "@/src/lib/utils";
 import type { AgentAction, SessionState } from "@/src/lib/types";
 import { bootstrapPlatform } from "@/src/app/bootstrap";
@@ -68,6 +68,11 @@ export default function GlobePage() {
   ]);
   const [activeBranchId, setActiveBranchId] = useState(MAIN_BRANCH_ID);
   const [showVisualPanel, setShowVisualPanel] = useState(false);
+  const [interactionFocus, setInteractionFocus] = useState<TimelineInteractionFocus | null>(null);
+  const [matrixMode, setMatrixMode] = useState<MatrixMode>("absolute");
+  const [matrixPos, setMatrixPos] = useState({ x: 0, y: 0 });
+  const [gitTreePos, setGitTreePos] = useState({ x: 0, y: 0 });
+  const [dragTarget, setDragTarget] = useState<"matrix" | "git" | null>(null);
   const [visible, setVisible] = useState({
     topBar: true,
     mapControls: true,
@@ -111,7 +116,8 @@ export default function GlobePage() {
   ), []);
 
   const matrixAgents = useMemo(() => Object.keys(AGENT_MAP_NODES), []);
-  const tensionMatrix = useMemo(() => deriveTensionMatrix(session, matrixAgents), [session, matrixAgents]);
+  const tensionMatrix = useMemo(() => deriveTensionMatrix(session, matrixAgents, "absolute"), [session, matrixAgents]);
+  const tensionDeltaMatrix = useMemo(() => deriveTensionMatrix(session, matrixAgents, "delta"), [session, matrixAgents]);
 
   const selectedAgentActions = useMemo(() => {
     if (!selectedAgent || !session) return [];
@@ -124,6 +130,32 @@ export default function GlobePage() {
     if (!selectedAgent || !session) return null;
     return session.observations[selectedAgent];
   }, [selectedAgent, session]);
+  const startDragging = useCallback((target: "matrix" | "git") => {
+    setDragTarget(target);
+  }, []);
+
+  useEffect(() => {
+    if (!dragTarget) return;
+
+    const onMove = (event: MouseEvent) => {
+      const movement = { x: event.movementX, y: event.movementY };
+      if (dragTarget === "matrix") {
+        setMatrixPos((prev) => ({ x: prev.x + movement.x, y: prev.y + movement.y }));
+      } else {
+        setGitTreePos((prev) => ({ x: prev.x + movement.x, y: prev.y + movement.y }));
+      }
+    };
+
+    const onUp = () => setDragTarget(null);
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [dragTarget]);
+
 
   useEffect(() => {
     const token = getMapboxToken();
@@ -328,40 +360,34 @@ export default function GlobePage() {
         </div>
       </div>}
 
-      <div className="absolute top-24 right-6 z-20 w-[380px] space-y-3">
-        {visible.matrix && (
-          <div className="relative">
-            <button
-              onClick={() => setVisible((prev) => ({ ...prev, matrix: false }))}
-              className="absolute top-2 right-2 z-10 border border-border/40 bg-card/70 px-1.5 py-0.5 text-[9px] font-mono text-muted-foreground hover:text-foreground"
-            >
-              hide
-            </button>
-            <TensionMatrix agents={matrixAgents} matrix={tensionMatrix} visuals={agentVisuals} />
+      {visible.matrix && (
+        <div className="absolute top-24 right-6 z-20 w-[380px]" style={{ transform: `translate(${matrixPos.x}px, ${matrixPos.y}px)` }}>
+          <div className="mb-1 flex cursor-move items-center justify-between border border-border/30 bg-card/70 px-2 py-1 text-[9px] font-mono uppercase text-muted-foreground" onMouseDown={() => startDragging("matrix")}>
+            <span>Drag Matrix</span>
+            <button onClick={() => setVisible((prev) => ({ ...prev, matrix: false }))} className="border border-border/40 px-1.5 py-0.5 hover:text-foreground">hide</button>
           </div>
-        )}
-        {visible.gitTree && (
-          <div className="relative">
-            <button
-              onClick={() => setVisible((prev) => ({ ...prev, gitTree: false }))}
-              className="absolute top-2 right-2 z-10 border border-border/40 bg-card/70 px-1.5 py-0.5 text-[9px] font-mono text-muted-foreground hover:text-foreground"
-            >
-              hide
-            </button>
-            <SimulationVersionTree
-              branches={branches}
-              activeBranchId={activeBranchId}
-              currentTurn={timelineTurn}
-              onCreateBranch={createBranch}
-              onSelectBranch={(branchId, turn) => {
-                setActiveBranchId(branchId);
-                setTimelineTurn(turn);
-              }}
-              onRewindToTurn={setTimelineTurn}
-            />
+          <TensionMatrix agents={matrixAgents} matrix={matrixMode === "absolute" ? tensionMatrix : tensionDeltaMatrix} visuals={agentVisuals} mode={matrixMode} onModeChange={setMatrixMode} />
+        </div>
+      )}
+      {visible.gitTree && (
+        <div className="absolute top-24 right-6 z-20 w-[380px]" style={{ transform: `translate(${gitTreePos.x}px, ${gitTreePos.y + 280}px)` }}>
+          <div className="mb-1 flex cursor-move items-center justify-between border border-border/30 bg-card/70 px-2 py-1 text-[9px] font-mono uppercase text-muted-foreground" onMouseDown={() => startDragging("git")}>
+            <span>Drag Git Tree</span>
+            <button onClick={() => setVisible((prev) => ({ ...prev, gitTree: false }))} className="border border-border/40 px-1.5 py-0.5 hover:text-foreground">hide</button>
           </div>
-        )}
-      </div>
+          <SimulationVersionTree
+            branches={branches}
+            activeBranchId={activeBranchId}
+            currentTurn={timelineTurn}
+            onCreateBranch={createBranch}
+            onSelectBranch={(branchId, turn) => {
+              setActiveBranchId(branchId);
+              setTimelineTurn(turn);
+            }}
+            onRewindToTurn={setTimelineTurn}
+          />
+        </div>
+      )}
 
       {selectedAgent && visible.agentContext && (
         <div className="absolute bottom-52 left-1/2 z-20 w-[420px] -translate-x-1/2 border border-border/30 bg-card/70 p-3 backdrop-blur-xl">
@@ -469,9 +495,9 @@ export default function GlobePage() {
         </div>
       )}
 
-      {visible.newsFeed && <NewsFeed items={newsItems} onRegisterToggle={(fn) => { togglePanelsRef.current[0] = fn; }} />}
-      {visible.activityLog && <ActivityLog items={activityItems} focusTurn={timelineTurn} onRegisterToggle={(fn) => { togglePanelsRef.current[1] = fn; }} />}
-      {visible.timeline && <EventTimeline session={session} onTurnChange={setTimelineTurn} onRegisterToggle={(fn) => { togglePanelsRef.current[2] = fn; }} />}
+      {visible.newsFeed && <NewsFeed items={newsItems} interactionFocus={interactionFocus} onInteractionFocus={setInteractionFocus} onRegisterToggle={(fn) => { togglePanelsRef.current[0] = fn; }} />}
+      {visible.activityLog && <ActivityLog items={activityItems} focusTurn={timelineTurn} interactionFocus={interactionFocus} onInteractionFocus={setInteractionFocus} onRegisterToggle={(fn) => { togglePanelsRef.current[1] = fn; }} />}
+      {visible.timeline && <EventTimeline session={session} onTurnChange={setTimelineTurn} interactionFocus={interactionFocus} onInteractionFocus={setInteractionFocus} onRegisterToggle={(fn) => { togglePanelsRef.current[2] = fn; }} />}
 
       {mapError && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-background">
@@ -501,6 +527,8 @@ export type NewsItem = {
   summary: string;
   severity: number;
   timestamp: string;
+  turn: number;
+  agent: string | null;
   type: "event" | "intel";
 };
 
@@ -528,6 +556,8 @@ function deriveNewsItems(session: SessionState | null): NewsItem[] {
       summary: event.summary,
       severity: event.severity,
       timestamp: session.updated_at,
+      turn: session.world.turn,
+      agent: event.affected_agents[0] ?? null,
       type: "event",
     });
   }
@@ -540,6 +570,8 @@ function deriveNewsItems(session: SessionState | null): NewsItem[] {
         summary: brief.summary,
         severity: brief.confidence,
         timestamp: session.updated_at,
+        turn: session.world.turn,
+        agent: agentId,
         type: "intel",
       });
     }
@@ -572,7 +604,7 @@ function deriveActivityItems(session: SessionState | null): ActivityItem[] {
   return items.slice(0, 120);
 }
 
-function deriveTensionMatrix(session: SessionState | null, agents: string[]): number[][] {
+function deriveTensionMatrix(session: SessionState | null, agents: string[], mode: MatrixMode): number[][] {
   const matrix = agents.map(() => agents.map(() => 0));
   if (!session) return matrix;
 
@@ -589,7 +621,8 @@ function deriveTensionMatrix(session: SessionState | null, agents: string[]): nu
     oversight_review: -4,
   };
 
-  for (const trace of session.recent_traces) {
+  const traces = mode === "delta" ? session.recent_traces.slice(-1) : session.recent_traces;
+  for (const trace of traces) {
     const baseDelta = Math.max(0, trace.tension_after - trace.tension_before);
     for (const [actor, action] of Object.entries(trace.actions)) {
       if (!action) continue;
