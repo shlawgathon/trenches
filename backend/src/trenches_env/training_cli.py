@@ -211,6 +211,81 @@ def _required_training_imports() -> dict[str, Any]:
     }
 
 
+def _normalize_rollout_batches(values: Any) -> list[list[Any]]:
+    if not isinstance(values, list):
+        raise RuntimeError("Rollout output must be a list.")
+    if not values:
+        return []
+    first = values[0]
+    if isinstance(first, list):
+        if first and isinstance(first[0], list):
+            flattened: list[list[Any]] = []
+            for batch in values:
+                if not isinstance(batch, list):
+                    raise RuntimeError("Nested rollout batches must be lists.")
+                for item in batch:
+                    if not isinstance(item, list):
+                        raise RuntimeError("Nested rollout entries must be lists.")
+                    flattened.append(item)
+            return flattened
+        return values
+    return [values]
+
+
+def _generate_rollout_completions_vllm_server(
+    *,
+    prompts: list[str],
+    server_base_url: str,
+    num_generations: int,
+    temperature: float,
+    top_p: float,
+    top_k: int,
+    max_completion_length: int,
+) -> dict[str, list[list[Any]]]:
+    payload: dict[str, Any] = {
+        "prompts": prompts,
+        "n": num_generations,
+        "temperature": temperature,
+        "max_tokens": max_completion_length,
+    }
+    if top_p > 0:
+        payload["top_p"] = top_p
+    if top_k > 0:
+        payload["top_k"] = top_k
+
+    response = httpx.post(
+        f"{server_base_url.rstrip('/')}/generate/",
+        json=payload,
+        timeout=180.0,
+    )
+    response.raise_for_status()
+    result = response.json()
+    required_keys = {"prompt_ids", "completion_ids", "logprobs"}
+    missing = [key for key in required_keys if key not in result]
+    if missing:
+        raise RuntimeError(f"vLLM server rollout response is missing keys: {sorted(missing)}")
+
+    prompt_ids = _normalize_rollout_batches(result["prompt_ids"])
+    completion_ids = _normalize_rollout_batches(result["completion_ids"])
+    logprobs = _normalize_rollout_batches(result["logprobs"])
+
+    expected_completions = len(prompts) * num_generations
+
+    if len(prompt_ids) != len(prompts) or len(completion_ids) != expected_completions or len(logprobs) != expected_completions:
+        raise RuntimeError(
+            "Unexpected vLLM rollout batch sizes: "
+            f"prompt_ids={len(prompt_ids)} completion_ids={len(completion_ids)} "
+            f"logprobs={len(logprobs)} expected_prompts={len(prompts)} "
+            f"expected_completions={expected_completions}"
+        )
+
+    return {
+        "prompt_ids": prompt_ids,
+        "completion_ids": completion_ids,
+        "logprobs": logprobs,
+    }
+
+
 def _resolve_model_device(model: Any) -> Any:
     device = getattr(model, "device", None)
     if device is not None:
@@ -219,13 +294,42 @@ def _resolve_model_device(model: Any) -> Any:
 
 
 def _can_use_vllm(torch_module: Any) -> bool:
-    if not hasattr(torch_module, "cuda") or not torch_module.cuda.is_available():
+    if not _cuda_available(torch_module):
         return False
     try:
         import vllm  # noqa: F401
     except ModuleNotFoundError:
         return False
     return True
+
+
+def _cuda_available(torch_module: Any) -> bool:
+    return bool(hasattr(torch_module, "cuda") and torch_module.cuda.is_available())
+
+
+def _mps_available(torch_module: Any) -> bool:
+    backends = getattr(torch_module, "backends", None)
+    mps = getattr(backends, "mps", None)
+    return bool(mps is not None and mps.is_available())
+
+
+def _resolve_optimizer(requested_optim: str, torch_module: Any) -> str:
+    if requested_optim != "auto":
+        return requested_optim
+    if _cuda_available(torch_module):
+        return "adamw_torch_fused"
+    return "adamw_torch"
+
+
+def _resolve_model_load_kwargs(torch_module: Any) -> dict[str, Any]:
+    if _cuda_available(torch_module):
+        return {
+            "torch_dtype": torch_module.bfloat16,
+            "device_map": {"": 0},
+        }
+    return {
+        "torch_dtype": torch_module.float32,
+    }
 
 
 def _generate_rollout_completions_transformers(
@@ -322,6 +426,14 @@ def _parse_lora_target_modules(raw_value: str) -> str | list[str]:
     return target_modules
 
 
+def _validate_runtime_ports(*, backend_port: int, vllm_mode: str, vllm_server_port: int) -> None:
+    if vllm_mode == "server" and backend_port == vllm_server_port:
+        raise RuntimeError(
+            "The OpenEnv backend port and vLLM server port must differ in server mode. "
+            "Pass --vllm-server-port 8001 (or another free port)."
+        )
+
+
 def _preview_rollouts(
     *,
     model: Any,
@@ -338,47 +450,47 @@ def _preview_rollouts(
 
     print("\nPreview rollouts")
     for sample_index in range(samples):
-        client = TrenchesEnvClient(base_url=f"http://127.0.0.1:{port}/openenv")
-        reset_result = client.reset(
-            training_agent=training_agent,
-            training_stage=training_stage,
-            max_turns=1,
-            replay_id=replay_id,
-            episode_id=f"preview-{sample_index}-{int(time.time() * 1000)}",
-        )
-        observation = reset_result.observation
-        prompt = _render_observation_prompt(
-            _build_base_prompt(training_agent),
-            training_agent,
-            observation,
-        )
-        model_max_length = getattr(tokenizer, "model_max_length", None)
-        if not isinstance(model_max_length, int) or model_max_length <= 0 or model_max_length > 1_000_000:
-            model_max_length = max_prompt_length
-        preview_prompt_length = min(max_prompt_length, model_max_length)
-        inputs = tokenizer(
-            prompt,
-            return_tensors="pt",
-            truncation=True,
-            max_length=preview_prompt_length,
-        ).to(model.device)
-        with torch.no_grad():
-            output = model.generate(
-                **inputs,
-                max_new_tokens=max_completion_length,
-                do_sample=False,
-                pad_token_id=tokenizer.pad_token_id,
+        with TrenchesEnvClient(base_url=f"http://127.0.0.1:{port}/openenv").sync_client() as client:
+            reset_result = client.reset(
+                training_agent=training_agent,
+                training_stage=training_stage,
+                max_turns=1,
+                replay_id=replay_id,
+                episode_id=f"preview-{sample_index}-{int(time.time() * 1000)}",
             )
-        completion_ids = output[0][inputs["input_ids"].shape[1] :]
-        completion = tokenizer.decode(completion_ids, skip_special_tokens=True)
-        action, prediction = _parse_turn_output(training_agent, completion)
-        step_result = client.step(
-            TrenchesOpenEnvAction(
-                action=action,
-                prediction=prediction,
-                external_signals=[],
+            observation = reset_result.observation
+            prompt = _render_observation_prompt(
+                _build_base_prompt(training_agent),
+                training_agent,
+                observation,
             )
-        )
+            model_max_length = getattr(tokenizer, "model_max_length", None)
+            if not isinstance(model_max_length, int) or model_max_length <= 0 or model_max_length > 1_000_000:
+                model_max_length = max_prompt_length
+            preview_prompt_length = min(max_prompt_length, model_max_length)
+            inputs = tokenizer(
+                prompt,
+                return_tensors="pt",
+                truncation=True,
+                max_length=preview_prompt_length,
+            ).to(model.device)
+            with torch.no_grad():
+                output = model.generate(
+                    **inputs,
+                    max_new_tokens=max_completion_length,
+                    do_sample=False,
+                    pad_token_id=tokenizer.pad_token_id,
+                )
+            completion_ids = output[0][inputs["input_ids"].shape[1] :]
+            completion = tokenizer.decode(completion_ids, skip_special_tokens=True)
+            action, prediction = _parse_turn_output(training_agent, completion)
+            step_result = client.step(
+                TrenchesOpenEnvAction(
+                    action=action,
+                    prediction=prediction,
+                    external_signals=[],
+                )
+            )
         step_obs = step_result.observation
         actual_event = step_obs.revealed_event.summary if step_obs.revealed_event is not None else "n/a"
         step_reward = step_result.reward if step_result.reward is not None else 0.0
@@ -386,22 +498,6 @@ def _preview_rollouts(
             f"[sample {sample_index + 1}] reward={step_reward:.3f} "
             f"action={action.type} topic={prediction.topic} actual={actual_event}"
         )
-
-
-class OpenEnvGRPOTrainer:
-    """Force GRPO to use the custom OpenEnv rollout path across generation backends."""
-
-    def _generate_single_turn(self, prompts: list[str]):  # type: ignore[override]
-        if getattr(self, "rollout_func", None) is None:
-            return super()._generate_single_turn(prompts)
-
-        output = self.rollout_func(prompts, self)
-        required_keys = {"prompt_ids", "completion_ids", "logprobs"}
-        missing = required_keys.difference(output)
-        if missing:
-            raise RuntimeError(f"rollout_func is missing required keys: {sorted(missing)}")
-        extra_fields = {key: value for key, value in output.items() if key not in required_keys}
-        return output["prompt_ids"], output["completion_ids"], output["logprobs"], extra_fields
 
 
 def main() -> None:
@@ -442,7 +538,7 @@ def main() -> None:
     parser.add_argument("--top-p", type=float, default=0.95, help="Top-p sampling")
     parser.add_argument(
         "--optim",
-        default="adamw_torch_fused",
+        default="auto",
         help="Optimizer passed through to GRPOConfig (for example adamw_bnb_8bit).",
     )
     parser.add_argument("--save-strategy", default="no", choices=["no", "steps", "epoch"], help="Checkpoint save strategy")
@@ -460,8 +556,8 @@ def main() -> None:
     parser.add_argument(
         "--vllm-server-port",
         type=int,
-        default=8000,
-        help="Port for vLLM server in server mode (default: 8000).",
+        default=8001,
+        help="Port for vLLM server in server mode (default: 8001).",
     )
     parser.add_argument(
         "--vllm-enable-sleep-mode",
@@ -471,6 +567,12 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    _validate_runtime_ports(
+        backend_port=args.port,
+        vllm_mode=args.vllm_mode,
+        vllm_server_port=args.vllm_server_port,
+    )
+
     # FORCE-DISABLE RSS FEEDS DURING TRAINING to prevent rate limits and speed up rollouts.
     import os
     os.environ["TRENCHES_DISABLE_RSS"] = "1"
@@ -479,13 +581,21 @@ def main() -> None:
     torch = imports["torch"]
     AutoTokenizer = imports["AutoTokenizer"]
     GRPOConfig = imports["GRPOConfig"]
-    GRPOTrainer = type("OpenEnvGRPOTrainer", (OpenEnvGRPOTrainer, imports["GRPOTrainer"]), {})
+    GRPOTrainer = imports["GRPOTrainer"]
     generate_rollout_completions = imports["generate_rollout_completions"]
     generation_backend = args.generation_backend
+    vllm_server_rollout_available = args.vllm_mode == "server"
+    vllm_generation_supported = _can_use_vllm(torch) and (
+        vllm_server_rollout_available or generate_rollout_completions is not None
+    )
     if generation_backend == "auto":
-        generation_backend = "vllm" if generate_rollout_completions is not None and _can_use_vllm(torch) else "transformers"
-    if generation_backend == "vllm" and generate_rollout_completions is None:
-        raise RuntimeError("The selected vLLM backend requires `trl.experimental.openenv.generate_rollout_completions`.")
+        generation_backend = "vllm" if vllm_generation_supported else "transformers"
+    if generation_backend == "vllm" and not vllm_generation_supported:
+        raise RuntimeError(
+            "The selected vLLM backend requires either server-mode rollout support or "
+            "`trl.experimental.openenv.generate_rollout_completions`."
+        )
+    args.optim = _resolve_optimizer(args.optim, torch)
 
     _launch_backend(
         args.port,
@@ -499,6 +609,8 @@ def main() -> None:
     from transformers import AutoModelForCausalLM
     peft_config = None
     if args.quantize_4bit:
+        if not _cuda_available(torch):
+            raise RuntimeError("4-bit quantization requires a CUDA GPU.")
         from transformers import BitsAndBytesConfig
         try:
             from peft import LoraConfig, TaskType
@@ -533,16 +645,14 @@ def main() -> None:
             f"targets={args.lora_target_modules})"
         )
     else:
-        print(f"Loading {args.model_id} in bfloat16")
+        load_kwargs = _resolve_model_load_kwargs(torch)
+        runtime_device = "cuda" if _cuda_available(torch) else "mps" if _mps_available(torch) else "cpu"
+        print(f"Loading {args.model_id} for {runtime_device}")
         # IMPORTANT: Do NOT use device_map="auto" here. Accelerate's auto device
         # map wraps modules with dispatch hooks that break vLLM sleep mode's
         # buffer.data.copy_() during wake_up. Using device_map={"":0} places
         # everything on GPU 0 without dispatch hooks.
-        model_ref = AutoModelForCausalLM.from_pretrained(
-            args.model_id,
-            torch_dtype=torch.bfloat16,
-            device_map={"": 0},
-        )
+        model_ref = AutoModelForCausalLM.from_pretrained(args.model_id, **load_kwargs)
 
     # Auto-detect vLLM GPU memory utilization.
     # vLLM's init check requires: total_gpu * utilization <= free_memory_at_init.
@@ -596,47 +706,85 @@ def main() -> None:
     train_dataset = _build_dataset(args.training_agent, args.train_size)
     base_prompt = _build_base_prompt(args.training_agent)
 
-    def rollout_func(prompts: list[str], trainer: Any) -> dict[str, list[Any]]:
-        prompt_ids: list[list[int]] = []
-        completion_ids: list[list[int]] = []
-        logprobs: list[list[float]] = []
-        env_rewards: list[float] = []
-        forecast_rewards: list[float] = []
+    if generation_backend == "vllm" and args.vllm_mode != "server":
+        raise RuntimeError("The OpenEnv rollout integration currently supports vLLM server mode on Modal.")
 
+    def rollout_func(prompts: list[str], trainer_args: Any, processing_class: Any) -> dict[str, list[Any]]:
+        grounded_prompts: list[str] = []
         for index, prompt in enumerate(prompts):
-            with TrenchesEnvClient(base_url=f"http://127.0.0.1:{args.port}/openenv") as client:
+            with TrenchesEnvClient(base_url=f"http://127.0.0.1:{args.port}/openenv").sync_client() as client:
                 reset_result = client.reset(
                     training_agent=args.training_agent,
                     training_stage=args.training_stage,
                     max_turns=1,
                     replay_id=args.replay_id,
-                    episode_id=f"train-{index}-{int(time.time() * 1000)}",
+                    episode_id=f"prompt-{index}-{int(time.time() * 1000)}",
                 )
-                grounded_prompt = _render_observation_prompt(
-                    prompt or base_prompt,
-                    args.training_agent,
-                    reset_result.observation,
+            grounded_prompt = _render_observation_prompt(
+                prompt or base_prompt,
+                args.training_agent,
+                reset_result.observation,
+            )
+            grounded_prompts.append(
+                _truncate_prompt_for_model(
+                    tokenizer=tokenizer,
+                    prompt=grounded_prompt,
+                    max_prompt_length=args.max_prompt_length,
                 )
-                if generation_backend == "vllm":
-                    rollout_prompt = _truncate_prompt_for_model(
-                        tokenizer=tokenizer,
-                        prompt=grounded_prompt,
-                        max_prompt_length=args.max_prompt_length,
-                    )
-                    rollout_output = generate_rollout_completions(trainer, [rollout_prompt])[0]
-                else:
-                    rollout_output = {
-                        key: value[0]
-                        for key, value in _generate_rollout_completions_transformers(
-                            trainer=trainer,
-                            prompts=[grounded_prompt],
-                            tokenizer=tokenizer,
-                            max_prompt_length=args.max_prompt_length,
-                            max_completion_length=args.max_completion_length,
-                        ).items()
-                    }
+            )
 
-                completion_text = tokenizer.decode(rollout_output["completion_ids"], skip_special_tokens=True)
+        if generation_backend == "vllm" and args.vllm_mode == "server":
+            server_rollout = _generate_rollout_completions_vllm_server(
+                prompts=grounded_prompts,
+                server_base_url=f"http://127.0.0.1:{args.vllm_server_port}",
+                num_generations=int(trainer_args.num_generations),
+                temperature=float(trainer_args.temperature),
+                top_p=float(trainer_args.top_p),
+                top_k=int(args.top_k),
+                max_completion_length=int(trainer_args.max_completion_length),
+            )
+            prompt_ids = [[int(token) for token in item] for item in server_rollout["prompt_ids"]]
+            completion_ids = [[int(token) for token in item] for item in server_rollout["completion_ids"]]
+            logprobs = [[float(value) for value in item] for item in server_rollout["logprobs"]]
+        else:
+            prompt_ids = []
+            completion_ids = []
+            logprobs = []
+            for grounded_prompt in grounded_prompts:
+                rollout_output = {
+                    key: value[0]
+                    for key, value in _generate_rollout_completions_transformers(
+                        trainer=type("_TrainerShim", (), {"model": model_ref})(),
+                        prompts=[grounded_prompt],
+                        tokenizer=tokenizer,
+                        max_prompt_length=args.max_prompt_length,
+                        max_completion_length=args.max_completion_length,
+                    ).items()
+                }
+                prompt_ids.append(list(rollout_output["prompt_ids"]))
+                completion_ids.append(list(rollout_output["completion_ids"]))
+                raw_logprobs = rollout_output["logprobs"]
+                flat_logprobs = []
+                for lp in raw_logprobs:
+                    if isinstance(lp, (list, tuple)):
+                        flat_logprobs.extend(float(v) for v in lp)
+                    else:
+                        flat_logprobs.append(float(lp))
+                logprobs.append(flat_logprobs)
+
+        completion_texts = tokenizer.batch_decode(completion_ids, skip_special_tokens=True)
+        env_rewards: list[float] = []
+        forecast_rewards: list[float] = []
+        for completion_index, completion_text in enumerate(completion_texts):
+            prompt_index = min(completion_index // max(int(trainer_args.num_generations), 1), len(prompts) - 1)
+            with TrenchesEnvClient(base_url=f"http://127.0.0.1:{args.port}/openenv").sync_client() as client:
+                client.reset(
+                    training_agent=args.training_agent,
+                    training_stage=args.training_stage,
+                    max_turns=1,
+                    replay_id=args.replay_id,
+                    episode_id=f"train-{prompt_index}-{completion_index}-{int(time.time() * 1000)}",
+                )
                 action, prediction = _parse_turn_output(args.training_agent, completion_text)
                 step_result = client.step(
                     TrenchesOpenEnvAction(
@@ -646,9 +794,6 @@ def main() -> None:
                     )
                 )
 
-            prompt_ids.append(list(rollout_output["prompt_ids"]))
-            completion_ids.append(list(rollout_output["completion_ids"]))
-            logprobs.append([float(value) for value in rollout_output["logprobs"]])
             step_reward = step_result.reward if step_result.reward is not None else 0.0
             step_obs = step_result.observation
             forecast_total = step_obs.reward_breakdown.forecast_total if step_obs.reward_breakdown is not None else 0.0
@@ -689,8 +834,9 @@ def main() -> None:
         "optim": args.optim,
         "save_strategy": args.save_strategy,
         "save_steps": args.save_steps,
+        "gradient_checkpointing": True,
     }
-    if not args.quantize_4bit:
+    if not args.quantize_4bit and _cuda_available(torch):
         training_kwargs["bf16"] = True
     if generation_backend == "vllm":
         training_kwargs["vllm_mode"] = args.vllm_mode

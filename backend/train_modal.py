@@ -1,93 +1,241 @@
-"""Trenches GRPO training on Modal with vLLM server mode.
+"""Trenches GRPO training on Modal using the local backend and replay JSON files.
 
 Usage:
-    # Smoke test (single entity, 1 step):
-    modal run train_modal.py::smoke --entity us
-
-    # Full training (single entity, 100 steps):
-    modal run --detach train_modal.py::train --entity us --replay-id us_synthetic_seed_2025_2026
-
-    # Full training (all 6 entities in parallel):
-    modal run --detach train_modal.py::train_all
+    modal run backend/train_modal.py::smoke --entity us
+    modal run --detach backend/train_modal.py::train --entity us
+    modal run --detach backend/train_modal.py::train_all
 """
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
 import time
 from pathlib import Path
+from urllib.error import URLError
+from urllib.request import urlopen
 
 import modal
 
 app = modal.App("trenches-grpo-training")
 
-# ---------------------------------------------------------------------------
-# Image: install trl, vllm, transformers, and the trenches backend
-# ---------------------------------------------------------------------------
-GIT_REPO_URL = "https://github.com/shlawgathon/trenches.git"
-GIT_REF = "main"
+REPO_ROOT = Path(__file__).resolve().parent.parent
+LOCAL_BACKEND_DIR = REPO_ROOT / "backend"
+LOCAL_BACKEND_SRC_DIR = LOCAL_BACKEND_DIR / "src"
+LOCAL_BACKEND_PACKAGE_DIR = LOCAL_BACKEND_SRC_DIR / "trenches_env"
+LOCAL_ENTITIES_DIR = REPO_ROOT / "entities"
+LOCAL_REPLAY_DIR = LOCAL_BACKEND_DIR / "src" / "trenches_env" / "historical_replays"
+REMOTE_REPO_ROOT = Path("/opt/trenches")
+REMOTE_BACKEND_DIR = REMOTE_REPO_ROOT / "backend"
+REMOTE_BACKEND_SRC_DIR = REMOTE_BACKEND_DIR / "src"
+CHECKPOINTS_DIR = Path("/checkpoints")
+DEFAULT_MODEL_ID = "Qwen/Qwen3-8B"
+DEFAULT_ENTITY_ORDER = ("us", "israel", "iran", "hezbollah", "gulf", "oversight")
+DEFAULT_REPLAY_SUFFIX = "_2025_events"
+DEFAULT_BACKEND_PORT = 8000
+DEFAULT_VLLM_SERVER_PORT = 8001
+MODAL_GPU_FALLBACKS = ["H200:2", "H100:2", "A100-80GB:2", "L40S:2"]
+SUPPORTED_TRL_VLLM_VERSION = "0.10.2"
+
+
+def _discover_local_replays() -> dict[str, str]:
+    replay_ids_by_agent: dict[str, str] = {}
+    if not LOCAL_REPLAY_DIR.exists():
+        return replay_ids_by_agent
+
+    for replay_file in sorted(LOCAL_REPLAY_DIR.glob("*.json")):
+        try:
+            payload = json.loads(replay_file.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+
+        replay_id = payload.get("replay_id")
+        training_agent = payload.get("training_agent")
+        if not isinstance(replay_id, str) or not replay_id:
+            continue
+        if not isinstance(training_agent, str) or not training_agent:
+            continue
+
+        current = replay_ids_by_agent.get(training_agent)
+        preferred = f"{training_agent}{DEFAULT_REPLAY_SUFFIX}"
+        if current is None or replay_id == preferred:
+            replay_ids_by_agent[training_agent] = replay_id
+
+    return replay_ids_by_agent
+
+
+LOCAL_REPLAYS = _discover_local_replays()
+ENTITY_REPLAYS: tuple[tuple[str, str], ...] = tuple(
+    (entity, LOCAL_REPLAYS.get(entity, f"{entity}{DEFAULT_REPLAY_SUFFIX}"))
+    for entity in DEFAULT_ENTITY_ORDER
+)
 
 training_image = (
     modal.Image.debian_slim(python_version="3.12")
     .apt_install("git")
-    .run_commands(
-        f"git clone --depth 1 --branch {GIT_REF} --single-branch {GIT_REPO_URL} /opt/trenches",
-        "uv pip install --system -e '/opt/trenches/backend[train]'",
+    .env({"PYTHONPATH": str(REMOTE_BACKEND_SRC_DIR)})
+    .pip_install_from_pyproject(str(LOCAL_BACKEND_DIR / "pyproject.toml"), optional_dependencies=["train"])
+    .pip_install(f"vllm=={SUPPORTED_TRL_VLLM_VERSION}")
+    .add_local_dir(
+        str(LOCAL_BACKEND_PACKAGE_DIR),
+        remote_path=str(REMOTE_BACKEND_SRC_DIR / "trenches_env"),
+        ignore=["**/__pycache__/**", "**/*.pyc", ".venv/**"],
     )
-    .uv_pip_install(
-        "trl==0.29.0",
-        "vllm==0.12.0",
-        "transformers>=4.57",
-        "huggingface_hub",
+    .add_local_dir(
+        str(LOCAL_ENTITIES_DIR),
+        remote_path=str(REMOTE_REPO_ROOT / "entities"),
+        ignore=["**/__pycache__/**", "**/*.pyc", ".DS_Store"],
     )
 )
 
-# ---------------------------------------------------------------------------
-# Volume: persistent checkpoint storage
-# ---------------------------------------------------------------------------
-CHECKPOINTS_DIR = Path("/checkpoints")
 checkpoints_volume = modal.Volume.from_name(
-    "trenches-checkpoints", create_if_missing=True
+    "trenches-checkpoints",
+    create_if_missing=True,
 )
 
-# ---------------------------------------------------------------------------
-# Default hyperparameters (from POST_TRAINING_PLAN.md)
-# ---------------------------------------------------------------------------
-DEFAULT_MODEL_ID = "Qwen/Qwen3-8B"
 
-ENTITIES = [
-    ("us", "us_synthetic_seed_2025_2026"),
-    ("israel", "israel_synthetic_seed_2025_2026"),
-    ("iran", "iran_synthetic_seed_2025_2026"),
-    ("hezbollah", "hezbollah_synthetic_seed_2025_2026"),
-    ("gulf", "gulf_synthetic_seed_2025_2026"),
-    ("oversight", "oversight_2025_events"),
-]
+def _resolve_replay_id(entity: str, replay_id: str | None) -> str:
+    if replay_id:
+        return replay_id
+
+    known = dict(ENTITY_REPLAYS)
+    if entity in known:
+        return known[entity]
+    return f"{entity}{DEFAULT_REPLAY_SUFFIX}"
 
 
-def _wait_for_vllm_server(host: str = "localhost", port: int = 8000, timeout: int = 300) -> None:
-    """Block until the vLLM server is healthy."""
-    import urllib.request
-    import urllib.error
+def _build_training_command(
+    *,
+    entity: str,
+    replay_id: str,
+    model_id: str,
+    max_steps: int,
+    train_size: int,
+    num_generations: int,
+    max_prompt_length: int,
+    max_completion_length: int,
+) -> list[str]:
+    output_dir = CHECKPOINTS_DIR / f"{entity}-qwen3-8b"
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    deadline = time.time() + timeout
-    url = f"http://{host}:{port}/health/"
+    return [
+        sys.executable,
+        "-m",
+        "trenches_env.training_cli",
+        "--model-id",
+        model_id,
+        "--generation-backend",
+        "vllm",
+        "--vllm-mode",
+        "server",
+        "--port",
+        str(DEFAULT_BACKEND_PORT),
+        "--vllm-server-port",
+        str(DEFAULT_VLLM_SERVER_PORT),
+        "--training-agent",
+        entity,
+        "--training-stage",
+        "stage_1_dense",
+        "--replay-id",
+        replay_id,
+        "--train-size",
+        str(train_size),
+        "--max-steps",
+        str(max_steps),
+        "--num-generations",
+        str(num_generations),
+        "--per-device-train-batch-size",
+        "1",
+        "--gradient-accumulation-steps",
+        "8",
+        "--learning-rate",
+        "5e-6",
+        "--beta",
+        "0.001",
+        "--warmup-steps",
+        "10",
+        "--temperature",
+        "0.8",
+        "--top-k",
+        "10",
+        "--top-p",
+        "0.95",
+        "--optim",
+        "auto",
+        "--max-prompt-length",
+        str(max_prompt_length),
+        "--max-completion-length",
+        str(max_completion_length),
+        "--save-strategy",
+        "steps",
+        "--save-steps",
+        "25",
+        "--output-dir",
+        str(output_dir),
+        "--preview-samples",
+        "3",
+    ]
+
+
+def _wait_for_vllm_server(port: int, *, timeout_seconds: float = 600.0) -> None:
+    deadline = time.time() + timeout_seconds
+    url = f"http://127.0.0.1:{port}/health"
+    last_error = "unknown startup failure"
+
     while time.time() < deadline:
         try:
-            req = urllib.request.urlopen(url, timeout=2)
-            if req.status == 200:
-                print(f"vLLM server healthy at {url}")
+            with urlopen(url, timeout=2.0) as response:
+                status = getattr(response, "status", response.getcode())
+            if status == 200:
                 return
-        except (urllib.error.URLError, ConnectionError, OSError):
-            time.sleep(2)
-    raise RuntimeError(f"vLLM server did not start within {timeout}s")
+            last_error = f"HTTP {status}"
+        except URLError as exc:
+            last_error = str(exc)
+        time.sleep(2.0)
+
+    raise RuntimeError(f"Timed out waiting for vLLM server at {url}: {last_error}")
+
+
+def _start_vllm_server(*, model_id: str) -> subprocess.Popen[str]:
+    env = os.environ.copy()
+    env["CUDA_VISIBLE_DEVICES"] = "0"
+    env["VLLM_ALLOW_LONG_MAX_MODEL_LEN"] = "1"
+    command = [
+        "trl",
+        "vllm-serve",
+        "--model",
+        model_id,
+        "--host",
+        "0.0.0.0",
+        "--port",
+        str(DEFAULT_VLLM_SERVER_PORT),
+    ]
+    process = subprocess.Popen(
+        command,
+        cwd=str(REMOTE_REPO_ROOT),
+        env=env,
+        stdout=sys.stdout,
+        stderr=sys.stderr,
+        text=True,
+    )
+    try:
+        _wait_for_vllm_server(DEFAULT_VLLM_SERVER_PORT)
+    except Exception:
+        process.terminate()
+        try:
+            process.wait(timeout=15)
+        except subprocess.TimeoutExpired:
+            process.kill()
+        raise
+    return process
 
 
 def _run_training(
+    *,
     entity: str,
-    replay_id: str,
+    replay_id: str | None,
     model_id: str = DEFAULT_MODEL_ID,
     max_steps: int = 100,
     train_size: int = 256,
@@ -95,95 +243,67 @@ def _run_training(
     max_prompt_length: int = 1536,
     max_completion_length: int = 256,
 ) -> None:
-    """Launch vLLM server on GPU 0, training on GPU 1."""
-    vllm_port = 8001  # Avoid conflict with training_cli healthcheck on 8000
-    output_dir = CHECKPOINTS_DIR / f"{entity}-qwen3-8b"
-    output_dir.mkdir(parents=True, exist_ok=True)
+    resolved_replay_id = _resolve_replay_id(entity, replay_id)
+    os.environ["RANK"] = "0"
+    os.environ["LOCAL_RANK"] = "0"
+    os.environ["WORLD_SIZE"] = "1"
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "12355"
+    os.environ["TRENCHES_DISABLE_RSS"] = "1"
 
-    # ---- Start vLLM server on GPU 0 ----
-    vllm_env = os.environ.copy()
-    vllm_env["CUDA_VISIBLE_DEVICES"] = "0"
-    print(f"Starting vLLM server for {model_id} on GPU 0 (port {vllm_port})")
-    vllm_proc = subprocess.Popen(
-        ["trl", "vllm-serve", "--model", model_id, "--port", str(vllm_port)],
-        env=vllm_env,
-        stdout=sys.stdout,
-        stderr=sys.stderr,
+    vllm_process = _start_vllm_server(model_id=model_id)
+    train_cmd = _build_training_command(
+        entity=entity,
+        replay_id=resolved_replay_id,
+        model_id=model_id,
+        max_steps=max_steps,
+        train_size=train_size,
+        num_generations=num_generations,
+        max_prompt_length=max_prompt_length,
+        max_completion_length=max_completion_length,
     )
 
-    _wait_for_vllm_server(port=vllm_port)
-
-    # ---- Run training on GPU 1 ----
-    train_env = os.environ.copy()
-    train_env["CUDA_VISIBLE_DEVICES"] = "1"
-    train_env["TRENCHES_DISABLE_RSS"] = "1"
-
-    train_cmd = [
-        sys.executable, "-m", "trenches_env.training_cli",
-        "--model-id", model_id,
-        "--generation-backend", "vllm",
-        "--vllm-mode", "server",
-        "--vllm-server-port", str(vllm_port),
-        "--training-agent", entity,
-        "--training-stage", "stage_1_dense",
-        "--replay-id", replay_id,
-        "--train-size", str(train_size),
-        "--max-steps", str(max_steps),
-        "--num-generations", str(num_generations),
-        "--per-device-train-batch-size", "1",
-        "--gradient-accumulation-steps", "8",
-        "--learning-rate", "5e-6",
-        "--beta", "0.001",
-        "--warmup-steps", "10",
-        "--temperature", "0.8",
-        "--top-k", "10",
-        "--top-p", "0.95",
-        "--optim", "adamw_bnb_8bit",
-        "--max-prompt-length", str(max_prompt_length),
-        "--max-completion-length", str(max_completion_length),
-        "--save-strategy", "steps",
-        "--save-steps", "25",
-        "--output-dir", str(output_dir),
-        "--preview-samples", "3",
-    ]
-
-    print(f"Starting training for {entity} on GPU 1")
-    result = subprocess.run(
-        train_cmd,
-        env=train_env,
-        cwd="/opt/trenches",
-        stdout=sys.stdout,
-        stderr=sys.stderr,
-    )
-
-    # Clean up vLLM server
-    vllm_proc.terminate()
-    vllm_proc.wait(timeout=10)
+    print(f"Starting GRPO training for {entity} with replay {resolved_replay_id}")
+    training_env = os.environ.copy()
+    training_env["CUDA_VISIBLE_DEVICES"] = "1"
+    try:
+        result = subprocess.run(
+            train_cmd,
+            cwd=str(REMOTE_REPO_ROOT),
+            env=training_env,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+            check=False,
+        )
+    finally:
+        vllm_process.terminate()
+        try:
+            vllm_process.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            vllm_process.kill()
 
     if result.returncode != 0:
-        raise RuntimeError(f"Training failed for {entity} with exit code {result.returncode}")
+        raise RuntimeError(
+            f"Training failed for {entity} on replay {resolved_replay_id} with exit code {result.returncode}"
+        )
 
-    print(f"Training complete for {entity}. Checkpoint at {output_dir}")
+    print(f"Training complete for {entity}. Replay: {resolved_replay_id}")
     checkpoints_volume.commit()
 
 
-# ---------------------------------------------------------------------------
-# Modal functions
-# ---------------------------------------------------------------------------
 @app.function(
     image=training_image,
-    gpu="A100-80GB:2",
-    timeout=60 * 60 * 4,  # 4 hours max
+    gpu=MODAL_GPU_FALLBACKS,
+    timeout=60 * 60 * 4,
     volumes={str(CHECKPOINTS_DIR): checkpoints_volume},
 )
 def train(
     entity: str,
-    replay_id: str,
+    replay_id: str | None = None,
     max_steps: int = 100,
     train_size: int = 256,
     num_generations: int = 16,
 ) -> None:
-    """Train a single entity with vLLM server mode (2 GPUs)."""
     _run_training(
         entity=entity,
         replay_id=replay_id,
@@ -195,16 +315,15 @@ def train(
 
 @app.function(
     image=training_image,
-    gpu="A100-80GB:2",
-    timeout=60 * 60 * 4,
+    gpu=MODAL_GPU_FALLBACKS,
+    timeout=60 * 60 * 2,
     volumes={str(CHECKPOINTS_DIR): checkpoints_volume},
 )
-def smoke(entity: str = "us") -> None:
-    """Quick smoke test: 1 step, 4 samples, 2 generations."""
-    replay_id = dict(ENTITIES).get(entity, f"{entity}_synthetic_seed_2025_2026")
+def smoke(entity: str = "us", replay_id: str | None = None) -> None:
     _run_training(
         entity=entity,
         replay_id=replay_id,
+        model_id=DEFAULT_MODEL_ID,
         max_steps=1,
         train_size=4,
         num_generations=2,
@@ -215,9 +334,8 @@ def smoke(entity: str = "us") -> None:
 
 @app.local_entrypoint()
 def train_all() -> None:
-    """Launch all 6 entities in parallel."""
-    print(f"Launching {len(ENTITIES)} training jobs in parallel")
-    results = list(train.starmap(ENTITIES))
-    print(f"All {len(results)} training jobs completed!")
+    print(f"Launching {len(ENTITY_REPLAYS)} training jobs in parallel")
+    list(train.starmap(ENTITY_REPLAYS))
+    print("All training jobs completed.")
     print("Download checkpoints with:")
     print("  modal volume get trenches-checkpoints .")
