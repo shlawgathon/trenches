@@ -20,11 +20,11 @@ If no CORS env vars are set, the backend allows local development origins on `lo
 
 Entity-model provider bindings are also configurable per agent. The repo now ships with bundled defaults for the
 six self-hosted vLLM agents listed in `frontend.md`, and explicit env overrides still take precedence. If you set
-`TRENCHES_MOCK_MODELS=true`, the backend switches to the old OpenRouter-backed mock bindings instead.
+`TRENCHES_MOCK_MODELS=true`, the backend now forces heuristic fallback bindings instead of routing to a hosted mock provider.
 
 Supported env patterns:
 
-- `TRENCHES_MODEL_PROVIDER=openai|anthropic|openrouter|ollama|vllm|custom`
+- `TRENCHES_MODEL_PROVIDER=huggingface|ollama|vllm|custom`
 - `TRENCHES_MODEL_NAME=<provider model id>`
 - `TRENCHES_MODEL_BASE_URL=<custom base url>`
 - `TRENCHES_MODEL_API_KEY_ENV=<name of env var holding the secret>`
