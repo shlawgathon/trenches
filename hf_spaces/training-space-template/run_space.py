@@ -98,6 +98,9 @@ def train() -> None:
     env["UV_CACHE_DIR"] = str(uv_cache_dir)
     env["TORCHINDUCTOR_CACHE_DIR"] = str(torchinductor_cache_dir)
     env["TRITON_CACHE_DIR"] = str(triton_cache_dir)
+    if generation_backend == "vllm":
+        env.pop("PYTORCH_CUDA_ALLOC_CONF", None)
+        env.pop("PYTORCH_ALLOC_CONF", None)
 
     try:
         clone_cmd = ["git", "clone", "--depth", "1"]

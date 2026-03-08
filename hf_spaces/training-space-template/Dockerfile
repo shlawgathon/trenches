@@ -3,7 +3,6 @@ FROM ghcr.io/astral-sh/uv:python3.12-bookworm
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     TRL_EXPERIMENTAL_SILENCE=1 \
-    PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
     HOME=/tmp \
     USER=app \
     LOGNAME=app \
