@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ZoomIn, ZoomOut, RotateCcw, Columns2, Maximize } from "lucide-react";
+import { ZoomIn, ZoomOut, RotateCcw, Columns2, Maximize, MessageSquare } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import { NewsFeed } from "@/src/components/NewsFeed";
 import { ActivityLog } from "@/src/components/ActivityLog";
+import { ChatPanel } from "@/src/components/ChatPanel";
+import { cn } from "@/src/lib/utils";
 import type { SessionState } from "@/src/lib/types";
 import { bootstrapPlatform } from "@/src/app/bootstrap";
 
@@ -30,6 +32,7 @@ export default function GlobePage() {
   const [session, setSession] = useState<SessionState | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
   const [panelsCollapsed, setPanelsCollapsed] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const togglePanelsRef = useRef<Array<(collapsed: boolean) => void>>([]);
 
   // Initialize Mapbox globe — run first, independently
@@ -188,7 +191,7 @@ export default function GlobePage() {
       {/* Top center title */}
       <div className="pointer-events-none absolute top-6 left-1/2 z-20 -translate-x-1/2">
         <div
-          className="pointer-events-auto flex items-center gap-3 border border-border/40 bg-card/60 px-5 py-2.5 font-sans backdrop-blur-xl"
+          className="pointer-events-auto flex items-center gap-4 border border-border/40 bg-card/60 px-5 py-2.5 font-sans backdrop-blur-xl"
           style={{
             boxShadow:
               "0 0 8px rgba(0,0,0,0.03), 0 2px 6px rgba(0,0,0,0.08), inset 0 0 6px 6px rgba(255,255,255,0.04), 0 0 12px rgba(0,0,0,0.15)",
@@ -201,50 +204,34 @@ export default function GlobePage() {
           <span className="text-[10px] font-mono text-muted-foreground">
             {session ? `T${session.world.turn}` : "IDLE"}
           </span>
+          {session && (
+            <>
+              <div className="mx-1 h-4 w-px bg-border/40" />
+              <div className="flex items-center gap-4 font-mono text-xs">
+                <StatusPill label="TENSION" value={session.world.tension_level.toFixed(0)} warn={session.world.tension_level > 60} />
+                <StatusPill label="MARKET" value={session.world.market_stress.toFixed(0)} warn={session.world.market_stress > 60} />
+                <StatusPill label="OIL" value={session.world.oil_pressure.toFixed(0)} warn={session.world.oil_pressure > 60} />
+                <StatusPill label="EVENTS" value={String(session.world.active_events.length)} />
+                <StatusPill label="LIVE" value={session.live.enabled ? "ON" : "OFF"} />
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Bottom center world summary bar */}
-      {session && (
-        <div className="pointer-events-none absolute bottom-6 left-1/2 z-20 -translate-x-1/2">
-          <div
-            className="pointer-events-auto flex items-center gap-6 border border-border/40 bg-card/60 px-6 py-2.5 font-mono text-xs backdrop-blur-xl"
-            style={{
-              boxShadow:
-                "0 0 8px rgba(0,0,0,0.03), 0 2px 6px rgba(0,0,0,0.08), inset 0 0 6px 6px rgba(255,255,255,0.04), 0 0 12px rgba(0,0,0,0.15)",
-            }}
-          >
-            <StatusPill
-              label="TENSION"
-              value={session.world.tension_level.toFixed(0)}
-              warn={session.world.tension_level > 60}
-            />
-            <StatusPill
-              label="MARKET"
-              value={session.world.market_stress.toFixed(0)}
-              warn={session.world.market_stress > 60}
-            />
-            <StatusPill
-              label="OIL"
-              value={session.world.oil_pressure.toFixed(0)}
-              warn={session.world.oil_pressure > 60}
-            />
-            <StatusPill
-              label="EVENTS"
-              value={String(session.world.active_events.length)}
-            />
-            <StatusPill
-              label="LIVE"
-              value={session.live.enabled ? "ON" : "OFF"}
-            />
-          </div>
-        </div>
-      )}
+
+
+      {/* Chat Panel */}
+      <ChatPanel
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        sessionId={session?.session_id ?? null}
+      />
 
       {/* Bottom center map controls */}
       <div className="pointer-events-none absolute bottom-6 left-1/2 z-20 -translate-x-1/2">
         <div
-          className="pointer-events-auto flex items-center gap-1 border border-border/40 bg-card/60 px-3 py-2 backdrop-blur-xl"
+          className="pointer-events-auto flex items-center gap-1 border border-border/30 bg-card/30 px-3 py-2 backdrop-blur-xl"
           style={{
             boxShadow:
               "0 0 8px rgba(0,0,0,0.03), 0 2px 6px rgba(0,0,0,0.08), inset 0 0 6px 6px rgba(255,255,255,0.04), 0 0 12px rgba(0,0,0,0.15)",
@@ -263,6 +250,19 @@ export default function GlobePage() {
             title="Zoom out"
           >
             <ZoomOut className="h-3.5 w-3.5" />
+          </button>
+          <div className="mx-1 h-4 w-px bg-border/40" />
+          <button
+            onClick={() => setChatOpen((prev) => !prev)}
+            className={cn(
+              "flex h-7 w-7 cursor-pointer items-center justify-center transition-colors",
+              chatOpen
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+            title="AI Chat"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
           </button>
           <div className="mx-1 h-4 w-px bg-border/40" />
           <button

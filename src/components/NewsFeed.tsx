@@ -71,7 +71,7 @@ export function NewsFeed({ items, onRegisterToggle }: { items: NewsItem[]; onReg
           borderWidth={2}
         />
         <div
-          className="relative flex h-full overflow-hidden rounded-[inherit] bg-card/50 backdrop-blur-2xl"
+          className="relative flex h-full overflow-hidden rounded-[inherit] bg-card/25 backdrop-blur-lg"
           style={{
             boxShadow:
               "0 0 8px rgba(0,0,0,0.03), 0 2px 6px rgba(0,0,0,0.08), inset 0 0 6px 6px rgba(255,255,255,0.04), 0 0 12px rgba(0,0,0,0.15)",
