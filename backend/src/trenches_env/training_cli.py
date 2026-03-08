@@ -434,6 +434,15 @@ def _validate_runtime_ports(*, backend_port: int, vllm_mode: str, vllm_server_po
         )
 
 
+def _cleanup_distributed(torch_module: Any) -> None:
+    distributed = getattr(torch_module, "distributed", None)
+    if distributed is None or not distributed.is_available():
+        return
+    if not distributed.is_initialized():
+        return
+    distributed.destroy_process_group()
+
+
 def _preview_rollouts(
     *,
     model: Any,
@@ -860,26 +869,29 @@ def main() -> None:
         peft_config=peft_config,
     )
 
-    train_result = trainer.train()
-    trainer.save_model(args.output_dir)
-    tokenizer.save_pretrained(args.output_dir)
+    try:
+        train_result = trainer.train()
+        trainer.save_model(args.output_dir)
+        tokenizer.save_pretrained(args.output_dir)
 
-    print("\nTraining complete")
-    print(f"Generation backend: {generation_backend}")
-    print(json.dumps(train_result.metrics, indent=2, sort_keys=True))
+        print("\nTraining complete")
+        print(f"Generation backend: {generation_backend}")
+        print(json.dumps(train_result.metrics, indent=2, sort_keys=True))
 
-    if not args.no_preview and args.preview_samples > 0:
-        _preview_rollouts(
-            model=trainer.model,
-            tokenizer=tokenizer,
-            training_agent=args.training_agent,
-            port=args.port,
-            replay_id=args.replay_id,
-            training_stage=args.training_stage,
-            samples=args.preview_samples,
-            max_prompt_length=args.max_prompt_length,
-            max_completion_length=args.max_completion_length,
-        )
+        if not args.no_preview and args.preview_samples > 0:
+            _preview_rollouts(
+                model=trainer.model,
+                tokenizer=tokenizer,
+                training_agent=args.training_agent,
+                port=args.port,
+                replay_id=args.replay_id,
+                training_stage=args.training_stage,
+                samples=args.preview_samples,
+                max_prompt_length=args.max_prompt_length,
+                max_completion_length=args.max_completion_length,
+            )
+    finally:
+        _cleanup_distributed(torch)
 
 
 if __name__ == "__main__":
