@@ -9,3 +9,7 @@ __pycache__
 .pytest_cache
 .venv
 backend/.venv
+
+# Training checkpoints (binary files)
+backend/tmp-training-run/
+/tmp/smoke-test*
