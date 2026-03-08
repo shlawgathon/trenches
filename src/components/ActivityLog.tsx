@@ -56,8 +56,9 @@ function TensionIndicator({ delta }: { delta: number }) {
   return <TrendingDown className="h-3 w-3 text-secondary" />;
 }
 
-export function ActivityLog({ items, onRegisterToggle }: { items: ActivityItem[]; onRegisterToggle?: (fn: (collapsed: boolean) => void) => void }) {
+export function ActivityLog({ items, focusTurn, onRegisterToggle }: { items: ActivityItem[]; focusTurn?: number; onRegisterToggle?: (fn: (collapsed: boolean) => void) => void }) {
   const [collapsed, setCollapsed] = useState(false);
+  const visibleItems = focusTurn === undefined ? items : items.filter((item) => item.turn <= focusTurn);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const applyCollapse = (next: boolean) => {
@@ -129,13 +130,13 @@ export function ActivityLog({ items, onRegisterToggle }: { items: ActivityItem[]
                 Agent Activity
               </span>
               <span className="ml-auto text-[9px] font-mono text-muted-foreground">
-                {items.length}
+                {visibleItems.length}
               </span>
             </div>
 
             {/* Scrollable list */}
             <div className="flex-1 overflow-y-auto scrollbar-thin">
-              {items.length === 0 ? (
+              {visibleItems.length === 0 ? (
                 <div className="flex h-full items-center justify-center p-6">
                   <p className="text-center text-xs font-mono text-muted-foreground">
                     No agent actions recorded.
@@ -145,7 +146,7 @@ export function ActivityLog({ items, onRegisterToggle }: { items: ActivityItem[]
                 </div>
               ) : (
                 <div className="divide-y divide-border/20">
-                  {items.map((item) => (
+                  {visibleItems.map((item) => (
                     <div
                       key={item.id}
                       className="group px-4 py-3 transition-colors hover:bg-muted/20"
