@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ZoomIn, ZoomOut, RotateCcw, Columns2, Maximize, MessageSquare } from "lucide-react";
+import { ZoomIn, ZoomOut, RotateCcw, Columns2, Maximize, MessageSquare, Eye, EyeOff } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import { NewsFeed } from "@/src/components/NewsFeed";
 import { ActivityLog } from "@/src/components/ActivityLog";
@@ -13,6 +13,7 @@ import { cn } from "@/src/lib/utils";
 import type { AgentAction, SessionState } from "@/src/lib/types";
 import { bootstrapPlatform } from "@/src/app/bootstrap";
 import { deriveTimelineEvents } from "@/src/lib/timeline-types";
+import { getMapboxToken } from "@/src/lib/env";
 
 const MAP_STYLE = "mapbox://styles/mapbox/dark-v11";
 const DEFAULT_CENTER: [number, number] = [41.8, 27.8];
@@ -66,6 +67,17 @@ export default function GlobePage() {
     { id: MAIN_BRANCH_ID, label: "Mainline", forkTurn: 0, parentId: null },
   ]);
   const [activeBranchId, setActiveBranchId] = useState(MAIN_BRANCH_ID);
+  const [showVisualPanel, setShowVisualPanel] = useState(false);
+  const [visible, setVisible] = useState({
+    topBar: true,
+    mapControls: true,
+    newsFeed: true,
+    activityLog: true,
+    timeline: true,
+    matrix: true,
+    gitTree: true,
+    agentContext: true,
+  });
   const togglePanelsRef = useRef<Array<(collapsed: boolean) => void>>([]);
 
   const activityItems = useMemo(() => deriveActivityItems(session), [session]);
@@ -114,9 +126,9 @@ export default function GlobePage() {
   }, [selectedAgent, session]);
 
   useEffect(() => {
-    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    const token = getMapboxToken();
     if (!token) {
-      setMapError("NEXT_PUBLIC_MAPBOX_TOKEN not set");
+      setMapError("NEXT_PUBLIC_MAPBOX_TOKEN / NEXT_PUBLIC_MAP_KEY / MAP_KEY not set");
       return;
     }
 
@@ -168,9 +180,15 @@ export default function GlobePage() {
         const rt = await bootstrapPlatform();
         if (cancelled || rt.backendStatus !== "healthy") return;
         const sess = await rt.sessionClient.createSession({ seed: 7 });
+        const liveSession = await rt.sessionClient.setLiveMode(sess.session_id, {
+          enabled: true,
+          auto_step: true,
+          poll_interval_ms: 10000,
+        });
+        const refreshed = await rt.sessionClient.refreshSources(sess.session_id);
         if (!cancelled) {
-          setSession(sess);
-          setTimelineTurn(sess.world.turn);
+          setSession(refreshed ?? liveSession);
+          setTimelineTurn((refreshed ?? liveSession).world.turn);
         }
       } catch (err) {
         console.warn("[Session bootstrap failed]", err);
@@ -285,7 +303,7 @@ export default function GlobePage() {
     <div className="relative h-screen w-screen overflow-hidden bg-background">
       <div ref={mapContainerRef} className="absolute inset-0" style={{ width: "100vw", height: "100vh" }} />
 
-      <div className="pointer-events-none absolute top-6 left-1/2 z-20 -translate-x-1/2">
+      {visible.topBar && <div className="pointer-events-none absolute top-6 left-1/2 z-20 -translate-x-1/2">
         <div
           className="pointer-events-auto flex select-none items-center gap-4 border border-border/40 bg-card/60 px-5 py-2.5 font-sans backdrop-blur-xl"
           style={{
@@ -308,24 +326,44 @@ export default function GlobePage() {
             </>
           )}
         </div>
-      </div>
+      </div>}
 
       <div className="absolute top-24 right-6 z-20 w-[380px] space-y-3">
-        <TensionMatrix agents={matrixAgents} matrix={tensionMatrix} visuals={agentVisuals} />
-        <SimulationVersionTree
-          branches={branches}
-          activeBranchId={activeBranchId}
-          currentTurn={timelineTurn}
-          onCreateBranch={createBranch}
-          onSelectBranch={(branchId, turn) => {
-            setActiveBranchId(branchId);
-            setTimelineTurn(turn);
-          }}
-          onRewindToTurn={setTimelineTurn}
-        />
+        {visible.matrix && (
+          <div className="relative">
+            <button
+              onClick={() => setVisible((prev) => ({ ...prev, matrix: false }))}
+              className="absolute top-2 right-2 z-10 border border-border/40 bg-card/70 px-1.5 py-0.5 text-[9px] font-mono text-muted-foreground hover:text-foreground"
+            >
+              hide
+            </button>
+            <TensionMatrix agents={matrixAgents} matrix={tensionMatrix} visuals={agentVisuals} />
+          </div>
+        )}
+        {visible.gitTree && (
+          <div className="relative">
+            <button
+              onClick={() => setVisible((prev) => ({ ...prev, gitTree: false }))}
+              className="absolute top-2 right-2 z-10 border border-border/40 bg-card/70 px-1.5 py-0.5 text-[9px] font-mono text-muted-foreground hover:text-foreground"
+            >
+              hide
+            </button>
+            <SimulationVersionTree
+              branches={branches}
+              activeBranchId={activeBranchId}
+              currentTurn={timelineTurn}
+              onCreateBranch={createBranch}
+              onSelectBranch={(branchId, turn) => {
+                setActiveBranchId(branchId);
+                setTimelineTurn(turn);
+              }}
+              onRewindToTurn={setTimelineTurn}
+            />
+          </div>
+        )}
       </div>
 
-      {selectedAgent && (
+      {selectedAgent && visible.agentContext && (
         <div className="absolute bottom-52 left-1/2 z-20 w-[420px] -translate-x-1/2 border border-border/30 bg-card/70 p-3 backdrop-blur-xl">
           <div className="mb-2 flex items-center justify-between">
             <div>
@@ -358,7 +396,7 @@ export default function GlobePage() {
 
       <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} sessionId={session?.session_id ?? null} />
 
-      <div className="pointer-events-none absolute bottom-52 left-1/2 z-20 -translate-x-1/2">
+      {visible.mapControls && <div className="pointer-events-none absolute bottom-52 left-1/2 z-20 -translate-x-1/2">
         <div
           className="pointer-events-auto flex select-none items-center gap-1 border border-border/30 bg-card/30 px-3 py-2 backdrop-blur-xl"
           style={{
@@ -405,12 +443,35 @@ export default function GlobePage() {
           >
             {panelsCollapsed ? <Columns2 className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
           </button>
+          <button
+            onClick={() => setShowVisualPanel((prev) => !prev)}
+            className="flex h-7 w-7 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+            title="Toggle visual controls"
+          >
+            {showVisualPanel ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+          </button>
         </div>
-      </div>
+      </div>}
 
-      <NewsFeed items={newsItems} onRegisterToggle={(fn) => { togglePanelsRef.current[0] = fn; }} />
-      <ActivityLog items={activityItems} focusTurn={timelineTurn} onRegisterToggle={(fn) => { togglePanelsRef.current[1] = fn; }} />
-      <EventTimeline session={session} onTurnChange={setTimelineTurn} onRegisterToggle={(fn) => { togglePanelsRef.current[2] = fn; }} />
+      {showVisualPanel && (
+        <div className="absolute right-6 bottom-52 z-20 w-[220px] border border-border/40 bg-card/70 p-2 backdrop-blur-xl">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-foreground/80">Visible Components</p>
+          {Object.entries(visible).map(([key, value]) => (
+            <button
+              key={key}
+              onClick={() => setVisible((prev) => ({ ...prev, [key]: !value }))}
+              className="flex w-full items-center justify-between px-1.5 py-1 text-left text-[10px] font-mono uppercase text-muted-foreground hover:text-foreground"
+            >
+              <span>{key}</span>
+              <span>{value ? "ON" : "OFF"}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {visible.newsFeed && <NewsFeed items={newsItems} onRegisterToggle={(fn) => { togglePanelsRef.current[0] = fn; }} />}
+      {visible.activityLog && <ActivityLog items={activityItems} focusTurn={timelineTurn} onRegisterToggle={(fn) => { togglePanelsRef.current[1] = fn; }} />}
+      {visible.timeline && <EventTimeline session={session} onTurnChange={setTimelineTurn} onRegisterToggle={(fn) => { togglePanelsRef.current[2] = fn; }} />}
 
       {mapError && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-background">
