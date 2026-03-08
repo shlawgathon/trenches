@@ -14,8 +14,9 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from urllib.error import URLError
+from urllib.request import urlopen
 
-import httpx
 import modal
 
 app = modal.App("trenches-grpo-training")
@@ -171,11 +172,12 @@ def _wait_for_vllm_server(port: int, *, timeout_seconds: float = 240.0) -> None:
 
     while time.time() < deadline:
         try:
-            response = httpx.get(url, timeout=2.0)
-            if response.status_code == 200:
+            with urlopen(url, timeout=2.0) as response:
+                status = getattr(response, "status", response.getcode())
+            if status == 200:
                 return
-            last_error = f"HTTP {response.status_code}"
-        except httpx.HTTPError as exc:
+            last_error = f"HTTP {status}"
+        except URLError as exc:
             last_error = str(exc)
         time.sleep(2.0)
 
