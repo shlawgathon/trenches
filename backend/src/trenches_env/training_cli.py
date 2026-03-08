@@ -13,7 +13,7 @@ from trenches_env.models import AgentAction, Prediction
 from trenches_env.openenv_adapter import TrenchesOpenEnvAction, TrenchesOpenEnvObservation
 from trenches_env.openenv_client import TrenchesEnvClient
 from trenches_env.rl import AGENT_ALLOWED_ACTIONS
-from trenches_env.server import create_app
+from trenches_env.training_server import create_training_app
 
 DEFAULT_MODEL_ID = "Qwen/Qwen3-8B"
 DEFAULT_REPLAY_ID = "us_synthetic_seed_2025_2026"
@@ -27,10 +27,8 @@ def _launch_backend(
     live_source_auto_start: bool = False,
     source_warm_start: bool = False,
 ) -> None:
-    app = create_app(
-        live_source_auto_start=live_source_auto_start,
-        source_warm_start=source_warm_start,
-    )
+    del live_source_auto_start, source_warm_start
+    app = create_training_app()
     thread = threading.Thread(
         target=lambda: uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning"),
         daemon=True,
