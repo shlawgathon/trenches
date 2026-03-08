@@ -1,6 +1,7 @@
 import { HttpClient } from "./http";
 import type {
   CreateSessionRequest,
+  ExternalSignal,
   LiveControlRequest,
   ResetSessionRequest,
   SourceMonitorReport,
@@ -8,6 +9,18 @@ import type {
   StepSessionRequest,
   StepSessionResponse,
 } from "./types";
+
+export type IngestNewsRequest = {
+  signals: ExternalSignal[];
+  agent_ids?: string[];
+};
+
+export type IngestNewsResponse = {
+  session: SessionState;
+  oversight: { triggered: boolean; risk_score: number; reason: string };
+  reaction: unknown | null;
+  done: boolean;
+};
 
 export class SessionClient {
   constructor(private readonly http: HttpClient) {}
@@ -42,5 +55,9 @@ export class SessionClient {
 
   async stepSession(sessionId: string, request: StepSessionRequest): Promise<StepSessionResponse> {
     return this.http.post<StepSessionResponse>(`/sessions/${sessionId}/step`, request);
+  }
+
+  async ingestNews(sessionId: string, request: IngestNewsRequest): Promise<IngestNewsResponse> {
+    return this.http.post<IngestNewsResponse>(`/sessions/${sessionId}/news`, request);
   }
 }

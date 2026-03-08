@@ -8,6 +8,7 @@ src/trenches_env/env.py
 src/trenches_env/historical_collection.py
 src/trenches_env/historical_collection_cli.py
 src/trenches_env/historical_replay.py
+src/trenches_env/ingest_hf_2025_events.py
 src/trenches_env/model_runtime.py
 src/trenches_env/models.py
 src/trenches_env/openenv_adapter.py
@@ -23,12 +24,19 @@ src/trenches_env/source_ingestion.py
 src/trenches_env/source_manifest.json
 src/trenches_env/source_monitor.py
 src/trenches_env/training_cli.py
-src/trenches_env/historical_replays/gulf_synthetic_seed_2025_2026.json
-src/trenches_env/historical_replays/hezbollah_synthetic_seed_2025_2026.json
-src/trenches_env/historical_replays/iran_synthetic_seed_2025_2026.json
-src/trenches_env/historical_replays/israel_synthetic_seed_2025_2026.json
-src/trenches_env/historical_replays/oversight_synthetic_seed_2025_2026.json
-src/trenches_env/historical_replays/us_synthetic_seed_2025_2026.json
+src/trenches_env/training_server.py
+src/trenches_env/historical_replays/gulf_2025_events.json
+src/trenches_env/historical_replays/hezbollah_2025_events.json
+src/trenches_env/historical_replays/iran_2025_events.json
+src/trenches_env/historical_replays/iran_historical_2025.json
+src/trenches_env/historical_replays/israel_2025_events.json
+src/trenches_env/historical_replays/israel_historical_2025.json
+src/trenches_env/historical_replays/oversight_2025_events.json
+src/trenches_env/historical_replays/us_2025_events.json
+src/trenches_env/mock/__init__.py
+src/trenches_env/mock/config.py
+src/trenches_env/mock/smoke_test.py
+src/trenches_env/synthetic_historical_replays/__init__.py
 src/trenches_openenv.egg-info/PKG-INFO
 src/trenches_openenv.egg-info/SOURCES.txt
 src/trenches_openenv.egg-info/dependency_links.txt
@@ -39,6 +47,7 @@ tests/test_benchmark_runner.py
 tests/test_historical_collection.py
 tests/test_live_source_accessibility.py
 tests/test_live_source_delivery.py
+tests/test_mock_bindings.py
 tests/test_openenv_adapter.py
 tests/test_provider_runtime.py
 tests/test_reward_differentiation.py
@@ -47,3 +56,5 @@ tests/test_session_manager.py
 tests/test_source_bundles.py
 tests/test_source_harvester.py
 tests/test_source_monitor.py
+tests/test_training_cli.py
+tests/test_training_server.py

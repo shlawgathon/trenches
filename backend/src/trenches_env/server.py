@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import logging
 import os
 from typing import Any
 
@@ -40,6 +41,8 @@ from trenches_env.session_manager import SessionManager
 from trenches_env.source_ingestion import SourceHarvester
 
 DEFAULT_LOCAL_DEV_CORS_ORIGIN_REGEX = r"https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+logger = logging.getLogger("trenches")
+logger.setLevel(logging.INFO)
 
 
 def _parse_csv_env(raw_value: str | None) -> list[str]:
@@ -109,9 +112,11 @@ def create_app(
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         try:
+            logger.info("backend.start live_source_auto_start=%s source_warm_start=%s", live_source_auto_start, source_warm_start)
             manager.start_background_runner()
             yield
         finally:
+            logger.info("backend.stop")
             manager.shutdown()
 
     app = FastAPI(title="Trenches OpenEnv Backend", version="0.1.0", lifespan=lifespan)

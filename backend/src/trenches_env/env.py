@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import random
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
@@ -74,6 +76,8 @@ from trenches_env.scenarios import (
     list_scenario_definitions,
     scenario_signals_for_turn,
 )
+
+logger = logging.getLogger("trenches.runtime")
 
 ACTION_STANCE_SCORES: dict[str, float] = {
     "hold": -0.4,
@@ -334,12 +338,6 @@ class FogOfWarDiplomacyEnv:
             scenario=scenario,
             historical_replay=historical_replay,
         )
-        if self._source_warm_start_enabled:
-            self._source_harvester.warm_start_agents(
-                include_live=False,
-                max_training_sources=2,
-                max_live_sources=0,
-            )
         belief_state = self._initialize_belief_state(world, episode)
         observations = self._build_observations(
             world,
@@ -714,13 +712,35 @@ class FogOfWarDiplomacyEnv:
     ) -> dict[str, AgentAction]:
         actions: dict[str, AgentAction] = dict(preset_actions or {})
         target_agent_ids = agent_ids or list(AGENT_IDS)
+        provider_results: dict[str, tuple[AgentAction | None, str | None]] = {}
         for agent_id, action in actions.items():
             self._validate_action(agent_id, action)
+
+        unresolved_agent_ids = [agent_id for agent_id in target_agent_ids if agent_id not in actions]
+        provider_ready_agent_ids = [
+            agent_id
+            for agent_id in unresolved_agent_ids
+            if (binding := session.model_bindings.get(agent_id)) is not None and binding.ready_for_inference
+        ]
+
+        if len(provider_ready_agent_ids) > 1:
+            with ThreadPoolExecutor(max_workers=len(provider_ready_agent_ids)) as executor:
+                future_to_agent_id = {
+                    executor.submit(self._resolve_provider_action, session, agent_id, signals): agent_id
+                    for agent_id in provider_ready_agent_ids
+                }
+                for future in as_completed(future_to_agent_id):
+                    provider_results[future_to_agent_id[future]] = future.result()
+        elif len(provider_ready_agent_ids) == 1:
+            agent_id = provider_ready_agent_ids[0]
+            provider_results[agent_id] = self._resolve_provider_action(session, agent_id, signals)
 
         for agent_id in target_agent_ids:
             if agent_id in actions:
                 continue
-            provider_action, provider_error = self._resolve_provider_action(session, agent_id, signals)
+            provider_action, provider_error = provider_results.get(agent_id, (None, None))
+            if agent_id not in provider_results:
+                provider_action, provider_error = self._resolve_provider_action(session, agent_id, signals)
             if provider_action is not None:
                 actions[agent_id] = provider_action
                 continue
@@ -777,6 +797,15 @@ class FogOfWarDiplomacyEnv:
             self._validate_action(agent_id, action)
             return action, None
         except ProviderDecisionError as exc:
+            logger.warning(
+                "provider.fallback session=%s agent=%s provider=%s model=%s signals=%s error=%s",
+                session.session_id,
+                agent_id,
+                binding.provider,
+                binding.model_name,
+                len(signals),
+                str(exc),
+            )
             return None, str(exc)
 
     def _select_live_actions(

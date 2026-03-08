@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import logging
 import threading
 from datetime import datetime, timedelta, timezone
+from time import perf_counter
 
 from trenches_env.benchmark_runner import ScenarioBenchmarkRunner
 from trenches_env.rl import DEFAULT_TRAINING_STAGE
@@ -21,6 +23,8 @@ from trenches_env.models import (
     StepSessionResponse,
 )
 from trenches_env.source_ingestion import SourceHarvester
+
+logger = logging.getLogger("trenches.session")
 
 
 class SessionManager:
@@ -68,6 +72,7 @@ class SessionManager:
         replay_start_index: int | None = None,
     ) -> SessionState:
         with self._lock:
+            started_at = perf_counter()
             session = self.env.create_session(
                 seed=seed,
                 training_agent=training_agent,
@@ -78,6 +83,19 @@ class SessionManager:
                 replay_start_index=replay_start_index,
             )
             self._sessions[session.session_id] = session
+            logger.info(
+                "session.created id=%s seed=%s turn=%s stage=%s scenario=%s replay=%s live_capable=%s packets=%s assets=%s duration_ms=%.1f",
+                session.session_id,
+                session.seed,
+                session.world.turn,
+                session.episode.training_stage,
+                session.episode.scenario_id,
+                session.historical_replay.replay_id or "-",
+                session.episode.live_mode_capable,
+                _count_source_packets(session),
+                _count_assets(session),
+                (perf_counter() - started_at) * 1000.0,
+            )
             return session
 
     def reset_session(
@@ -93,6 +111,7 @@ class SessionManager:
     ) -> SessionState:
         with self._lock:
             self._require_session(session_id)
+            started_at = perf_counter()
             session = self.env.reset_session(
                 session_id=session_id,
                 seed=seed,
@@ -104,6 +123,16 @@ class SessionManager:
                 replay_start_index=replay_start_index,
             )
             self._sessions[session_id] = session
+            logger.info(
+                "session.reset id=%s seed=%s turn=%s stage=%s scenario=%s replay=%s duration_ms=%.1f",
+                session_id,
+                session.seed,
+                session.world.turn,
+                session.episode.training_stage,
+                session.episode.scenario_id,
+                session.historical_replay.replay_id or "-",
+                (perf_counter() - started_at) * 1000.0,
+            )
             return session
 
     def get_session(self, session_id: str) -> SessionState:
@@ -119,15 +148,56 @@ class SessionManager:
     def set_live_mode(self, session_id: str, request: LiveControlRequest) -> SessionState:
         with self._lock:
             current = self._require_session(session_id)
+            started_at = perf_counter()
             updated = self.env.configure_live_session(current, request)
             self._sessions[session_id] = updated
+            logger.info(
+                "session.live id=%s enabled=%s auto_step=%s poll_ms=%s queue_total=%s packets=%s duration_ms=%.1f",
+                session_id,
+                updated.live.enabled,
+                updated.live.auto_step,
+                updated.live.poll_interval_ms,
+                sum(updated.live.source_queue_sizes.values()),
+                _count_source_packets(updated),
+                (perf_counter() - started_at) * 1000.0,
+            )
             return updated
 
     def step_session(self, session_id: str, request: StepSessionRequest) -> StepSessionResponse:
         with self._lock:
             current = self._require_session(session_id)
+            started_at = perf_counter()
+            auto_resolved = False
+            # Auto-resolve actions via model inference when none provided
+            if not request.actions:
+                signals = list(request.external_signals or [])
+                actions = self.env.resolve_policy_actions(current, signals)
+                request = StepSessionRequest(
+                    actions=actions,
+                    external_signals=signals,
+                )
+                auto_resolved = True
             result = self.env.step_session(current, request)
             self._sessions[session_id] = result.session
+            logger.info(
+                (
+                    "session.step id=%s turn=%s->%s auto_actions=%s signals=%s actions=%s "
+                    "oversight=%s tension=%.1f->%.1f market=%.1f oil=%.1f done=%s duration_ms=%.1f"
+                ),
+                session_id,
+                current.world.turn,
+                result.session.world.turn,
+                auto_resolved,
+                _summarize_signals(request.external_signals),
+                _summarize_actions(request.actions),
+                _summarize_oversight(result.oversight),
+                current.world.tension_level,
+                result.session.world.tension_level,
+                result.session.world.market_stress,
+                result.session.world.oil_pressure,
+                result.done,
+                (perf_counter() - started_at) * 1000.0,
+            )
             return result
 
     def ingest_news(self, session_id: str, request: IngestNewsRequest) -> IngestNewsResponse:
@@ -135,6 +205,7 @@ class SessionManager:
             if not request.signals:
                 raise ValueError("At least one external signal is required.")
             current = self._require_session(session_id)
+            started_at = perf_counter()
             refreshed = self.env.refresh_session_sources(current)
             actions = self.env.resolve_policy_actions(
                 refreshed,
@@ -147,6 +218,22 @@ class SessionManager:
             )
             self._sessions[session_id] = result.session
             reaction: ReactionLogEntry | None = result.session.reaction_log[-1] if result.session.reaction_log else None
+            logger.info(
+                (
+                    "session.news id=%s signals=%s actions=%s oversight=%s reaction=%s "
+                    "turn=%s tension=%.1f->%.1f done=%s duration_ms=%.1f"
+                ),
+                session_id,
+                _summarize_signals(request.signals),
+                _summarize_actions(actions),
+                _summarize_oversight(result.oversight),
+                _summarize_reaction(reaction),
+                result.session.world.turn,
+                current.world.tension_level,
+                result.session.world.tension_level,
+                result.done,
+                (perf_counter() - started_at) * 1000.0,
+            )
             return IngestNewsResponse(
                 session=result.session,
                 oversight=result.oversight,
@@ -157,8 +244,17 @@ class SessionManager:
     def refresh_session_sources(self, session_id: str, force: bool = False) -> SessionState:
         with self._lock:
             current = self._require_session(session_id)
+            started_at = perf_counter()
             refreshed = self.env.refresh_session_sources(current, force=force)
             self._sessions[session_id] = refreshed
+            logger.info(
+                "session.sources id=%s force=%s packets=%s queue_total=%s duration_ms=%.1f",
+                session_id,
+                force,
+                _summarize_packet_counts(refreshed),
+                sum(refreshed.live.source_queue_sizes.values()),
+                (perf_counter() - started_at) * 1000.0,
+            )
             return refreshed
 
     def source_monitor(self, session_id: str) -> SourceMonitorReport:
@@ -178,6 +274,11 @@ class SessionManager:
             current = self._require_session(session_id)
             refreshed = self.env.refresh_session_sources(current)
             self._sessions[session_id] = refreshed
+            logger.info(
+                "session.providers id=%s packets=%s",
+                session_id,
+                _summarize_packet_counts(refreshed),
+            )
             return self.env.provider_diagnostics(refreshed)
 
     def list_scenarios(self) -> list[ScenarioSummary]:
@@ -213,7 +314,24 @@ class SessionManager:
             for session_id, session in list(self._sessions.items()):
                 if not self._session_needs_live_tick(session, now):
                     continue
-                self._sessions[session_id] = self.env.maybe_auto_step_live_session(session)
+                started_at = perf_counter()
+                updated = self.env.maybe_auto_step_live_session(session)
+                self._sessions[session_id] = updated
+                if updated.world.turn != session.world.turn:
+                    logger.info(
+                        (
+                            "session.live_tick id=%s turn=%s->%s packets=%s queue_total=%s "
+                            "tension=%.1f->%.1f duration_ms=%.1f"
+                        ),
+                        session_id,
+                        session.world.turn,
+                        updated.world.turn,
+                        _summarize_packet_counts(updated),
+                        sum(updated.live.source_queue_sizes.values()),
+                        session.world.tension_level,
+                        updated.world.tension_level,
+                        (perf_counter() - started_at) * 1000.0,
+                    )
 
     @staticmethod
     def _session_needs_live_tick(session: SessionState, now: datetime) -> bool:
@@ -229,3 +347,81 @@ class SessionManager:
         if session is None:
             raise KeyError(session_id)
         return session
+
+
+def _count_source_packets(session: SessionState) -> int:
+    return sum(len(observation.source_packets) for observation in session.observations.values())
+
+
+def _count_assets(session: SessionState) -> int:
+    return sum(len(assets) for assets in session.world.asset_state.values())
+
+
+def _summarize_packet_counts(session: SessionState) -> str:
+    total = 0
+    ok = 0
+    pending = 0
+    error = 0
+    for observation in session.observations.values():
+        for packet in observation.source_packets:
+            total += 1
+            if packet.status == "ok":
+                ok += 1
+            elif packet.status == "pending":
+                pending += 1
+            elif packet.status == "error":
+                error += 1
+    return f"total={total},ok={ok},pending={pending},error={error}"
+
+
+def _summarize_actions(actions: dict[str, object]) -> str:
+    if not actions:
+        return "-"
+    parts: list[str] = []
+    for agent_id in sorted(actions):
+        action = actions[agent_id]
+        action_type = getattr(action, "type", "unknown")
+        target = getattr(action, "target", None)
+        metadata = getattr(action, "metadata", {}) or {}
+        mode = metadata.get("mode")
+        fragment = f"{agent_id}:{action_type}"
+        if target:
+            fragment = f"{fragment}->{target}"
+        if mode:
+            fragment = f"{fragment}[{mode}]"
+        parts.append(fragment)
+    return ",".join(parts)
+
+
+def _summarize_signals(signals: list[object]) -> str:
+    if not signals:
+        return "-"
+    parts: list[str] = []
+    for signal in signals[:3]:
+        source = getattr(signal, "source", "signal")
+        severity = getattr(signal, "severity", 0.0)
+        headline = getattr(signal, "headline", "")
+        clipped = " ".join(str(headline).split())[:64]
+        parts.append(f"{source}:{severity:.2f}:{clipped}")
+    if len(signals) > 3:
+        parts.append(f"+{len(signals) - 3}more")
+    return " | ".join(parts)
+
+
+def _summarize_oversight(oversight: object) -> str:
+    triggered = getattr(oversight, "triggered", False)
+    if not triggered:
+        return "off"
+    risk_score = getattr(oversight, "risk_score", 0.0)
+    affected_agents = getattr(oversight, "affected_agents", []) or []
+    return f"on:risk={risk_score:.2f}:agents={','.join(affected_agents) or '-'}"
+
+
+def _summarize_reaction(reaction: ReactionLogEntry | None) -> str:
+    if reaction is None:
+        return "-"
+    return (
+        f"event={reaction.event_id}"
+        f",latent={len(reaction.latent_event_ids)}"
+        f",actors={len(reaction.actor_outcomes)}"
+    )

@@ -92,6 +92,21 @@ export type WorldState = {
   tension_level: number;
   market_stress: number;
   oil_pressure: number;
+  asset_state?: Record<string, Record<string, {
+    asset_id: string;
+    owner: string;
+    name: string;
+    category: string;
+    section: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    status: string;
+    health: number;
+    operational_load: number;
+    criticality: string;
+    notes?: string | null;
+    last_change_reason?: string | null;
+  }>>;
   actor_state: Record<string, Record<string, number>>;
   coalition_graph: Record<string, string[]>;
   active_events: BlackSwanEvent[];
@@ -185,6 +200,42 @@ export type StepTrace = {
   created_at: string;
 };
 
+export type ActionLogEntry = {
+  turn: number;
+  actor: string;
+  action_type: AgentAction["type"];
+  summary: string;
+  target?: string | null;
+  reward_total: number;
+  tension_after: number;
+  market_stress_after: number;
+  oil_pressure_after: number;
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+
+export type ReactionActorOutcome = {
+  agent_id: string;
+  action: AgentAction;
+  reward_total: number;
+  decision_mode: "heuristic_fallback" | "provider_ready" | "provider_inference";
+};
+
+export type ReactionLogEntry = {
+  event_id: string;
+  turn: number;
+  source: string;
+  latent_event_ids: string[];
+  signals: ExternalSignal[];
+  actor_outcomes: ReactionActorOutcome[];
+  oversight_triggered: boolean;
+  tension_before: number;
+  tension_after: number;
+  market_stress_after: number;
+  oil_pressure_after: number;
+  created_at: string;
+};
+
 export type SessionState = {
   session_id: string;
   seed?: number | null;
@@ -193,6 +244,8 @@ export type SessionState = {
   rewards: Record<string, RewardBreakdown>;
   episode: EpisodeMetadata;
   recent_traces: StepTrace[];
+  action_log: ActionLogEntry[];
+  reaction_log: ReactionLogEntry[];
   live: LiveSessionConfig;
   created_at: string;
   updated_at: string;

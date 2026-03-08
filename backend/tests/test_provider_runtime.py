@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import json
+import time
 
 import httpx
 
 from trenches_env.env import FogOfWarDiplomacyEnv
-from trenches_env.models import ExternalSignal
+from trenches_env.models import AgentAction, ExternalSignal
 from trenches_env.provider_runtime import ProviderDecisionRuntime
 from trenches_env.source_ingestion import SourceHarvester
 
@@ -315,3 +316,32 @@ def test_huggingface_provider_uses_router_endpoint_and_hf_token(monkeypatch) -> 
     assert session.model_bindings["us"].api_key_env == "HF_TOKEN"
     assert actions["us"].type == "intel_query"
     assert actions["us"].metadata["provider"] == "huggingface"
+
+
+def test_resolve_policy_actions_parallelizes_provider_resolution(monkeypatch) -> None:
+    env = FogOfWarDiplomacyEnv(source_harvester=SourceHarvester(auto_start=False))
+    session = env.create_session(seed=7)
+    agent_ids = ["us", "israel", "iran"]
+
+    for agent_id in agent_ids:
+        session.model_bindings[agent_id].ready_for_inference = True
+
+    def fake_resolve_provider_action(self, current_session, agent_id, signals):
+        time.sleep(0.15)
+        return (
+            AgentAction(
+                actor=agent_id,
+                type="hold",
+                summary=f"{agent_id} holds while awaiting more clarity.",
+            ),
+            None,
+        )
+
+    monkeypatch.setattr(FogOfWarDiplomacyEnv, "_resolve_provider_action", fake_resolve_provider_action)
+
+    started = time.perf_counter()
+    actions = env.resolve_policy_actions(session, [], agent_ids=agent_ids)
+    elapsed = time.perf_counter() - started
+
+    assert elapsed < 0.35
+    assert set(actions) == set(agent_ids)

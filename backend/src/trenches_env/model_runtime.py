@@ -35,6 +35,11 @@ def _provider_name(value: str | None) -> ModelProviderName:
 
 
 def build_entity_model_bindings() -> dict[str, EntityModelBinding]:
+    # --- Mock mode: route all entities to OpenRouter mock ---
+    from trenches_env.mock.config import is_mock_enabled, build_mock_bindings
+    if is_mock_enabled():
+        return build_mock_bindings()
+    # --- Normal mode: per-entity env-based bindings ---
     bindings: dict[str, EntityModelBinding] = {}
     for agent_id in AGENT_IDS:
         provider = _provider_name(_env_value("TRENCHES_MODEL_PROVIDER", agent_id))
