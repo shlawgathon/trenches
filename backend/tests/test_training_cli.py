@@ -3,7 +3,11 @@ from __future__ import annotations
 import pytest
 
 from trenches_env.openenv_client import TrenchesEnvClient
-from trenches_env.training_cli import _resolve_optimizer, _validate_runtime_ports
+from trenches_env.training_cli import (
+    _generate_rollout_completions_vllm_server,
+    _resolve_optimizer,
+    _validate_runtime_ports,
+)
 
 
 class _FakeCuda:
@@ -54,3 +58,35 @@ def test_resolve_optimizer_falls_back_to_adamw_torch_without_cuda() -> None:
 
 def test_resolve_optimizer_preserves_explicit_value() -> None:
     assert _resolve_optimizer("adamw_bnb_8bit", _FakeTorch(cuda_available=False)) == "adamw_bnb_8bit"
+
+
+def test_vllm_server_rollout_keeps_prompt_ids_per_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
+    class _FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, list[list[int]]]:
+            return {
+                "prompt_ids": [[11, 12], [21, 22]],
+                "completion_ids": [[101], [102], [201], [202]],
+                "logprobs": [[-0.1], [-0.2], [-0.3], [-0.4]],
+            }
+
+    def _fake_post(*args, **kwargs):  # type: ignore[no-untyped-def]
+        return _FakeResponse()
+
+    monkeypatch.setattr("trenches_env.training_cli.httpx.post", _fake_post)
+
+    result = _generate_rollout_completions_vllm_server(
+        prompts=["prompt-a", "prompt-b"],
+        server_base_url="http://127.0.0.1:8001",
+        num_generations=2,
+        temperature=0.8,
+        top_p=0.95,
+        top_k=10,
+        max_completion_length=64,
+    )
+
+    assert result["prompt_ids"] == [[11, 12], [21, 22]]
+    assert result["completion_ids"] == [[101], [102], [201], [202]]
+    assert result["logprobs"] == [[-0.1], [-0.2], [-0.3], [-0.4]]

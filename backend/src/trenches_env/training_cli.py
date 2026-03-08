@@ -269,15 +269,14 @@ def _generate_rollout_completions_vllm_server(
     completion_ids = _normalize_rollout_batches(result["completion_ids"])
     logprobs = _normalize_rollout_batches(result["logprobs"])
 
-    expected = len(prompts) * num_generations
-    if len(prompt_ids) == len(prompts) and expected > len(prompts):
-        prompt_ids = [list(item) for item in prompt_ids for _ in range(num_generations)]
+    expected_completions = len(prompts) * num_generations
 
-    if len(prompt_ids) != expected or len(completion_ids) != expected or len(logprobs) != expected:
+    if len(prompt_ids) != len(prompts) or len(completion_ids) != expected_completions or len(logprobs) != expected_completions:
         raise RuntimeError(
             "Unexpected vLLM rollout batch sizes: "
             f"prompt_ids={len(prompt_ids)} completion_ids={len(completion_ids)} "
-            f"logprobs={len(logprobs)} expected={expected}"
+            f"logprobs={len(logprobs)} expected_prompts={len(prompts)} "
+            f"expected_completions={expected_completions}"
         )
 
     return {
