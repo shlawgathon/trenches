@@ -32,7 +32,7 @@ This means the `us` model is not learning to be a generic strategist. It is lear
 Implemented now:
 
 - native OpenEnv replay-aware training loop
-- bundled `us` replay dataset: `us_forecast_seed_2025_2026`
+- 6 **synthetic** seed replay datasets (us, israel, iran, hezbollah, gulf, oversight) — replace with curated truth sets for production
 - CLI trainer using Hugging Face TRL
 - portable local generation path with `transformers`
 - GPU-oriented generation path with `vllm`
@@ -104,7 +104,7 @@ backend/.venv/bin/python -m trenches_env.training_cli \
   --generation-backend transformers \
   --training-agent us \
   --training-stage stage_1_dense \
-  --replay-id us_forecast_seed_2025_2026 \
+  --replay-id us_synthetic_seed_2025_2026 \
   --train-size 4 \
   --max-steps 1 \
   --num-generations 2 \
@@ -138,7 +138,7 @@ backend/.venv/bin/python -m trenches_env.training_cli \
   --generation-backend transformers \
   --training-agent us \
   --training-stage stage_1_dense \
-  --replay-id us_forecast_seed_2025_2026 \
+  --replay-id us_synthetic_seed_2025_2026 \
   --train-size 32 \
   --max-steps 8 \
   --num-generations 4 \
@@ -166,7 +166,7 @@ backend/.venv/bin/python -m trenches_env.training_cli \
   --generation-backend vllm \
   --training-agent us \
   --training-stage stage_1_dense \
-  --replay-id us_forecast_seed_2025_2026 \
+  --replay-id us_synthetic_seed_2025_2026 \
   --train-size 64 \
   --max-steps 16 \
   --num-generations 4 \
@@ -231,7 +231,7 @@ Core training files:
 - `backend/src/trenches_env/env.py`
 - `backend/src/trenches_env/models.py`
 - `backend/src/trenches_env/historical_replay.py`
-- `backend/src/trenches_env/historical_replays/us_forecast_seed_2025_2026.json`
+- `backend/src/trenches_env/historical_replays/us_synthetic_seed_2025_2026.json`
 
 ## Troubleshooting
 
@@ -271,7 +271,7 @@ backend/.venv/bin/python -m trenches_env.training_cli \
   --model-id sshleifer/tiny-gpt2 \
   --generation-backend transformers \
   --training-agent us \
-  --replay-id us_forecast_seed_2025_2026 \
+  --replay-id us_synthetic_seed_2025_2026 \
   --train-size 4 \
   --max-steps 1 \
   --num-generations 2 \

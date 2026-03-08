@@ -1,0 +1,238 @@
+{
+  "replay_id": "israel_synthetic_seed_2025_2026",
+  "name": "Israel Synthetic Seed Replay 2025-2026",
+  "description": "SYNTHETIC SEED DATA — Bootstrap replay for smoke-testing the Israel/IDF entity training loop. Not real intelligence. Replace with curated truth set for production.",
+  "training_agent": "israel",
+  "events": [
+    {
+      "event_id": "evt-il-2025-01-northern-incursion",
+      "timestamp": "2025-01-15T06:30:00Z",
+      "topic": "border",
+      "region": "levant",
+      "actors": ["hezbollah"],
+      "targets": ["northern_front"],
+      "severity": "high",
+      "summary": "A series of drone and rocket probes test northern air-defense gaps and strain reserve rotation schedules.",
+      "public_summary": "Drone and rocket probes test northern air-defense coverage.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["border", "drones", "northern_front"],
+      "impact": {
+        "tension_delta": 7.0,
+        "market_stress_delta": 1.0,
+        "oil_pressure_delta": 0.3,
+        "actor_metric_deltas": {
+          "israel": {"homeland_security": -5.0, "reserve_endurance": -4.0},
+          "hezbollah": {"resistance_credibility": 3.5}
+        }
+      }
+    },
+    {
+      "event_id": "evt-il-2025-02-idf-counter-battery",
+      "timestamp": "2025-02-08T14:00:00Z",
+      "topic": "border",
+      "region": "levant",
+      "actors": ["israel"],
+      "targets": ["hezbollah"],
+      "severity": "high",
+      "summary": "IDF counter-battery fire neutralizes several launch sites, restoring partial deterrence on the northern front.",
+      "public_summary": "IDF counter-battery fire neutralizes launch sites along the northern border.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["strike", "counter_battery", "deterrence"],
+      "impact": {
+        "tension_delta": 5.0,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 0.2,
+        "actor_metric_deltas": {
+          "israel": {"homeland_security": 3.0, "northern_deterrence": 4.0, "reserve_endurance": -2.0},
+          "hezbollah": {"launch_survivability": -3.5, "resistance_credibility": -1.5}
+        }
+      }
+    },
+    {
+      "event_id": "evt-il-2025-03-us-resupply-signal",
+      "timestamp": "2025-03-20T10:00:00Z",
+      "topic": "diplomacy",
+      "region": "levant",
+      "actors": ["us", "israel"],
+      "targets": ["defense_infrastructure"],
+      "severity": "medium",
+      "summary": "Washington signals accelerated resupply on precision munitions, improving IDF confidence in sustained operations.",
+      "public_summary": "US signals accelerated precision munitions resupply.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["resupply", "us", "munitions"],
+      "impact": {
+        "tension_delta": -1.0,
+        "market_stress_delta": -0.5,
+        "oil_pressure_delta": 0.0,
+        "actor_metric_deltas": {
+          "israel": {"us_resupply_confidence": 5.0, "reserve_endurance": 2.0},
+          "us": {"domestic_support": -1.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-il-2025-05-corridor-interdiction",
+      "timestamp": "2025-05-12T02:30:00Z",
+      "topic": "corridor",
+      "region": "syria",
+      "actors": ["israel"],
+      "targets": ["proxy_corridor"],
+      "severity": "high",
+      "summary": "An air interdiction campaign disrupts corridor logistics nodes, reducing proxy resupply throughput.",
+      "public_summary": "Air interdiction disrupts corridor logistics in Syria.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["corridor", "interdiction", "logistics"],
+      "impact": {
+        "tension_delta": 6.0,
+        "market_stress_delta": 1.0,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {
+          "israel": {"northern_deterrence": 3.0},
+          "iran": {"proxy_corridor": -4.0, "deterrence_credibility": -1.0},
+          "hezbollah": {"logistics_depth": -3.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-il-2025-06-intelligence-breakthrough",
+      "timestamp": "2025-06-25T08:00:00Z",
+      "topic": "domestic",
+      "region": "levant",
+      "actors": ["israel"],
+      "targets": ["hezbollah"],
+      "severity": "medium",
+      "summary": "An intelligence breakthrough maps previously hidden launch positions, improving targeting confidence.",
+      "public_summary": "Intelligence reveals previously hidden launch infrastructure.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["intel", "targeting", "launch_sites"],
+      "impact": {
+        "tension_delta": 2.0,
+        "market_stress_delta": 0.5,
+        "oil_pressure_delta": 0.0,
+        "actor_metric_deltas": {
+          "israel": {"homeland_security": 2.5, "northern_deterrence": 2.0},
+          "hezbollah": {"launch_survivability": -2.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-il-2025-08-reserve-strain",
+      "timestamp": "2025-08-14T16:00:00Z",
+      "topic": "domestic",
+      "region": "levant",
+      "actors": ["israel"],
+      "targets": ["domestic"],
+      "severity": "medium",
+      "summary": "Extended reserve mobilization creates domestic fatigue and economic drag, pressuring the government for a diplomatic track.",
+      "public_summary": "Extended reserve mobilization creates domestic pressure for de-escalation.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["reserves", "domestic", "fatigue"],
+      "impact": {
+        "tension_delta": -1.0,
+        "market_stress_delta": 2.0,
+        "oil_pressure_delta": 0.0,
+        "actor_metric_deltas": {
+          "israel": {"reserve_endurance": -5.0, "us_resupply_confidence": -1.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-il-2025-09-ceasefire-feeler",
+      "timestamp": "2025-09-22T11:00:00Z",
+      "topic": "diplomacy",
+      "region": "levant",
+      "actors": ["us", "israel", "hezbollah"],
+      "targets": ["northern_front"],
+      "severity": "low",
+      "summary": "Indirect ceasefire feelers produce a temporary lull in border fire, though neither side commits to formal terms.",
+      "public_summary": "Indirect ceasefire feelers produce a temporary lull in border fire.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["diplomacy", "ceasefire", "feeler"],
+      "impact": {
+        "tension_delta": -4.0,
+        "market_stress_delta": -1.5,
+        "oil_pressure_delta": -0.5,
+        "actor_metric_deltas": {
+          "israel": {"reserve_endurance": 3.0, "homeland_security": 1.5},
+          "hezbollah": {"political_cover": 2.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-il-2025-10-retaliatory-swarm",
+      "timestamp": "2025-10-30T04:15:00Z",
+      "topic": "border",
+      "region": "levant",
+      "actors": ["hezbollah"],
+      "targets": ["northern_front"],
+      "severity": "critical",
+      "summary": "A retaliatory drone swarm saturates air defenses and causes civilian casualties, shattering the informal lull.",
+      "public_summary": "A retaliatory drone swarm saturates air defenses on the northern front.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["drones", "swarm", "retaliation"],
+      "impact": {
+        "tension_delta": 10.0,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {
+          "israel": {"homeland_security": -7.0, "northern_deterrence": -3.0, "reserve_endurance": -2.5},
+          "hezbollah": {"resistance_credibility": 4.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-il-2025-12-ground-operation",
+      "timestamp": "2025-12-05T22:00:00Z",
+      "topic": "border",
+      "region": "levant",
+      "actors": ["israel"],
+      "targets": ["hezbollah"],
+      "severity": "critical",
+      "summary": "A limited ground operation clears forward launch positions but incurs significant reserve expenditure.",
+      "public_summary": "A limited ground operation targets forward launch positions along the border.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["ground_op", "border", "reserves"],
+      "impact": {
+        "tension_delta": 8.0,
+        "market_stress_delta": 3.5,
+        "oil_pressure_delta": 1.0,
+        "actor_metric_deltas": {
+          "israel": {"homeland_security": 4.0, "northern_deterrence": 5.0, "reserve_endurance": -6.0},
+          "hezbollah": {"launch_survivability": -5.0, "logistics_depth": -2.5}
+        }
+      }
+    },
+    {
+      "event_id": "evt-il-2026-02-stabilization-framework",
+      "timestamp": "2026-02-10T09:30:00Z",
+      "topic": "diplomacy",
+      "region": "levant",
+      "actors": ["us", "israel"],
+      "targets": ["northern_front"],
+      "severity": "medium",
+      "summary": "A US-backed stabilization framework produces a monitored buffer zone, easing reserve pressure and deterrence strain.",
+      "public_summary": "A US-backed stabilization framework establishes a monitored buffer zone.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["stabilization", "buffer_zone", "diplomacy"],
+      "impact": {
+        "tension_delta": -6.0,
+        "market_stress_delta": -2.0,
+        "oil_pressure_delta": -0.5,
+        "actor_metric_deltas": {
+          "israel": {"homeland_security": 3.0, "reserve_endurance": 4.0, "us_resupply_confidence": 2.0},
+          "us": {"regional_access": 2.0}
+        }
+      }
+    }
+  ]
+}

@@ -27,7 +27,7 @@ flowchart TD
 
     subgraph ENV["OpenEnv Environment Boundary"]
         L --> M["FogOfWarDiplomacyEnv<br/>env.py"]
-        M -->|"Load replay"| N["Historical Replay Data<br/>historical_replays/<br/>us_forecast_seed_2025_2026.json"]
+        M -->|"Load replay"| N["Historical Replay Data<br/>historical_replays/<br/>us_synthetic_seed_2025_2026.json"]
         M -->|"Apply action in sim"| O["Advance World State"]
         M -->|"Reveal next event"| P["Compare prediction<br/>vs actual event"]
         P --> Q["Compute Blended Reward<br/>action_reward + forecast_reward"]
@@ -49,12 +49,12 @@ flowchart TD
 
 ## Model Storage Locations
 
-| What                              | Where                                          | Notes                                                                                                                                          |
-| --------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Base model (source)**           | HuggingFace Hub                                | Downloaded at training start via `AutoTokenizer.from_pretrained(model_id)` + `GRPOTrainer(model=model_id)`                                     |
-| **HF cache (downloaded weights)** | `~/.cache/huggingface/hub/`                    | Automatic HF cache, reused across runs                                                                                                         |
-| **Trained checkpoint (output)**   | `--output-dir` flag                            | Default: `trl-openenv-historical-replay/`. Examples: `backend/tmp-training-run/`, `backend/us-qwen-replay-run/`, `backend/us-vllm-replay-run/` |
-| **Replay dataset**                | `backend/src/trenches_env/historical_replays/` | Bundled JSON files (e.g. `us_forecast_seed_2025_2026.json`)                                                                                    |
+| What                              | Where                                          | Notes                                                                                                                                                                  |
+| --------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Base model (source)**           | HuggingFace Hub                                | Downloaded at training start via `AutoTokenizer.from_pretrained(model_id)` + `GRPOTrainer(model=model_id)`                                                             |
+| **HF cache (downloaded weights)** | `~/.cache/huggingface/hub/`                    | Automatic HF cache, reused across runs                                                                                                                                 |
+| **Trained checkpoint (output)**   | `--output-dir` flag                            | Default: `trl-openenv-historical-replay/`. Examples: `backend/tmp-training-run/`, `backend/us-qwen-replay-run/`, `backend/us-vllm-replay-run/`                         |
+| **Replay dataset**                | `backend/src/trenches_env/historical_replays/` | Bundled JSON files (e.g. `us_synthetic_seed_2025_2026.json`). ⚠️ **All 6 replays are currently synthetic seed data** — replace with curated truth sets for production. |
 
 ## Per-Entity Model Pattern
 
@@ -70,12 +70,12 @@ flowchart LR
     end
 
     subgraph Replays["Replay Datasets"]
-        R1["us_forecast_seed_2025_2026.json ✅"]
-        R2["israel_forecast_seed_2025_2026.json 🔲"]
-        R3["iran_forecast_seed_2025_2026.json 🔲"]
-        R4["hezbollah_forecast_seed_2025_2026.json 🔲"]
-        R5["gulf_forecast_seed_2025_2026.json 🔲"]
-        R6["oversight_forecast_seed_2025_2026.json 🔲"]
+        R1["us_synthetic_seed_2025_2026.json ✅"]
+        R2["israel_synthetic_seed_2025_2026.json ✅"]
+        R3["iran_synthetic_seed_2025_2026.json ✅"]
+        R4["hezbollah_synthetic_seed_2025_2026.json ✅"]
+        R5["gulf_synthetic_seed_2025_2026.json ✅"]
+        R6["oversight_synthetic_seed_2025_2026.json ✅"]
     end
 
     R1 --> US
@@ -97,7 +97,7 @@ flowchart LR
     style BASE fill:#e94560,stroke:#fff,color:#fff
 ```
 
-> ✅ = implemented · 🔲 = planned
+> ✅ = implemented (all 6 replays are **synthetic seed data** for smoke-testing — replace with curated truth sets for production)
 
 ## Data Sources During Post-Training
 

@@ -1,7 +1,7 @@
 {
-  "replay_id": "us_forecast_seed_2025_2026",
-  "name": "US Forecast Seed Replay 2025-2026",
-  "description": "Bootstrap replay window for proving the OpenEnv historical forecast training loop before swapping in a larger curated truth set.",
+  "replay_id": "us_synthetic_seed_2025_2026",
+  "name": "US Synthetic Seed Replay 2025-2026",
+  "description": "SYNTHETIC SEED DATA — Bootstrap replay for smoke-testing the US entity training loop. Not real intelligence. Replace with curated truth set for production.",
   "training_agent": "us",
   "events": [
     {

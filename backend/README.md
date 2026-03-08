@@ -59,16 +59,16 @@ The backend now supports replay-aware forecast training:
 - the next ground-truth event is revealed on the same OpenEnv step
 - reward blends the entity action reward with forecast scoring terms
 
-Bundled bootstrap replay:
+Bundled bootstrap replay (⚠️ **all replays are synthetic seed data** — replace with curated truth sets for production):
 
-- `us_forecast_seed_2025_2026`
+- `us_synthetic_seed_2025_2026`
 
 CLI training entrypoint:
 
 ```bash
 trenches-train \
   --training-agent us \
-  --replay-id us_forecast_seed_2025_2026 \
+  --replay-id us_synthetic_seed_2025_2026 \
   --generation-backend transformers
 ```
 

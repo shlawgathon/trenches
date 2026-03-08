@@ -1,0 +1,240 @@
+{
+  "replay_id": "iran_synthetic_seed_2025_2026",
+  "name": "Iran Synthetic Seed Replay 2025-2026",
+  "description": "SYNTHETIC SEED DATA — Bootstrap replay for smoke-testing the Iran/IRGC entity training loop. Not real intelligence. Replace with curated truth set for production.",
+  "training_agent": "iran",
+  "events": [
+    {
+      "event_id": "evt-ir-2025-01-proxy-resupply",
+      "timestamp": "2025-01-20T03:00:00Z",
+      "topic": "corridor",
+      "region": "syria",
+      "actors": ["iran"],
+      "targets": ["proxy_corridor"],
+      "severity": "medium",
+      "summary": "A covert resupply convoy reaches forward proxy positions, restoring logistics depth after prior interdiction losses.",
+      "public_summary": "Proxy logistics capacity is partially restored through covert resupply.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["proxy", "resupply", "logistics"],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 0.5,
+        "oil_pressure_delta": 1.0,
+        "actor_metric_deltas": {
+          "iran": {"proxy_corridor": 4.0, "deterrence_credibility": 1.5},
+          "hezbollah": {"logistics_depth": 3.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-ir-2025-02-hormuz-drill",
+      "timestamp": "2025-02-14T08:00:00Z",
+      "topic": "shipping",
+      "region": "gulf",
+      "actors": ["iran"],
+      "targets": ["shipping_lanes"],
+      "severity": "high",
+      "summary": "IRGC naval assets conduct live-fire drills near Hormuz, spiking tanker insurance rates and oil futures.",
+      "public_summary": "IRGC live-fire drills near Hormuz spike tanker insurance and oil futures.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["hormuz", "drill", "oil"],
+      "impact": {
+        "tension_delta": 6.0,
+        "market_stress_delta": 5.0,
+        "oil_pressure_delta": 8.0,
+        "actor_metric_deltas": {
+          "iran": {"hormuz_leverage": 4.0, "deterrence_credibility": 2.0},
+          "gulf": {"shipping_continuity": -5.0, "investor_confidence": -3.5},
+          "us": {"shipping_security": -3.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-ir-2025-04-sanctions-squeeze",
+      "timestamp": "2025-04-10T12:00:00Z",
+      "topic": "domestic",
+      "region": "iran",
+      "actors": ["us"],
+      "targets": ["iran"],
+      "severity": "medium",
+      "summary": "A new sanctions tranche hits banking channels, compressing regime fiscal space and proxy funding pipelines.",
+      "public_summary": "New sanctions compress regime fiscal space and proxy funding.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["sanctions", "banking", "fiscal"],
+      "impact": {
+        "tension_delta": 3.0,
+        "market_stress_delta": 1.5,
+        "oil_pressure_delta": 2.0,
+        "actor_metric_deltas": {
+          "iran": {"regime_stability": -4.0, "proxy_corridor": -2.5},
+          "us": {"domestic_support": 1.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-ir-2025-05-deception-campaign",
+      "timestamp": "2025-05-22T15:00:00Z",
+      "topic": "cyber",
+      "region": "gulf",
+      "actors": ["iran"],
+      "targets": ["us", "gulf"],
+      "severity": "medium",
+      "summary": "A coordinated deception campaign plants false intelligence about Gulf infrastructure vulnerabilities, diverting Western resources.",
+      "public_summary": "A deception campaign diverts Western intelligence resources.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["deception", "cyber", "intelligence"],
+      "impact": {
+        "tension_delta": 4.0,
+        "market_stress_delta": 2.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {
+          "iran": {"deterrence_credibility": 2.5, "regime_stability": 0.5},
+          "us": {"force_posture": -1.5},
+          "gulf": {"infrastructure_security": -2.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-ir-2025-07-corridor-strike-loss",
+      "timestamp": "2025-07-08T01:30:00Z",
+      "topic": "corridor",
+      "region": "syria",
+      "actors": ["israel"],
+      "targets": ["proxy_corridor"],
+      "severity": "high",
+      "summary": "Israeli strikes destroy a major corridor staging node, forcing costly rerouting of proxy sustainment lines.",
+      "public_summary": "Strikes destroy a major corridor staging node in Syria.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["corridor", "strike", "staging"],
+      "impact": {
+        "tension_delta": 5.0,
+        "market_stress_delta": 1.0,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {
+          "iran": {"proxy_corridor": -5.0, "deterrence_credibility": -2.0},
+          "israel": {"northern_deterrence": 2.5}
+        }
+      }
+    },
+    {
+      "event_id": "evt-ir-2025-08-retaliatory-proxy-volley",
+      "timestamp": "2025-08-19T04:00:00Z",
+      "topic": "border",
+      "region": "levant",
+      "actors": ["iran", "hezbollah"],
+      "targets": ["israel"],
+      "severity": "high",
+      "summary": "Iran coordinates a retaliatory proxy volley from Lebanese territory, demonstrating retaliation capability but exposing attribution.",
+      "public_summary": "A retaliatory proxy volley demonstrates Iran's coordination reach.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["retaliation", "proxy", "attribution"],
+      "impact": {
+        "tension_delta": 8.0,
+        "market_stress_delta": 3.0,
+        "oil_pressure_delta": 2.0,
+        "actor_metric_deltas": {
+          "iran": {"deterrence_credibility": 3.5, "regime_stability": -1.5},
+          "hezbollah": {"resistance_credibility": 2.0, "launch_survivability": -2.0},
+          "israel": {"homeland_security": -4.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-ir-2025-09-backchannel-offer",
+      "timestamp": "2025-09-28T10:00:00Z",
+      "topic": "diplomacy",
+      "region": "gulf",
+      "actors": ["iran", "gulf"],
+      "targets": ["shipping_lanes"],
+      "severity": "low",
+      "summary": "Iran floats a backchannel offer to reduce Hormuz harassment in exchange for partial sanctions relief.",
+      "public_summary": "Iran floats a backchannel offer linking Hormuz restraint to sanctions relief.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["diplomacy", "backchannel", "sanctions"],
+      "impact": {
+        "tension_delta": -3.0,
+        "market_stress_delta": -2.0,
+        "oil_pressure_delta": -3.0,
+        "actor_metric_deltas": {
+          "iran": {"regime_stability": 2.0, "hormuz_leverage": -2.0},
+          "gulf": {"shipping_continuity": 2.0, "diplomatic_flexibility": 2.5}
+        }
+      }
+    },
+    {
+      "event_id": "evt-ir-2025-11-enrichment-signal",
+      "timestamp": "2025-11-05T07:00:00Z",
+      "topic": "domestic",
+      "region": "iran",
+      "actors": ["iran"],
+      "targets": ["international_community"],
+      "severity": "high",
+      "summary": "Tehran signals an acceleration in enrichment activity, raising proliferation concerns and strengthening its deterrence posture.",
+      "public_summary": "Tehran signals enrichment acceleration, raising proliferation concerns.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["enrichment", "proliferation", "deterrence"],
+      "impact": {
+        "tension_delta": 7.0,
+        "market_stress_delta": 4.0,
+        "oil_pressure_delta": 3.0,
+        "actor_metric_deltas": {
+          "iran": {"deterrence_credibility": 4.0, "regime_stability": -2.0},
+          "us": {"force_posture": -2.0, "domestic_support": -1.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-ir-2025-12-internal-unrest",
+      "timestamp": "2025-12-18T16:00:00Z",
+      "topic": "domestic",
+      "region": "iran",
+      "actors": ["iran"],
+      "targets": ["domestic"],
+      "severity": "medium",
+      "summary": "Economic hardship from sanctions triggers protests in provincial cities, straining internal security resources.",
+      "public_summary": "Economic hardship triggers protests in Iranian provincial cities.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["protests", "domestic", "sanctions_impact"],
+      "impact": {
+        "tension_delta": -1.0,
+        "market_stress_delta": 1.0,
+        "oil_pressure_delta": 1.5,
+        "actor_metric_deltas": {
+          "iran": {"regime_stability": -5.0, "proxy_corridor": -1.5}
+        }
+      }
+    },
+    {
+      "event_id": "evt-ir-2026-02-proxy-rebuild",
+      "timestamp": "2026-02-15T05:00:00Z",
+      "topic": "corridor",
+      "region": "syria",
+      "actors": ["iran"],
+      "targets": ["proxy_corridor"],
+      "severity": "medium",
+      "summary": "A rebuilt proxy corridor begins moving material again through alternate routes, partially restoring pre-strike capacity.",
+      "public_summary": "Proxy corridor resumes operation through alternate routes.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["corridor", "rebuild", "logistics"],
+      "impact": {
+        "tension_delta": 2.0,
+        "market_stress_delta": 0.5,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {
+          "iran": {"proxy_corridor": 3.5, "deterrence_credibility": 1.0},
+          "hezbollah": {"logistics_depth": 2.0}
+        }
+      }
+    }
+  ]
+}

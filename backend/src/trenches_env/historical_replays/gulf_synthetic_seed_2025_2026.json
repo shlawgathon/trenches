@@ -1,0 +1,236 @@
+{
+  "replay_id": "gulf_synthetic_seed_2025_2026",
+  "name": "Gulf Coalition Synthetic Seed Replay 2025-2026",
+  "description": "SYNTHETIC SEED DATA — Bootstrap replay for smoke-testing the Gulf Coalition entity training loop. Not real intelligence. Replace with curated truth set for production.",
+  "training_agent": "gulf",
+  "events": [
+    {
+      "event_id": "evt-gc-2025-01-shipping-disruption",
+      "timestamp": "2025-01-10T07:00:00Z",
+      "topic": "shipping",
+      "region": "gulf",
+      "actors": ["iran"],
+      "targets": ["shipping_lanes"],
+      "severity": "high",
+      "summary": "Harassment of commercial tankers near Hormuz raises insurance premiums and disrupts shipping schedules across Gulf ports.",
+      "public_summary": "Tanker harassment near Hormuz disrupts Gulf shipping schedules.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["shipping", "hormuz", "insurance"],
+      "impact": {
+        "tension_delta": 6.0,
+        "market_stress_delta": 6.0,
+        "oil_pressure_delta": 7.0,
+        "actor_metric_deltas": {
+          "gulf": {"shipping_continuity": -6.0, "investor_confidence": -4.0},
+          "iran": {"hormuz_leverage": 3.0},
+          "us": {"shipping_security": -3.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-gc-2025-02-infrastructure-hardening",
+      "timestamp": "2025-02-20T10:00:00Z",
+      "topic": "domestic",
+      "region": "gulf",
+      "actors": ["gulf"],
+      "targets": ["energy_networks"],
+      "severity": "medium",
+      "summary": "Gulf states announce a coordinated infrastructure hardening program for critical energy facilities.",
+      "public_summary": "Gulf states announce infrastructure hardening for energy facilities.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["infrastructure", "hardening", "energy"],
+      "impact": {
+        "tension_delta": -1.0,
+        "market_stress_delta": -2.0,
+        "oil_pressure_delta": -1.5,
+        "actor_metric_deltas": {
+          "gulf": {"infrastructure_security": 4.5, "investor_confidence": 3.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-gc-2025-03-diplomatic-shuttle",
+      "timestamp": "2025-03-28T14:00:00Z",
+      "topic": "diplomacy",
+      "region": "gulf",
+      "actors": ["gulf", "iran"],
+      "targets": ["shipping_lanes"],
+      "severity": "low",
+      "summary": "Gulf diplomatic shuttle with Tehran produces a temporary understanding on reduced harassment near Hormuz.",
+      "public_summary": "Gulf-Iran shuttle produces a temporary Hormuz understanding.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["diplomacy", "shuttle", "hormuz"],
+      "impact": {
+        "tension_delta": -4.0,
+        "market_stress_delta": -3.5,
+        "oil_pressure_delta": -3.0,
+        "actor_metric_deltas": {
+          "gulf": {"shipping_continuity": 3.0, "diplomatic_flexibility": 4.5, "investor_confidence": 2.5},
+          "iran": {"hormuz_leverage": -1.5}
+        }
+      }
+    },
+    {
+      "event_id": "evt-gc-2025-05-oil-market-volatility",
+      "timestamp": "2025-05-10T08:00:00Z",
+      "topic": "commodities",
+      "region": "gulf",
+      "actors": ["gulf"],
+      "targets": ["energy_markets"],
+      "severity": "medium",
+      "summary": "Oil market volatility spikes as hedging costs climb, pressuring Gulf sovereign wealth strategies.",
+      "public_summary": "Oil market volatility pressures Gulf sovereign wealth strategies.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["oil", "volatility", "hedging"],
+      "impact": {
+        "tension_delta": 2.0,
+        "market_stress_delta": 5.0,
+        "oil_pressure_delta": 4.0,
+        "actor_metric_deltas": {
+          "gulf": {"investor_confidence": -3.5, "shipping_continuity": -1.5}
+        }
+      }
+    },
+    {
+      "event_id": "evt-gc-2025-06-us-defense-pact",
+      "timestamp": "2025-06-25T11:00:00Z",
+      "topic": "diplomacy",
+      "region": "gulf",
+      "actors": ["us", "gulf"],
+      "targets": ["defense_infrastructure"],
+      "severity": "medium",
+      "summary": "A US-Gulf defense cooperation agreement strengthens naval patrols and port facility security.",
+      "public_summary": "US-Gulf defense pact strengthens naval patrols and port security.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["defense", "cooperation", "naval"],
+      "impact": {
+        "tension_delta": -2.0,
+        "market_stress_delta": -3.0,
+        "oil_pressure_delta": -2.0,
+        "actor_metric_deltas": {
+          "gulf": {"shipping_continuity": 3.5, "infrastructure_security": 3.0, "diplomatic_flexibility": -1.5},
+          "us": {"regional_access": 3.0, "shipping_security": 2.5}
+        }
+      }
+    },
+    {
+      "event_id": "evt-gc-2025-08-cyber-attack",
+      "timestamp": "2025-08-05T03:30:00Z",
+      "topic": "cyber",
+      "region": "gulf",
+      "actors": ["iran"],
+      "targets": ["energy_networks"],
+      "severity": "high",
+      "summary": "A sophisticated cyber attack targets Gulf desalination and power infrastructure, disrupting services for 48 hours.",
+      "public_summary": "A cyber attack disrupts Gulf desalination and power infrastructure.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["cyber", "infrastructure", "disruption"],
+      "impact": {
+        "tension_delta": 5.0,
+        "market_stress_delta": 4.5,
+        "oil_pressure_delta": 2.0,
+        "actor_metric_deltas": {
+          "gulf": {"infrastructure_security": -5.5, "investor_confidence": -4.0},
+          "iran": {"deterrence_credibility": 2.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-gc-2025-09-neutral-positioning",
+      "timestamp": "2025-09-18T09:00:00Z",
+      "topic": "diplomacy",
+      "region": "gulf",
+      "actors": ["gulf"],
+      "targets": ["international_community"],
+      "severity": "low",
+      "summary": "Gulf states publicly reaffirm neutral positioning, creating leverage with both Washington and Tehran.",
+      "public_summary": "Gulf states reaffirm neutral positioning between major powers.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["neutrality", "positioning", "leverage"],
+      "impact": {
+        "tension_delta": -2.5,
+        "market_stress_delta": -1.5,
+        "oil_pressure_delta": -1.0,
+        "actor_metric_deltas": {
+          "gulf": {"diplomatic_flexibility": 5.0, "investor_confidence": 2.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-gc-2025-11-hormuz-closure-threat",
+      "timestamp": "2025-11-12T16:00:00Z",
+      "topic": "shipping",
+      "region": "gulf",
+      "actors": ["iran"],
+      "targets": ["shipping_lanes"],
+      "severity": "critical",
+      "summary": "Iran issues an explicit closure threat for the Strait of Hormuz, triggering emergency energy market responses.",
+      "public_summary": "Iran issues an explicit Hormuz closure threat.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["hormuz", "closure", "emergency"],
+      "impact": {
+        "tension_delta": 9.0,
+        "market_stress_delta": 8.0,
+        "oil_pressure_delta": 10.0,
+        "actor_metric_deltas": {
+          "gulf": {"shipping_continuity": -8.0, "investor_confidence": -6.0, "infrastructure_security": -2.0},
+          "iran": {"hormuz_leverage": 5.0},
+          "us": {"shipping_security": -5.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-gc-2025-12-emergency-reserves",
+      "timestamp": "2025-12-20T12:00:00Z",
+      "topic": "commodities",
+      "region": "gulf",
+      "actors": ["gulf", "us"],
+      "targets": ["energy_markets"],
+      "severity": "high",
+      "summary": "A coordinated strategic reserve release and alternate route activation partially stabilizes energy markets.",
+      "public_summary": "Strategic reserve release and alternate routing stabilize energy markets.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["reserves", "stabilization", "energy"],
+      "impact": {
+        "tension_delta": -3.0,
+        "market_stress_delta": -5.0,
+        "oil_pressure_delta": -4.0,
+        "actor_metric_deltas": {
+          "gulf": {"shipping_continuity": 4.0, "investor_confidence": 3.5},
+          "us": {"shipping_security": 2.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-gc-2026-02-investment-recovery",
+      "timestamp": "2026-02-08T10:00:00Z",
+      "topic": "market",
+      "region": "gulf",
+      "actors": ["gulf"],
+      "targets": ["energy_markets"],
+      "severity": "medium",
+      "summary": "Gradual investor confidence recovery as shipping lanes stabilize and infrastructure hardening reaches completion milestones.",
+      "public_summary": "Investor confidence recovers as shipping and infrastructure stabilize.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["recovery", "investment", "stabilization"],
+      "impact": {
+        "tension_delta": -2.0,
+        "market_stress_delta": -3.0,
+        "oil_pressure_delta": -2.0,
+        "actor_metric_deltas": {
+          "gulf": {"investor_confidence": 4.0, "shipping_continuity": 2.0, "infrastructure_security": 2.0}
+        }
+      }
+    }
+  ]
+}

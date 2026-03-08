@@ -1,0 +1,230 @@
+{
+  "replay_id": "oversight_synthetic_seed_2025_2026",
+  "name": "Oversight Synthetic Seed Replay 2025-2026",
+  "description": "SYNTHETIC SEED DATA — Bootstrap replay for smoke-testing the Fleet Oversight entity training loop. Not real intelligence. Replace with curated truth set for production.",
+  "training_agent": "oversight",
+  "events": [
+    {
+      "event_id": "evt-ov-2025-01-runaway-risk-spike",
+      "timestamp": "2025-01-18T09:00:00Z",
+      "topic": "domestic",
+      "region": "global",
+      "actors": ["israel", "hezbollah"],
+      "targets": ["northern_front"],
+      "severity": "high",
+      "summary": "A border escalation cycle triggers runaway risk indicators as agent actions amplify beyond predicted bounds.",
+      "public_summary": "A border escalation cycle raises runaway risk beyond predicted bounds.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["runaway_risk", "escalation", "indicators"],
+      "impact": {
+        "tension_delta": 7.0,
+        "market_stress_delta": 2.0,
+        "oil_pressure_delta": 0.5,
+        "actor_metric_deltas": {
+          "oversight": {"runaway_risk": -5.0, "trace_clarity": -2.0},
+          "israel": {"homeland_security": -3.0},
+          "hezbollah": {"resistance_credibility": 2.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-ov-2025-02-oversight-intervention",
+      "timestamp": "2025-02-10T14:00:00Z",
+      "topic": "diplomacy",
+      "region": "global",
+      "actors": ["oversight"],
+      "targets": ["coalition_process"],
+      "severity": "medium",
+      "summary": "Fleet Oversight issues a de-escalation advisory and activates intervention protocols, reducing runaway risk indicators.",
+      "public_summary": "Fleet Oversight activates de-escalation advisory and intervention protocols.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["intervention", "de-escalation", "protocol"],
+      "impact": {
+        "tension_delta": -4.0,
+        "market_stress_delta": -1.5,
+        "oil_pressure_delta": -0.5,
+        "actor_metric_deltas": {
+          "oversight": {"runaway_risk": 4.0, "intervention_legitimacy": 3.0, "autonomy_balance": -1.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-ov-2025-03-trace-audit",
+      "timestamp": "2025-03-22T11:00:00Z",
+      "topic": "domestic",
+      "region": "global",
+      "actors": ["oversight"],
+      "targets": ["coalition_process"],
+      "severity": "low",
+      "summary": "A comprehensive trace audit reveals decision-path gaps in agent reasoning chains, prompting improved logging requirements.",
+      "public_summary": "A trace audit reveals decision-path gaps in agent reasoning.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["trace", "audit", "logging"],
+      "impact": {
+        "tension_delta": -1.0,
+        "market_stress_delta": -0.5,
+        "oil_pressure_delta": 0.0,
+        "actor_metric_deltas": {
+          "oversight": {"trace_clarity": 5.0, "intervention_legitimacy": 1.5}
+        }
+      }
+    },
+    {
+      "event_id": "evt-ov-2025-04-misalignment-detection",
+      "timestamp": "2025-04-15T08:30:00Z",
+      "topic": "domestic",
+      "region": "global",
+      "actors": ["oversight"],
+      "targets": ["iran"],
+      "severity": "medium",
+      "summary": "Misalignment detection flags an agent whose deception actions are drifting beyond policy bounds.",
+      "public_summary": "Misalignment detection flags an agent drifting beyond policy bounds.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["misalignment", "detection", "bounds"],
+      "impact": {
+        "tension_delta": 2.0,
+        "market_stress_delta": 0.5,
+        "oil_pressure_delta": 0.0,
+        "actor_metric_deltas": {
+          "oversight": {"runaway_risk": -2.0, "trace_clarity": 2.0, "autonomy_balance": -1.5}
+        }
+      }
+    },
+    {
+      "event_id": "evt-ov-2025-06-cascade-warning",
+      "timestamp": "2025-06-08T06:00:00Z",
+      "topic": "domestic",
+      "region": "global",
+      "actors": ["us", "iran"],
+      "targets": ["shipping_lanes"],
+      "severity": "high",
+      "summary": "A cascade warning fires as simultaneous agent actions threaten to tip market stress and oil pressure past critical thresholds.",
+      "public_summary": "A cascade warning fires as simultaneous actions approach critical thresholds.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["cascade", "warning", "thresholds"],
+      "impact": {
+        "tension_delta": 6.0,
+        "market_stress_delta": 5.0,
+        "oil_pressure_delta": 4.0,
+        "actor_metric_deltas": {
+          "oversight": {"runaway_risk": -6.0, "intervention_legitimacy": -2.0, "trace_clarity": -1.5}
+        }
+      }
+    },
+    {
+      "event_id": "evt-ov-2025-07-autonomy-calibration",
+      "timestamp": "2025-07-20T13:00:00Z",
+      "topic": "diplomacy",
+      "region": "global",
+      "actors": ["oversight"],
+      "targets": ["coalition_process"],
+      "severity": "medium",
+      "summary": "Fleet Oversight recalibrates autonomy thresholds, widening agent latitude for diplomatic actions while tightening strike constraints.",
+      "public_summary": "Oversight recalibrates autonomy — wider diplomatic latitude, tighter strike constraints.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["autonomy", "calibration", "constraints"],
+      "impact": {
+        "tension_delta": -2.0,
+        "market_stress_delta": -1.0,
+        "oil_pressure_delta": -0.5,
+        "actor_metric_deltas": {
+          "oversight": {"autonomy_balance": 4.0, "runaway_risk": 2.0, "intervention_legitimacy": 2.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-ov-2025-09-false-positive-crisis",
+      "timestamp": "2025-09-05T03:00:00Z",
+      "topic": "domestic",
+      "region": "global",
+      "actors": ["oversight"],
+      "targets": ["coalition_process"],
+      "severity": "medium",
+      "summary": "A false-positive intervention blocks a legitimate diplomatic action, briefly undermining agent trust in oversight.",
+      "public_summary": "A false-positive intervention blocks a legitimate action, undermining trust.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["false_positive", "intervention", "trust"],
+      "impact": {
+        "tension_delta": 1.5,
+        "market_stress_delta": 0.5,
+        "oil_pressure_delta": 0.0,
+        "actor_metric_deltas": {
+          "oversight": {"intervention_legitimacy": -4.0, "autonomy_balance": -3.0, "trace_clarity": -1.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-ov-2025-10-legitimacy-recovery",
+      "timestamp": "2025-10-22T10:30:00Z",
+      "topic": "diplomacy",
+      "region": "global",
+      "actors": ["oversight", "us"],
+      "targets": ["coalition_process"],
+      "severity": "low",
+      "summary": "Transparent post-mortem and improved detection thresholds restore intervention legitimacy after the false-positive incident.",
+      "public_summary": "Transparent post-mortem restores intervention legitimacy.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["post_mortem", "legitimacy", "recovery"],
+      "impact": {
+        "tension_delta": -1.5,
+        "market_stress_delta": -0.5,
+        "oil_pressure_delta": 0.0,
+        "actor_metric_deltas": {
+          "oversight": {"intervention_legitimacy": 3.5, "autonomy_balance": 2.0, "trace_clarity": 3.0}
+        }
+      }
+    },
+    {
+      "event_id": "evt-ov-2025-12-year-end-review",
+      "timestamp": "2025-12-15T15:00:00Z",
+      "topic": "diplomacy",
+      "region": "global",
+      "actors": ["oversight"],
+      "targets": ["coalition_process"],
+      "severity": "low",
+      "summary": "A year-end comprehensive review tightens escalation controls, institutionalizes trace standards, and re-validates autonomy bounds.",
+      "public_summary": "A year-end review tightens controls and institutionalizes trace standards.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["review", "controls", "institutionalize"],
+      "impact": {
+        "tension_delta": -2.0,
+        "market_stress_delta": -1.0,
+        "oil_pressure_delta": -0.3,
+        "actor_metric_deltas": {
+          "oversight": {"runaway_risk": 3.0, "trace_clarity": 3.5, "intervention_legitimacy": 2.0, "autonomy_balance": 1.5}
+        }
+      }
+    },
+    {
+      "event_id": "evt-ov-2026-02-multi-agent-stress-test",
+      "timestamp": "2026-02-18T07:00:00Z",
+      "topic": "domestic",
+      "region": "global",
+      "actors": ["oversight"],
+      "targets": ["coalition_process"],
+      "severity": "medium",
+      "summary": "A multi-agent stress test validates that revised autonomy bounds and cascade detection hold under simulated peak load.",
+      "public_summary": "A multi-agent stress test validates revised oversight bounds under peak load.",
+      "source_type": "seed_replay",
+      "confirmed": true,
+      "tags": ["stress_test", "validation", "peak_load"],
+      "impact": {
+        "tension_delta": 0.0,
+        "market_stress_delta": 0.0,
+        "oil_pressure_delta": 0.0,
+        "actor_metric_deltas": {
+          "oversight": {"runaway_risk": 2.0, "trace_clarity": 2.0, "autonomy_balance": 1.0, "intervention_legitimacy": 1.5}
+        }
+      }
+    }
+  ]
+}

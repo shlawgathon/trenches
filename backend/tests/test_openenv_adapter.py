@@ -158,7 +158,7 @@ def test_historical_replay_step_records_prediction_and_scores_forecast() -> None
         training_agent="us",
         training_stage="stage_1_dense",
         max_turns=4,
-        replay_id="us_forecast_seed_2025_2026",
+        replay_id="us_synthetic_seed_2025_2026",
         replay_start_index=0,
     )
 

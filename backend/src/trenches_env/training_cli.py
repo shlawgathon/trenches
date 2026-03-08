@@ -16,7 +16,7 @@ from trenches_env.rl import AGENT_ALLOWED_ACTIONS
 from trenches_env.server import create_app
 
 DEFAULT_MODEL_ID = "Qwen/Qwen2.5-0.5B-Instruct"
-DEFAULT_REPLAY_ID = "us_forecast_seed_2025_2026"
+DEFAULT_REPLAY_ID = "us_synthetic_seed_2025_2026"
 DEFAULT_TRAINING_STAGE = "stage_1_dense"
 
 
@@ -305,13 +305,14 @@ def _preview_rollouts(
     print("\nPreview rollouts")
     for sample_index in range(samples):
         client = TrenchesEnvClient(base_url=f"http://127.0.0.1:{port}/openenv")
-        observation = client.reset(
+        reset_result = client.reset(
             training_agent=training_agent,
             training_stage=training_stage,
             max_turns=1,
             replay_id=replay_id,
             episode_id=f"preview-{sample_index}-{int(time.time() * 1000)}",
         )
+        observation = reset_result.observation
         prompt = _render_observation_prompt(
             _build_base_prompt(training_agent),
             training_agent,
@@ -328,17 +329,18 @@ def _preview_rollouts(
         completion_ids = output[0][inputs["input_ids"].shape[1] :]
         completion = tokenizer.decode(completion_ids, skip_special_tokens=True)
         action, prediction = _parse_turn_output(training_agent, completion)
-        result = client.step(
+        step_result = client.step(
             TrenchesOpenEnvAction(
                 action=action,
                 prediction=prediction,
                 external_signals=[],
             )
         )
-        actual_event = result.revealed_event.summary if result.revealed_event is not None else "n/a"
+        step_obs = step_result.observation
+        actual_event = step_obs.revealed_event.summary if step_obs.revealed_event is not None else "n/a"
+        step_reward = step_result.reward if step_result.reward is not None else 0.0
         print(
-            f"[sample {sample_index + 1}] reward={result.reward:.3f} "
-            f"forecast={result.reward_breakdown.forecast_total:.3f} "
+            f"[sample {sample_index + 1}] reward={step_reward:.3f} "
             f"action={action.type} topic={prediction.topic} actual={actual_event}"
         )
 
@@ -362,6 +364,14 @@ def main() -> None:
     parser.add_argument("--output-dir", default="trl-openenv-historical-replay")
     parser.add_argument("--preview-samples", type=int, default=3)
     parser.add_argument("--no-preview", action="store_true")
+    # Post-training plan args
+    parser.add_argument("--quantize-4bit", action="store_true", help="Load model with 4-bit NF4 quantization via bitsandbytes (requires CUDA)")
+    parser.add_argument("--beta", type=float, default=0.04, help="KL coefficient for GRPO")
+    parser.add_argument("--warmup-steps", type=int, default=0, help="Number of warmup steps")
+    parser.add_argument("--temperature", type=float, default=0.9, help="Sampling temperature for generation")
+    parser.add_argument("--top-k", type=int, default=0, help="Top-k sampling (0 = disabled)")
+    parser.add_argument("--save-strategy", default="no", choices=["no", "steps", "epoch"], help="Checkpoint save strategy")
+    parser.add_argument("--save-steps", type=int, default=100, help="Save checkpoint every N steps (when save-strategy=steps)")
     args = parser.parse_args()
 
     imports = _required_training_imports()
@@ -378,6 +388,23 @@ def main() -> None:
 
     _launch_backend(args.port)
 
+    # Model loading — optionally with 4-bit quantization
+    model_ref = args.model_id
+    if args.quantize_4bit:
+        from transformers import AutoModelForCausalLM, BitsAndBytesConfig
+
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+        )
+        print(f"Loading {args.model_id} with 4-bit NF4 quantization")
+        model_ref = AutoModelForCausalLM.from_pretrained(
+            args.model_id,
+            quantization_config=bnb_config,
+            device_map="auto",
+        )
+
     tokenizer = AutoTokenizer.from_pretrained(args.model_id)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -391,13 +418,14 @@ def main() -> None:
 
         for index, prompt in enumerate(prompts):
             client = TrenchesEnvClient(base_url=f"http://127.0.0.1:{args.port}/openenv")
-            observation = client.reset(
+            reset_result = client.reset(
                 training_agent=args.training_agent,
                 training_stage=args.training_stage,
                 max_turns=1,
                 replay_id=args.replay_id,
                 episode_id=f"train-{index}-{int(time.time() * 1000)}",
             )
+            observation = reset_result.observation
             clients.append(client)
             grounded_prompts.append(
                 _render_observation_prompt(prompt or base_prompt, args.training_agent, observation)
@@ -425,15 +453,18 @@ def main() -> None:
         forecast_rewards: list[float] = []
         for client, completion in zip(clients, completions, strict=True):
             action, prediction = _parse_turn_output(args.training_agent, completion)
-            result = client.step(
+            step_result = client.step(
                 TrenchesOpenEnvAction(
                     action=action,
                     prediction=prediction,
                     external_signals=[],
                 )
             )
-            env_rewards.append(float(result.reward))
-            forecast_rewards.append(float(result.reward_breakdown.forecast_total))
+            step_reward = step_result.reward if step_result.reward is not None else 0.0
+            step_obs = step_result.observation
+            forecast_total = step_obs.reward_breakdown.forecast_total if step_obs.reward_breakdown is not None else 0.0
+            env_rewards.append(float(step_reward))
+            forecast_rewards.append(float(forecast_total))
 
         return {
             "prompt_ids": rollout_outputs["prompt_ids"],
@@ -463,6 +494,11 @@ def main() -> None:
         "logging_steps": 1,
         "report_to": [],
         "use_vllm": generation_backend == "vllm",
+        "beta": args.beta,
+        "warmup_steps": args.warmup_steps,
+        "temperature": args.temperature,
+        "save_strategy": args.save_strategy,
+        "save_steps": args.save_steps,
     }
     if generation_backend == "vllm":
         training_kwargs["vllm_mode"] = "colocate"
@@ -470,7 +506,7 @@ def main() -> None:
     training_args = GRPOConfig(**training_kwargs)
 
     trainer = GRPOTrainer(
-        model=args.model_id,
+        model=model_ref,
         processing_class=tokenizer,
         reward_funcs=reward_from_env,
         train_dataset=train_dataset,
