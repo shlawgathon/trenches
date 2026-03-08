@@ -448,8 +448,12 @@ def main() -> None:
     parser.add_argument(
         "--vllm-gpu-memory-utilization",
         type=float,
-        default=0.9,
-        help="Fraction of GPU memory reserved for vLLM when using the vLLM backend (0.9 is optimal with sleep mode).",
+        default=0.0,
+        help=(
+            "Fraction of total GPU memory reserved for vLLM (0.0 = auto-detect). "
+            "vLLM requires total*utilization <= free_memory at init, so this must "
+            "account for training + reference model weights already on GPU."
+        ),
     )
     parser.add_argument(
         "--vllm-enable-sleep-mode",
@@ -482,10 +486,12 @@ def main() -> None:
     )
 
     # Model loading — optionally with 4-bit quantization
-    model_ref = args.model_id
+    # Always pre-load the model so we can measure GPU memory before GRPOTrainer
+    # adds the reference model and vLLM (which need to fit in remaining memory).
+    from transformers import AutoModelForCausalLM
     peft_config = None
     if args.quantize_4bit:
-        from transformers import AutoModelForCausalLM, BitsAndBytesConfig
+        from transformers import BitsAndBytesConfig
         try:
             from peft import LoraConfig, TaskType
         except ModuleNotFoundError as exc:
@@ -518,6 +524,48 @@ def main() -> None:
             f"(r={args.lora_r}, alpha={args.lora_alpha}, dropout={args.lora_dropout}, "
             f"targets={args.lora_target_modules})"
         )
+    else:
+        print(f"Loading {args.model_id} in bfloat16")
+        model_ref = AutoModelForCausalLM.from_pretrained(
+            args.model_id,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        )
+
+    # Auto-detect vLLM GPU memory utilization.
+    # After loading the policy model, measure free memory and estimate how much
+    # will remain after the reference model (≈ same size) is loaded by GRPOTrainer.
+    # vLLM's init check requires: total_gpu * utilization <= free_memory_at_init.
+    if generation_backend == "vllm" and torch.cuda.is_available():
+        free_bytes, total_bytes = torch.cuda.mem_get_info(0)
+        free_gib = free_bytes / (1024 ** 3)
+        total_gib = total_bytes / (1024 ** 3)
+        used_gib = total_gib - free_gib
+        # GRPOTrainer will clone ~1 more copy (reference model) before vLLM init
+        estimated_free_after_ref = free_gib - used_gib  # rough: ref ≈ policy size
+        estimated_free_after_ref = max(estimated_free_after_ref, free_gib * 0.5)  # floor
+
+        if args.vllm_gpu_memory_utilization <= 0:
+            # Auto-detect: use 90% of estimated post-ref free memory
+            auto_util = round((estimated_free_after_ref * 0.90) / total_gib, 2)
+            auto_util = max(0.15, min(auto_util, 0.90))
+            args.vllm_gpu_memory_utilization = auto_util
+            print(
+                f"Auto-detected vllm_gpu_memory_utilization={auto_util} "
+                f"(GPU: {total_gib:.1f} GiB total, {free_gib:.1f} GiB free after policy, "
+                f"~{estimated_free_after_ref:.1f} GiB estimated free after ref model)"
+            )
+        else:
+            max_safe = round(estimated_free_after_ref / total_gib, 2)
+            if args.vllm_gpu_memory_utilization > max_safe:
+                clamped = max(0.15, max_safe - 0.02)
+                print(
+                    f"WARNING: vllm_gpu_memory_utilization={args.vllm_gpu_memory_utilization} "
+                    f"exceeds estimated safe max {max_safe} — clamping to {clamped} "
+                    f"(GPU: {total_gib:.1f} GiB total, {free_gib:.1f} GiB free, "
+                    f"~{estimated_free_after_ref:.1f} GiB estimated post-ref)"
+                )
+                args.vllm_gpu_memory_utilization = clamped
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_id)
     if tokenizer.pad_token is None:
@@ -622,11 +670,6 @@ def main() -> None:
     }
     if not args.quantize_4bit:
         training_kwargs["bf16"] = True
-        training_kwargs["model_init_kwargs"] = {
-            "dtype": "bfloat16",
-            "device_map": "auto",
-            "torch_dtype": torch.bfloat16,
-        }
     if generation_backend == "vllm":
         training_kwargs["vllm_mode"] = "colocate"
         training_kwargs["vllm_max_model_length"] = args.max_prompt_length + args.max_completion_length
