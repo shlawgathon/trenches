@@ -175,7 +175,7 @@ def train() -> None:
             "--max-completion-length",
             os.environ.get("MAX_COMPLETION_LENGTH", "128"),
             "--vllm-gpu-memory-utilization",
-            os.environ.get("VLLM_GPU_MEMORY_UTILIZATION", "0.12"),
+            os.environ.get("VLLM_GPU_MEMORY_UTILIZATION", "0.18"),
             "--save-strategy",
             os.environ.get("SAVE_STRATEGY", "no"),
             "--output-dir",

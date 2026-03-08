@@ -448,7 +448,7 @@ def main() -> None:
     parser.add_argument(
         "--vllm-gpu-memory-utilization",
         type=float,
-        default=0.12,
+        default=0.18,
         help="Fraction of GPU memory reserved for vLLM when using the vLLM backend.",
     )
     parser.add_argument(
