@@ -76,7 +76,7 @@ def train() -> None:
     model_id = os.environ.get("MODEL_ID", "Qwen/Qwen3-8B")
     git_repo_url = os.environ.get("GIT_REPO_URL", "https://github.com/shlawgathon/trenches.git")
     git_ref = os.environ.get("GIT_REF", "main")
-    generation_backend = os.environ.get("GENERATION_BACKEND", "vllm")
+    generation_backend = os.environ.get("GENERATION_BACKEND", "transformers")
 
     set_status("running", f"Preparing repo for {entity}")
     workroot = Path(tempfile.mkdtemp(prefix="trenches-space-"))
