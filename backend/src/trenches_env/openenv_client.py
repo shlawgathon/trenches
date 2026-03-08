@@ -23,6 +23,13 @@ from trenches_env.openenv_adapter import (
 class TrenchesEnvClient(EnvClient[TrenchesOpenEnvAction, TrenchesOpenEnvObservation, TrenchesOpenEnvState]):
     """Typed OpenEnv client for the Trenches simulator."""
 
+    def sync_client(self):
+        """Return the documented synchronous wrapper when the base client provides one."""
+        sync_factory = getattr(self, "sync", None)
+        if callable(sync_factory):
+            return sync_factory()
+        return self
+
     def _step_payload(self, action: TrenchesOpenEnvAction) -> Dict[str, Any]:
         """Convert a TrenchesOpenEnvAction to the JSON data expected by the env server."""
         return action.model_dump(mode="json")
@@ -38,4 +45,3 @@ class TrenchesEnvClient(EnvClient[TrenchesOpenEnvAction, TrenchesOpenEnvObservat
     def _parse_state(self, payload: Dict[str, Any]) -> TrenchesOpenEnvState:
         """Convert a JSON response from the state endpoint to a State object."""
         return TrenchesOpenEnvState.model_validate(payload)
-
