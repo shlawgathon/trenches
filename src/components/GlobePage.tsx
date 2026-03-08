@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ZoomIn, ZoomOut, RotateCcw, Columns2, Maximize, MessageSquare, Eye, EyeOff } from "lucide-react";
+import { ZoomIn, ZoomOut, RotateCcw, Columns2, Maximize, MessageSquare, Eye, EyeOff, GitBranch, Grid2x2 } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import { NewsFeed } from "@/src/components/NewsFeed";
 import { ActivityLog } from "@/src/components/ActivityLog";
@@ -129,8 +129,10 @@ export default function GlobePage() {
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const nodeMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const assetMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const heatMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const [session, setSession] = useState<SessionState | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
+  const [mapReady, setMapReady] = useState(false);
   const [panelsCollapsed, setPanelsCollapsed] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
@@ -144,7 +146,9 @@ export default function GlobePage() {
   const [matrixMode, setMatrixMode] = useState<MatrixMode>("absolute");
   const [matrixPos, setMatrixPos] = useState({ x: 0, y: 0 });
   const [gitTreePos, setGitTreePos] = useState({ x: 0, y: 0 });
-  const [dragTarget, setDragTarget] = useState<"matrix" | "git" | null>(null);
+  const [dragTarget, setDragTarget] = useState<"matrix" | "git" | "chat" | null>(null);
+  const [chatPos, setChatPos] = useState({ x: 0, y: 0 });
+  const [showCountryHeat, setShowCountryHeat] = useState(true);
   const [visible, setVisible] = useState({
     topBar: true,
     mapControls: true,
@@ -202,7 +206,7 @@ export default function GlobePage() {
     if (!selectedAgent || !session) return null;
     return session.observations[selectedAgent];
   }, [selectedAgent, session]);
-  const startDragging = useCallback((target: "matrix" | "git") => {
+  const startDragging = useCallback((target: "matrix" | "git" | "chat") => {
     setDragTarget(target);
   }, []);
 
@@ -213,8 +217,10 @@ export default function GlobePage() {
       const movement = { x: event.movementX, y: event.movementY };
       if (dragTarget === "matrix") {
         setMatrixPos((prev) => ({ x: prev.x + movement.x, y: prev.y + movement.y }));
-      } else {
+      } else if (dragTarget === "git") {
         setGitTreePos((prev) => ({ x: prev.x + movement.x, y: prev.y + movement.y }));
+      } else {
+        setChatPos((prev) => ({ x: prev.x + movement.x, y: prev.y + movement.y }));
       }
     };
 
@@ -251,6 +257,10 @@ export default function GlobePage() {
 
     mapRef.current = map;
 
+    map.on("load", () => {
+      setMapReady(true);
+    });
+
     map.on("style.load", () => {
       map.setFog({
         color: "rgba(20, 20, 20, 0.95)",
@@ -272,8 +282,11 @@ export default function GlobePage() {
     return () => {
       nodeMarkersRef.current.forEach((marker) => marker.remove());
       nodeMarkersRef.current = [];
+      heatMarkersRef.current.forEach((marker) => marker.remove());
+      heatMarkersRef.current = [];
       map.remove();
       mapRef.current = null;
+      setMapReady(false);
     };
   }, []);
 
@@ -402,7 +415,42 @@ export default function GlobePage() {
       assetMarkersRef.current.forEach((marker) => marker.remove());
       assetMarkersRef.current = [];
     };
-  }, []);
+  }, [])
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !showCountryHeat) {
+      heatMarkersRef.current.forEach((marker) => marker.remove());
+      heatMarkersRef.current = [];
+      return;
+    }
+
+    heatMarkersRef.current.forEach((marker) => marker.remove());
+    heatMarkersRef.current = [];
+
+    for (const [agentId, meta] of Object.entries(AGENT_MAP_NODES)) {
+      const intensity = intensityByAgent.get(agentId) ?? 10;
+      const heatEl = document.createElement("div");
+      heatEl.style.width = `${50 + intensity * 0.9}px`;
+      heatEl.style.height = `${50 + intensity * 0.9}px`;
+      heatEl.style.borderRadius = "999px";
+      heatEl.style.background = `radial-gradient(circle, ${meta.color}55 0%, ${meta.color}22 50%, transparent 72%)`;
+      heatEl.style.filter = "blur(6px)";
+      heatEl.style.pointerEvents = "none";
+
+      const marker = new mapboxgl.Marker({ element: heatEl, anchor: "center" })
+        .setLngLat(meta.lngLat)
+        .addTo(map);
+
+      heatMarkersRef.current.push(marker);
+    }
+
+    return () => {
+      heatMarkersRef.current.forEach((marker) => marker.remove());
+      heatMarkersRef.current = [];
+    };
+  }, [intensityByAgent, showCountryHeat]);
+;
 
   useEffect(() => {
     if (!session) return;
@@ -525,7 +573,13 @@ export default function GlobePage() {
         </div>
       )}
 
-      <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} sessionId={session?.session_id ?? null} />
+      <ChatPanel
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        sessionId={session?.session_id ?? null}
+        onHeaderMouseDown={() => startDragging("chat")}
+        offset={chatPos}
+      />
 
       {visible.mapControls && <div className="pointer-events-none absolute bottom-52 left-1/2 z-20 -translate-x-1/2">
         <div
@@ -535,10 +589,10 @@ export default function GlobePage() {
               "0 0 8px rgba(0,0,0,0.03), 0 2px 6px rgba(0,0,0,0.08), inset 0 0 6px 6px rgba(255,255,255,0.04), 0 0 12px rgba(0,0,0,0.15)",
           }}
         >
-          <button onClick={() => mapRef.current?.zoomIn({ duration: 300 })} className="flex h-7 w-7 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground" title="Zoom in">
+          <button onClick={() => mapRef.current?.easeTo({ zoom: (mapRef.current?.getZoom() ?? DEFAULT_ZOOM) + 0.8, duration: 300 })} disabled={!mapReady} className="flex h-7 w-7 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40" title="Zoom in">
             <ZoomIn className="h-3.5 w-3.5" />
           </button>
-          <button onClick={() => mapRef.current?.zoomOut({ duration: 300 })} className="flex h-7 w-7 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground" title="Zoom out">
+          <button onClick={() => mapRef.current?.easeTo({ zoom: (mapRef.current?.getZoom() ?? DEFAULT_ZOOM) - 0.8, duration: 300 })} disabled={!mapReady} className="flex h-7 w-7 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40" title="Zoom out">
             <ZoomOut className="h-3.5 w-3.5" />
           </button>
           <div className="mx-1 h-4 w-px bg-border/40" />
@@ -548,6 +602,28 @@ export default function GlobePage() {
             title="AI Chat"
           >
             <MessageSquare className="h-3.5 w-3.5" />
+          </button>
+          <div className="mx-1 h-4 w-px bg-border/40" />
+          <button
+            onClick={() => setVisible((prev) => ({ ...prev, matrix: !prev.matrix }))}
+            className={cn("flex h-7 w-7 cursor-pointer items-center justify-center transition-colors", visible.matrix ? "text-primary" : "text-muted-foreground hover:text-foreground")}
+            title="Toggle tension matrix"
+          >
+            <Grid2x2 className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => setVisible((prev) => ({ ...prev, gitTree: !prev.gitTree }))}
+            className={cn("flex h-7 w-7 cursor-pointer items-center justify-center transition-colors", visible.gitTree ? "text-primary" : "text-muted-foreground hover:text-foreground")}
+            title="Toggle git tree"
+          >
+            <GitBranch className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => setShowCountryHeat((prev) => !prev)}
+            className={cn("flex h-7 w-7 cursor-pointer items-center justify-center transition-colors text-[10px] font-mono", showCountryHeat ? "text-primary" : "text-muted-foreground hover:text-foreground")}
+            title="Toggle country heat map"
+          >
+            HEAT
           </button>
           <div className="mx-1 h-4 w-px bg-border/40" />
           <button

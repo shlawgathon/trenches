@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, type CSSProperties } from "react";
 import { Send, X, Loader2 } from "lucide-react";
 import gsap from "gsap";
 import { cn } from "@/src/lib/utils";
@@ -17,9 +17,11 @@ interface ChatPanelProps {
   open: boolean;
   onClose: () => void;
   sessionId?: string | null;
+  onHeaderMouseDown?: () => void;
+  offset?: { x: number; y: number };
 }
 
-export function ChatPanel({ open, onClose, sessionId }: ChatPanelProps) {
+export function ChatPanel({ open, onClose, sessionId, onHeaderMouseDown, offset }: ChatPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -34,36 +36,26 @@ export function ChatPanel({ open, onClose, sessionId }: ChatPanelProps) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const panelStyle: CSSProperties = {
+    transform: `translate(calc(-50% + ${offset?.x ?? 0}px), ${offset?.y ?? 0}px)`,
+  };
+
   // GSAP open/close animation
   useEffect(() => {
     if (!panelRef.current) return;
 
-    if (open) {
-      gsap.fromTo(
-        panelRef.current,
-        { y: 40, opacity: 0, scale: 0.95, backdropFilter: "blur(0px)", pointerEvents: "none" },
-        {
-          y: 0,
-          opacity: 1,
-          scale: 1,
-          backdropFilter: "blur(16px)",
-          pointerEvents: "auto",
-          duration: 0.35,
-          ease: "power3.out",
-        }
-      );
-      setTimeout(() => inputRef.current?.focus(), 350);
-    } else {
-      gsap.to(panelRef.current, {
-        y: 20,
-        opacity: 0,
-        scale: 0.97,
-        backdropFilter: "blur(0px)",
-        pointerEvents: "none",
-        duration: 0.2,
-        ease: "power2.in",
-      });
-    }
+    gsap.fromTo(
+      panelRef.current,
+      { opacity: 0, backdropFilter: "blur(0px)", pointerEvents: "none" },
+      {
+        opacity: 1,
+        backdropFilter: "blur(16px)",
+        pointerEvents: "auto",
+        duration: 0.35,
+        ease: "power3.out",
+      }
+    );
+    setTimeout(() => inputRef.current?.focus(), 350);
   }, [open]);
 
   // Auto-scroll on new messages
@@ -156,10 +148,16 @@ export function ChatPanel({ open, onClose, sessionId }: ChatPanelProps) {
     }
   };
 
+
+  if (!open) {
+    return null;
+  }
+
   return (
     <div
       ref={panelRef}
-      className="pointer-events-none absolute bottom-20 left-1/2 z-30 w-[540px] -translate-x-1/2 opacity-0"
+      className="pointer-events-none absolute bottom-20 left-1/2 z-30 w-[540px]"
+      style={panelStyle}
     >
       <div
         className="pointer-events-auto flex h-[320px] flex-col overflow-hidden rounded-md border border-border/40 bg-card/40 backdrop-blur-lg"
@@ -169,7 +167,7 @@ export function ChatPanel({ open, onClose, sessionId }: ChatPanelProps) {
         }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border/30 px-4 py-2.5">
+        <div className="flex cursor-move items-center justify-between border-b border-border/30 px-4 py-2.5" onMouseDown={onHeaderMouseDown}>
           <div className="flex items-center gap-2">
             <div className="h-2 w-2 animate-pulse rounded-full bg-primary" />
             <span className="text-[10px] font-semibold tracking-[0.2em] text-foreground/80 uppercase font-sans">
