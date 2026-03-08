@@ -245,7 +245,9 @@
     {
       "partner": "Iraqi aligned militias",
       "location": "Western Corridor Gateway",
-      "function": "pressure on US presence and route depth"
+      "function": "pressure on US presence and route depth",
+      "anchor_lat": 33.3,
+      "anchor_lon": 44.4
     },
     {
       "partner": "regional pressure networks",

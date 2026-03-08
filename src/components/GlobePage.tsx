@@ -76,6 +76,17 @@ const AGENT_META: Record<string, { defaultLabel: string; color: string; secondar
 };
 const MAP_NODE_IDS = Object.keys(AGENT_META).filter((id) => id !== "oversight");
 
+const ACTION_ARC_COLORS: Record<string, string> = {
+  strike: "#ff3b30",
+  mobilize: "#ff6b4a",
+  sanction: "#f5a623",
+  deceive: "#d4a017",
+  negotiate: "#34c759",
+  defend: "#007aff",
+  intel_query: "#ff9500",
+  hold: "",
+  oversight_review: "",
+};
 
 const ACTION_HEAT: Record<AgentAction["type"], number> = {
   hold: 2,
@@ -111,6 +122,18 @@ type AgentMapNode = {
   flag: string;
 };
 
+type InteractionArc = {
+  id: string;
+  actor: string;
+  target: string;
+  actionType: string;
+  summary: string;
+  turn: number;
+  fromLngLat: [number, number];
+  toLngLat: [number, number];
+  color: string;
+};
+
 type UnknownRecord = Record<string, unknown>;
 
 export default function GlobePage() {
@@ -131,10 +154,13 @@ export default function GlobePage() {
   const [chatOpen, setChatOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [timelineTurn, setTimelineTurn] = useState(0);
+  const [timelinePlaying, setTimelinePlaying] = useState(true);
   const timelineTurnRef = useRef(0);
   const [interactionFocus, setInteractionFocus] = useState<TimelineInteractionFocus | null>(null);
   const [timelineCollapsed, setTimelineCollapsed] = useState(false);
   const pendingSessionRef = useRef<SessionState | null>(null);
+  const sessionRef = useRef<SessionState | null>(null);
+  const liveSyncInFlightRef = useRef(false);
   const [viewportWidth, setViewportWidth] = useState(0);
   const [syntheticEvents, setSyntheticEvents] = useState<SyntheticEvent[]>([]);
   const warnedProviderStatesRef = useRef<Set<string>>(new Set());
@@ -212,6 +238,7 @@ export default function GlobePage() {
   const entityAssets = useMemo(() => deriveSessionEntityAssets(session), [session]);
   const agentMapNodes = useMemo(() => deriveAgentMapNodes(session, entityAssets), [session, entityAssets]);
   const selectedAgentMeta = selectedAgent ? agentMapNodes[selectedAgent] ?? null : null;
+  const interactionArcs = useMemo(() => deriveInteractionArcs(session, agentMapNodes, timelineTurn), [session, agentMapNodes, timelineTurn]);
   const topBarStats = useMemo(() => deriveTopBarStats(session, activityItems.length), [session, activityItems.length]);
   const [selectedExtraStatKey, setSelectedExtraStatKey] = useState<string>("");
   const selectedExtraStat = useMemo(
@@ -245,6 +272,15 @@ export default function GlobePage() {
       return updated;
     });
   };
+
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
+    setTimelinePlaying(session.live.enabled && session.live.auto_step);
+  }, [session?.session_id]);
 
   // If user is rewound, buffer poll updates; when they catch up, flush the buffer
   const isFollowing = !session || timelineTurn >= (session?.world.turn ?? 0);
@@ -385,8 +421,8 @@ export default function GlobePage() {
     popupRef.current = new mapboxgl.Popup({
       closeButton: false,
       closeOnClick: true,
-      anchor: "left",
-      offset: [10, 0],
+      anchor: "bottom",
+      offset: [0, -6],
       className: "asset-name-popup",
     });
 
@@ -435,7 +471,7 @@ export default function GlobePage() {
         if (!cancelled) {
           applySessionSnapshot(sess);
         }
-        // Enable live mode with auto_step so backend steps when RSS signals arrive
+        // Backend live mode owns turn advancement whenever fresh signals arrive.
         const liveSession = await rt.sessionClient.setLiveMode(sess.session_id, {
           enabled: true,
           auto_step: true,
@@ -454,15 +490,52 @@ export default function GlobePage() {
     };
   }, []);
 
-  /* ── Step loop: advance only when following AND real providers exist ── */
+  useEffect(() => {
+    if (!session) return;
+    const desiredLiveEnabled = timelinePlaying;
+    const desiredAutoStep = timelinePlaying;
+    if (
+      session.live.enabled === desiredLiveEnabled
+      && session.live.auto_step === desiredAutoStep
+    ) {
+      return;
+    }
+    if (liveSyncInFlightRef.current) return;
+    const currentSession = session;
+
+    let cancelled = false;
+    liveSyncInFlightRef.current = true;
+
+    async function syncLivePlayback() {
+      try {
+        const rt = window.__trenches;
+        if (!rt) return;
+        const updated = await rt.sessionClient.setLiveMode(currentSession.session_id, {
+          enabled: desiredLiveEnabled,
+          auto_step: desiredAutoStep,
+          poll_interval_ms: currentSession.live.poll_interval_ms,
+        });
+        if (!cancelled) {
+          applySessionSnapshot(updated);
+        }
+      } catch (err) {
+        console.warn("[Timeline live sync error]", err);
+      } finally {
+        liveSyncInFlightRef.current = false;
+      }
+    }
+
+    void syncLivePlayback();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session, timelinePlaying]);
+
+  /* ── Poll loop: sync state only; backend live mode owns turn advancement ── */
   useEffect(() => {
     if (!session) return;
     const sessionId = session.session_id;
-
-    // Check if any agent has a real provider (not pure heuristic fallback)
-    const hasRealProviders = Object.values(session.model_bindings ?? {}).some(
-      (b) => b.decision_mode !== "heuristic_fallback"
-    );
 
     let stopped = false;
     let busy = false;
@@ -474,28 +547,18 @@ export default function GlobePage() {
       try {
         const rt = window.__trenches;
         if (!rt) return;
+        const latest = await rt.sessionClient.getSession(sessionId);
+        if (stopped) return;
 
-        const isFollowing = timelineTurnRef.current >= (session.world.turn ?? 0);
-
-        if (isFollowing && hasRealProviders) {
-          // Step the simulation forward (real providers available)
-          const result = await rt.sessionClient.stepSession(sessionId, {
-            actions: {},
-            external_signals: [],
-          });
-          if (!stopped) {
-            applySessionSnapshot(result.session);
-          }
-        } else if (!isFollowing) {
-          // User is rewound — just poll current state, don't advance
-          const latest = await rt.sessionClient.getSession(sessionId);
-          if (!stopped) {
-            pendingSessionRef.current = latest;
-          }
+        const currentTurn = sessionRef.current?.world.turn ?? 0;
+        const isFollowingLatest = timelineTurnRef.current >= currentTurn;
+        if (isFollowingLatest) {
+          applySessionSnapshot(latest);
+        } else {
+          pendingSessionRef.current = latest;
         }
-        // else: following but no real providers → do nothing (idle)
       } catch (err) {
-        console.warn("[Step loop error]", err);
+        console.warn("[Session poll error]", err);
       } finally {
         busy = false;
       }
@@ -718,9 +781,86 @@ export default function GlobePage() {
     };
   }, [agentMapNodes, entityAssets]);
 
+  // ── Interaction arc lines between nations ──
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
 
+    const sourceId = "interaction-arcs";
+    const layerId = "interaction-arc-lines";
+    const glowLayerId = "interaction-arc-glow";
+    const geojson = buildArcFeatureCollection(interactionArcs);
 
+    if (map.getSource(sourceId)) {
+      (map.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(geojson);
+    } else {
+      map.addSource(sourceId, { type: "geojson", data: geojson });
 
+      map.addLayer({
+        id: glowLayerId,
+        type: "line",
+        source: sourceId,
+        paint: {
+          "line-color": ["get", "color"],
+          "line-width": 5,
+          "line-opacity": 0.15,
+          "line-blur": 6,
+        },
+      });
+
+      map.addLayer({
+        id: layerId,
+        type: "line",
+        source: sourceId,
+        paint: {
+          "line-color": ["get", "color"],
+          "line-width": 1.8,
+          "line-opacity": 0.7,
+        },
+      });
+
+      const arcPopup = new mapboxgl.Popup({
+        closeButton: false,
+        closeOnClick: false,
+        anchor: "bottom",
+        offset: [0, -8],
+        className: "arc-tooltip-popup",
+      });
+
+      map.on("mouseenter", layerId, () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", layerId, () => {
+        map.getCanvas().style.cursor = "";
+        arcPopup.remove();
+      });
+      map.on("mousemove", layerId, (e) => {
+        if (!e.features || e.features.length === 0) return;
+        const props = e.features[0].properties;
+        if (!props) return;
+        const actorMeta = AGENT_META[props.actor] ?? { flag: "", defaultLabel: props.actor };
+        const targetMeta = AGENT_META[props.target] ?? { flag: "", defaultLabel: props.target };
+        const actionLabel = String(props.actionType).toUpperCase();
+        const summary = String(props.summary ?? "").slice(0, 100);
+        const turnLabel = `T${props.turn}`;
+        const color = String(props.color);
+        arcPopup
+          .setLngLat(e.lngLat)
+          .setHTML(
+            `<div style="background:rgba(12,12,14,0.92);border:1px solid ${color}44;border-radius:6px;padding:6px 10px;font:500 11px ui-monospace,SFMono-Regular,Menlo,monospace;color:#e0e0e0;max-width:320px;line-height:1.4;box-shadow:0 4px 20px rgba(0,0,0,0.4);">`
+            + `<div style="color:${color};font-weight:700;margin-bottom:3px;letter-spacing:0.06em;">${escapeHtml(actionLabel)} · ${turnLabel}</div>`
+            + `<div style="margin-bottom:2px;">${actorMeta.flag} ${escapeHtml(actorMeta.defaultLabel)} → ${targetMeta.flag} ${escapeHtml(targetMeta.defaultLabel)}</div>`
+            + (summary ? `<div style="color:#aaa;font-size:10px;">${escapeHtml(summary)}</div>` : "")
+            + `</div>`,
+          )
+          .addTo(map);
+      });
+    }
+
+    return () => {
+      // Source data is updated live — only clean up on unmount
+    };
+  }, [interactionArcs, mapReady]);
 
 
   return (
@@ -787,7 +927,7 @@ export default function GlobePage() {
 
 
       {selectedAgent && visible.agentContext && (
-        <div className="absolute bottom-52 left-1/2 z-20 w-[420px] -translate-x-1/2 border border-border/30 bg-card/70 p-3 backdrop-blur-xl">
+        <div className="absolute top-1/2 left-1/2 z-50 w-[420px] -translate-x-1/2 -translate-y-1/2 border border-border/30 bg-card/70 p-3 backdrop-blur-xl" style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}>
           <div className="mb-2 flex items-center justify-between">
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-foreground/80">{selectedAgentMeta?.flag ?? ""} {selectedAgentMeta?.label ?? selectedAgent}</div>
@@ -885,7 +1025,7 @@ export default function GlobePage() {
           </div>
         </div>}
 
-        {visible.timeline && <EventTimeline session={session} onTurnChange={(t) => { setTimelineTurn(t); timelineTurnRef.current = t; }} interactionFocus={interactionFocus} onInteractionFocus={setInteractionFocus} onRegisterToggle={(fn) => { togglePanelsRef.current[2] = fn; }} embedded onCollapsedChange={setTimelineCollapsed} />}
+        {visible.timeline && <EventTimeline session={session} onTurnChange={(t) => { setTimelineTurn(t); timelineTurnRef.current = t; }} playing={timelinePlaying} onPlayingChange={setTimelinePlaying} interactionFocus={interactionFocus} onInteractionFocus={setInteractionFocus} onRegisterToggle={(fn) => { togglePanelsRef.current[2] = fn; }} embedded onCollapsedChange={setTimelineCollapsed} />}
       </div>
 
       {visible.newsFeed && <NewsFeed items={newsItems} hydration={session ? getLiveHydration(session.live) : null} interactionFocus={interactionFocus} onInteractionFocus={setInteractionFocus} onRegisterToggle={(fn) => { togglePanelsRef.current[0] = fn; }} onCollapsedChange={(c) => setLeftPanelOpen(!c)} bottomOffset={sideBarBottom} />}
@@ -1459,6 +1599,128 @@ function deriveNewsItems(session: SessionState | null): NewsItem[] {
 
 function isFallbackBinding(binding: EntityModelBinding): boolean {
   return binding.decision_mode === "heuristic_fallback" || binding.provider === "openrouter";
+}
+
+function deriveInteractionArcs(
+  session: SessionState | null,
+  agentMapNodes: Record<string, AgentMapNode>,
+  maxTurn: number,
+): InteractionArc[] {
+  if (!session) return [];
+
+  const arcs: InteractionArc[] = [];
+  const seen = new Map<string, InteractionArc>();
+
+  // Derive from action_log (most recent action per pair wins)
+  for (const entry of session.action_log) {
+    if (entry.turn > maxTurn) continue;
+    const target = entry.target;
+    if (!target || !(target in agentMapNodes) || !(entry.actor in agentMapNodes)) continue;
+    if (entry.actor === target) continue;
+    if (entry.actor === "oversight" || target === "oversight") continue;
+    if (entry.action_type === "hold" || entry.action_type === "oversight_review") continue;
+
+    const pairKey = `${entry.actor}->${target}`;
+    const existing = seen.get(pairKey);
+    if (existing && existing.turn >= entry.turn) continue;
+
+    const arc: InteractionArc = {
+      id: `arc-${entry.actor}-${target}-${entry.turn}`,
+      actor: entry.actor,
+      target,
+      actionType: entry.action_type,
+      summary: entry.summary,
+      turn: entry.turn,
+      fromLngLat: agentMapNodes[entry.actor].lngLat,
+      toLngLat: agentMapNodes[target].lngLat,
+      color: ACTION_ARC_COLORS[entry.action_type] ?? "#8e8e93",
+    };
+    seen.set(pairKey, arc);
+  }
+
+  // Also derive from recent_traces for actions not yet in action_log
+  for (const trace of session.recent_traces) {
+    if (trace.turn > maxTurn) continue;
+    for (const [agentId, action] of Object.entries(trace.actions)) {
+      if (!action?.target) continue;
+      const target = action.target;
+      if (!(target in agentMapNodes) || !(agentId in agentMapNodes)) continue;
+      if (agentId === target) continue;
+      if (agentId === "oversight" || target === "oversight") continue;
+      if (action.type === "hold" || action.type === "oversight_review") continue;
+
+      const pairKey = `${agentId}->${target}`;
+      const existing = seen.get(pairKey);
+      if (existing && existing.turn >= trace.turn) continue;
+
+      const arc: InteractionArc = {
+        id: `arc-${agentId}-${target}-${trace.turn}`,
+        actor: agentId,
+        target,
+        actionType: action.type,
+        summary: action.summary,
+        turn: trace.turn,
+        fromLngLat: agentMapNodes[agentId].lngLat,
+        toLngLat: agentMapNodes[target].lngLat,
+        color: ACTION_ARC_COLORS[action.type] ?? "#8e8e93",
+      };
+      seen.set(pairKey, arc);
+    }
+  }
+
+  arcs.push(...seen.values());
+  return arcs;
+}
+
+function greatCircleArc(from: [number, number], to: [number, number], segments = 48): [number, number][] {
+  const toRad = Math.PI / 180;
+  const toDeg = 180 / Math.PI;
+  const [lng1, lat1] = [from[0] * toRad, from[1] * toRad];
+  const [lng2, lat2] = [to[0] * toRad, to[1] * toRad];
+
+  const dLng = lng2 - lng1;
+  const d = Math.acos(
+    Math.sin(lat1) * Math.sin(lat2) + Math.cos(lat1) * Math.cos(lat2) * Math.cos(dLng),
+  );
+
+  // If points are basically overlapping, just return a straight line
+  if (d < 1e-6) return [from, to];
+
+  const points: [number, number][] = [];
+  for (let i = 0; i <= segments; i++) {
+    const f = i / segments;
+    const A = Math.sin((1 - f) * d) / Math.sin(d);
+    const B = Math.sin(f * d) / Math.sin(d);
+    const x = A * Math.cos(lat1) * Math.cos(lng1) + B * Math.cos(lat2) * Math.cos(lng2);
+    const y = A * Math.cos(lat1) * Math.sin(lng1) + B * Math.cos(lat2) * Math.sin(lng2);
+    const z = A * Math.sin(lat1) + B * Math.sin(lat2);
+    const lat = Math.atan2(z, Math.sqrt(x * x + y * y)) * toDeg;
+    const lng = Math.atan2(y, x) * toDeg;
+    points.push([lng, lat]);
+  }
+  return points;
+}
+
+function buildArcFeatureCollection(arcs: InteractionArc[]): GeoJSON.FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: arcs.map((arc) => ({
+      type: "Feature" as const,
+      properties: {
+        id: arc.id,
+        actor: arc.actor,
+        target: arc.target,
+        actionType: arc.actionType,
+        summary: arc.summary,
+        turn: arc.turn,
+        color: arc.color,
+      },
+      geometry: {
+        type: "LineString" as const,
+        coordinates: greatCircleArc(arc.fromLngLat, arc.toLngLat),
+      },
+    })),
+  };
 }
 
 function deriveActivityItems(session: SessionState | null): ActivityItem[] {
