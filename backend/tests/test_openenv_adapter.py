@@ -1,5 +1,6 @@
 import pytest
 
+from trenches_env.env import FogOfWarDiplomacyEnv
 from trenches_env.models import AgentAction, ExternalSignal, Prediction
 from trenches_env.openenv_client import TrenchesEnvClient
 from trenches_env.openenv_adapter import (
@@ -9,6 +10,16 @@ from trenches_env.openenv_adapter import (
     TrenchesOpenEnvEnvironment,
     create_openenv_fastapi_app,
 )
+from trenches_env.source_ingestion import SourceHarvester
+
+
+class CountingFetcher:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def fetch(self, url: str) -> tuple[str, str]:
+        self.calls += 1
+        return f"<html><title>{url}</title></html>", "text/html; charset=utf-8"
 
 
 def test_openenv_adapter_reset_and_step() -> None:
@@ -198,6 +209,45 @@ def test_historical_replay_step_records_prediction_and_scores_forecast() -> None
     assert len(runtime.state.session.historical_replay.ground_truth_timeline) == 10
     assert runtime.state.session.prediction_log[-1].agent_id == "us"
     assert runtime.state.session.prediction_assessments[-1].total > 0.0
+    runtime.close()
+
+
+def test_historical_replay_openenv_step_does_not_collect_live_sources() -> None:
+    fetcher = CountingFetcher()
+    env = FogOfWarDiplomacyEnv(source_harvester=SourceHarvester(fetcher=fetcher, auto_start=False))
+    runtime = TrenchesOpenEnvEnvironment(env=env)
+    runtime.reset(
+        seed=11,
+        training_agent="us",
+        training_stage="stage_1_dense",
+        max_turns=4,
+        replay_id="us_synthetic_seed_2025_2026",
+        replay_start_index=0,
+    )
+
+    runtime.step(
+        TrenchesOpenEnvAction(
+            action=AgentAction(
+                actor="us",
+                type="negotiate",
+                target="gulf",
+                summary="Reassure Gulf partners and reinforce shipping protection.",
+            ),
+            prediction=Prediction(
+                agent_id="us",
+                topic="shipping",
+                predicted_actor="us",
+                predicted_target="shipping_lanes",
+                time_horizon_turns=1,
+                expected_severity="medium",
+                confidence=0.74,
+                summary="The next visible event is likely a US maritime reassurance move.",
+                rationale="Washington is likely to answer shipping pressure with a visible assurance posture.",
+            ),
+        )
+    )
+
+    assert fetcher.calls == 0
     runtime.close()
 
 

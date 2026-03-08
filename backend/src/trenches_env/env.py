@@ -426,10 +426,11 @@ class FogOfWarDiplomacyEnv:
         before_tension = next_session.world.tension_level
         prior_latent_event_ids = {event.event_id for event in next_session.world.latent_events}
         next_session.world.turn += 1
-        if next_session.live.enabled:
-            self._source_harvester.refresh_due_batch(include_live=True)
-        else:
-            self._source_harvester.refresh_due_batch(include_live=False)
+        if self._should_collect_sources(next_session):
+            if next_session.live.enabled:
+                self._source_harvester.refresh_due_batch(include_live=True)
+            else:
+                self._source_harvester.refresh_due_batch(include_live=False)
 
         self._inject_external_signals(next_session.world, request.external_signals)
         resolved_actions = dict(request.actions)
@@ -507,10 +508,11 @@ class FogOfWarDiplomacyEnv:
 
     def refresh_session_sources(self, session: SessionState, force: bool = False) -> SessionState:
         updated = session.model_copy(deep=True)
-        if force:
-            self._source_harvester.refresh_agents(include_live=updated.live.enabled, force=True)
-        elif self._source_warm_start_enabled:
-            self._source_harvester.warm_start_agents(include_live=updated.live.enabled, force=False)
+        if self._should_collect_sources(updated):
+            if force:
+                self._source_harvester.refresh_agents(include_live=updated.live.enabled, force=True)
+            elif self._source_warm_start_enabled:
+                self._source_harvester.warm_start_agents(include_live=updated.live.enabled, force=False)
         updated.model_bindings = self._build_model_bindings()
         updated.belief_state = self._update_belief_state(updated)
         updated.observations = self._build_observations(
@@ -525,6 +527,10 @@ class FogOfWarDiplomacyEnv:
             updated.live.last_source_sync_at = last_sync_at
         updated.updated_at = datetime.now(timezone.utc)
         return updated
+
+    @staticmethod
+    def _should_collect_sources(session: SessionState) -> bool:
+        return not session.historical_replay.enabled
 
     def source_monitor(self, session: SessionState) -> SourceMonitorReport:
         return build_source_monitor_report(session, harvester=self._source_harvester)
