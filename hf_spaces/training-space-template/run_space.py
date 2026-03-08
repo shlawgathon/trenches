@@ -122,7 +122,7 @@ def train() -> None:
                 "--python",
                 str(python_bin),
                 "trl==0.29.0",
-                "vllm",
+                os.environ.get("VLLM_VERSION", "vllm==0.12.0"),
             ],
             cwd=repo_dir,
             env=env,
@@ -165,10 +165,14 @@ def train() -> None:
             os.environ.get("TOP_K", "10"),
             "--top-p",
             os.environ.get("TOP_P", "0.95"),
+            "--optim",
+            os.environ.get("OPTIM", "adamw_bnb_8bit"),
             "--max-prompt-length",
             os.environ.get("MAX_PROMPT_LENGTH", "1024"),
             "--max-completion-length",
             os.environ.get("MAX_COMPLETION_LENGTH", "128"),
+            "--vllm-gpu-memory-utilization",
+            os.environ.get("VLLM_GPU_MEMORY_UTILIZATION", "0.12"),
             "--save-strategy",
             os.environ.get("SAVE_STRATEGY", "no"),
             "--output-dir",
@@ -178,6 +182,8 @@ def train() -> None:
 
         if os.environ.get("QUANTIZE_4BIT", "").lower() in {"1", "true", "yes"}:
             train_cmd.append("--quantize-4bit")
+        if os.environ.get("VLLM_ENABLE_SLEEP_MODE", "").lower() in {"1", "true", "yes"}:
+            train_cmd.append("--vllm-enable-sleep-mode")
 
         set_status("running", f"Training {entity}")
         run_and_stream(train_cmd, cwd=repo_dir, env=env)

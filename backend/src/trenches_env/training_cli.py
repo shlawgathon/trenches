@@ -438,8 +438,24 @@ def main() -> None:
     parser.add_argument("--temperature", type=float, default=0.9, help="Sampling temperature for generation")
     parser.add_argument("--top-k", type=int, default=0, help="Top-k sampling (0 = disabled)")
     parser.add_argument("--top-p", type=float, default=0.95, help="Top-p sampling")
+    parser.add_argument(
+        "--optim",
+        default="adamw_torch_fused",
+        help="Optimizer passed through to GRPOConfig (for example adamw_bnb_8bit).",
+    )
     parser.add_argument("--save-strategy", default="no", choices=["no", "steps", "epoch"], help="Checkpoint save strategy")
     parser.add_argument("--save-steps", type=int, default=100, help="Save checkpoint every N steps (when save-strategy=steps)")
+    parser.add_argument(
+        "--vllm-gpu-memory-utilization",
+        type=float,
+        default=0.12,
+        help="Fraction of GPU memory reserved for vLLM when using the vLLM backend.",
+    )
+    parser.add_argument(
+        "--vllm-enable-sleep-mode",
+        action="store_true",
+        help="Enable vLLM sleep mode to reduce colocated memory pressure between rollout and optimization.",
+    )
     args = parser.parse_args()
 
     # FORCE-DISABLE RSS FEEDS DURING TRAINING to prevent rate limits and speed up rollouts.
@@ -599,6 +615,7 @@ def main() -> None:
         "warmup_steps": args.warmup_steps,
         "temperature": args.temperature,
         "top_p": args.top_p,
+        "optim": args.optim,
         "save_strategy": args.save_strategy,
         "save_steps": args.save_steps,
     }
@@ -608,6 +625,8 @@ def main() -> None:
     if generation_backend == "vllm":
         training_kwargs["vllm_mode"] = "colocate"
         training_kwargs["vllm_max_model_length"] = args.max_prompt_length + args.max_completion_length
+        training_kwargs["vllm_gpu_memory_utilization"] = args.vllm_gpu_memory_utilization
+        training_kwargs["vllm_enable_sleep_mode"] = args.vllm_enable_sleep_mode
 
     training_args = GRPOConfig(**training_kwargs)
 
