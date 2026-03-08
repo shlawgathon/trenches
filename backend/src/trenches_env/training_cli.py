@@ -458,6 +458,12 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--vllm-server-port",
+        type=int,
+        default=8000,
+        help="Port for vLLM server in server mode (default: 8000).",
+    )
+    parser.add_argument(
         "--vllm-enable-sleep-mode",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -688,7 +694,10 @@ def main() -> None:
         training_kwargs["bf16"] = True
     if generation_backend == "vllm":
         training_kwargs["vllm_mode"] = args.vllm_mode
-        if args.vllm_mode == "colocate":
+        if args.vllm_mode == "server":
+            training_kwargs["vllm_server_host"] = f"localhost"
+            training_kwargs["vllm_server_base_url"] = f"http://localhost:{args.vllm_server_port}"
+        elif args.vllm_mode == "colocate":
             training_kwargs["vllm_max_model_length"] = args.max_prompt_length + args.max_completion_length
             training_kwargs["vllm_gpu_memory_utilization"] = args.vllm_gpu_memory_utilization
             training_kwargs["vllm_enable_sleep_mode"] = args.vllm_enable_sleep_mode

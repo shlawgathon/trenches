@@ -27,16 +27,16 @@ app = modal.App("trenches-grpo-training")
 # Image: install trl, vllm, transformers, and the trenches backend
 # ---------------------------------------------------------------------------
 GIT_REPO_URL = "https://github.com/shlawgathon/trenches.git"
-GIT_REF = "main"
+GIT_REF = "modal-training"
 
 training_image = (
     modal.Image.debian_slim(python_version="3.12")
     .apt_install("git")
     .run_commands(
-        f"git clone --depth 1 --branch {GIT_REF} --single-branch {GIT_REPO_URL} /opt/trenches"
+        f"git clone --depth 1 --branch {GIT_REF} --single-branch {GIT_REPO_URL} /opt/trenches",
+        "uv pip install --system -e '/opt/trenches/backend[train]'",
     )
     .uv_pip_install(
-        "-e", "/opt/trenches/backend[train]",
         "trl==0.29.0",
         "vllm==0.12.0",
         "transformers>=4.57",
@@ -73,7 +73,7 @@ def _wait_for_vllm_server(host: str = "localhost", port: int = 8000, timeout: in
     import urllib.error
 
     deadline = time.time() + timeout
-    url = f"http://{host}:{port}/health"
+    url = f"http://{host}:{port}/health/"
     while time.time() < deadline:
         try:
             req = urllib.request.urlopen(url, timeout=2)
@@ -96,21 +96,22 @@ def _run_training(
     max_completion_length: int = 256,
 ) -> None:
     """Launch vLLM server on GPU 0, training on GPU 1."""
+    vllm_port = 8001  # Avoid conflict with training_cli healthcheck on 8000
     output_dir = CHECKPOINTS_DIR / f"{entity}-qwen3-8b"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # ---- Start vLLM server on GPU 0 ----
     vllm_env = os.environ.copy()
     vllm_env["CUDA_VISIBLE_DEVICES"] = "0"
-    print(f"Starting vLLM server for {model_id} on GPU 0")
+    print(f"Starting vLLM server for {model_id} on GPU 0 (port {vllm_port})")
     vllm_proc = subprocess.Popen(
-        ["trl", "vllm-serve", "--model", model_id],
+        ["trl", "vllm-serve", "--model", model_id, "--port", str(vllm_port)],
         env=vllm_env,
         stdout=sys.stdout,
         stderr=sys.stderr,
     )
 
-    _wait_for_vllm_server()
+    _wait_for_vllm_server(port=vllm_port)
 
     # ---- Run training on GPU 1 ----
     train_env = os.environ.copy()
@@ -122,6 +123,7 @@ def _run_training(
         "--model-id", model_id,
         "--generation-backend", "vllm",
         "--vllm-mode", "server",
+        "--vllm-server-port", str(vllm_port),
         "--training-agent", entity,
         "--training-stage", "stage_1_dense",
         "--replay-id", replay_id,
