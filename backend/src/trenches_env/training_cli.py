@@ -566,6 +566,7 @@ def main() -> None:
 
     train_result = trainer.train()
     trainer.save_model(args.output_dir)
+    tokenizer.save_pretrained(args.output_dir)
 
     print("\nTraining complete")
     print(f"Generation backend: {generation_backend}")
