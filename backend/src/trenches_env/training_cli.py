@@ -322,6 +322,14 @@ def _parse_lora_target_modules(raw_value: str) -> str | list[str]:
     return target_modules
 
 
+def _validate_runtime_ports(*, backend_port: int, vllm_mode: str, vllm_server_port: int) -> None:
+    if vllm_mode == "server" and backend_port == vllm_server_port:
+        raise RuntimeError(
+            "The OpenEnv backend port and vLLM server port must differ in server mode. "
+            "Pass --vllm-server-port 8001 (or another free port)."
+        )
+
+
 def _preview_rollouts(
     *,
     model: Any,
@@ -338,47 +346,47 @@ def _preview_rollouts(
 
     print("\nPreview rollouts")
     for sample_index in range(samples):
-        client = TrenchesEnvClient(base_url=f"http://127.0.0.1:{port}/openenv")
-        reset_result = client.reset(
-            training_agent=training_agent,
-            training_stage=training_stage,
-            max_turns=1,
-            replay_id=replay_id,
-            episode_id=f"preview-{sample_index}-{int(time.time() * 1000)}",
-        )
-        observation = reset_result.observation
-        prompt = _render_observation_prompt(
-            _build_base_prompt(training_agent),
-            training_agent,
-            observation,
-        )
-        model_max_length = getattr(tokenizer, "model_max_length", None)
-        if not isinstance(model_max_length, int) or model_max_length <= 0 or model_max_length > 1_000_000:
-            model_max_length = max_prompt_length
-        preview_prompt_length = min(max_prompt_length, model_max_length)
-        inputs = tokenizer(
-            prompt,
-            return_tensors="pt",
-            truncation=True,
-            max_length=preview_prompt_length,
-        ).to(model.device)
-        with torch.no_grad():
-            output = model.generate(
-                **inputs,
-                max_new_tokens=max_completion_length,
-                do_sample=False,
-                pad_token_id=tokenizer.pad_token_id,
+        with TrenchesEnvClient(base_url=f"http://127.0.0.1:{port}/openenv").sync_client() as client:
+            reset_result = client.reset(
+                training_agent=training_agent,
+                training_stage=training_stage,
+                max_turns=1,
+                replay_id=replay_id,
+                episode_id=f"preview-{sample_index}-{int(time.time() * 1000)}",
             )
-        completion_ids = output[0][inputs["input_ids"].shape[1] :]
-        completion = tokenizer.decode(completion_ids, skip_special_tokens=True)
-        action, prediction = _parse_turn_output(training_agent, completion)
-        step_result = client.step(
-            TrenchesOpenEnvAction(
-                action=action,
-                prediction=prediction,
-                external_signals=[],
+            observation = reset_result.observation
+            prompt = _render_observation_prompt(
+                _build_base_prompt(training_agent),
+                training_agent,
+                observation,
             )
-        )
+            model_max_length = getattr(tokenizer, "model_max_length", None)
+            if not isinstance(model_max_length, int) or model_max_length <= 0 or model_max_length > 1_000_000:
+                model_max_length = max_prompt_length
+            preview_prompt_length = min(max_prompt_length, model_max_length)
+            inputs = tokenizer(
+                prompt,
+                return_tensors="pt",
+                truncation=True,
+                max_length=preview_prompt_length,
+            ).to(model.device)
+            with torch.no_grad():
+                output = model.generate(
+                    **inputs,
+                    max_new_tokens=max_completion_length,
+                    do_sample=False,
+                    pad_token_id=tokenizer.pad_token_id,
+                )
+            completion_ids = output[0][inputs["input_ids"].shape[1] :]
+            completion = tokenizer.decode(completion_ids, skip_special_tokens=True)
+            action, prediction = _parse_turn_output(training_agent, completion)
+            step_result = client.step(
+                TrenchesOpenEnvAction(
+                    action=action,
+                    prediction=prediction,
+                    external_signals=[],
+                )
+            )
         step_obs = step_result.observation
         actual_event = step_obs.revealed_event.summary if step_obs.revealed_event is not None else "n/a"
         step_reward = step_result.reward if step_result.reward is not None else 0.0
@@ -460,8 +468,8 @@ def main() -> None:
     parser.add_argument(
         "--vllm-server-port",
         type=int,
-        default=8000,
-        help="Port for vLLM server in server mode (default: 8000).",
+        default=8001,
+        help="Port for vLLM server in server mode (default: 8001).",
     )
     parser.add_argument(
         "--vllm-enable-sleep-mode",
@@ -470,6 +478,12 @@ def main() -> None:
         help="Enable vLLM sleep mode so training and generation take turns on GPU (default: on).",
     )
     args = parser.parse_args()
+
+    _validate_runtime_ports(
+        backend_port=args.port,
+        vllm_mode=args.vllm_mode,
+        vllm_server_port=args.vllm_server_port,
+    )
 
     # FORCE-DISABLE RSS FEEDS DURING TRAINING to prevent rate limits and speed up rollouts.
     import os
@@ -604,7 +618,7 @@ def main() -> None:
         forecast_rewards: list[float] = []
 
         for index, prompt in enumerate(prompts):
-            with TrenchesEnvClient(base_url=f"http://127.0.0.1:{args.port}/openenv") as client:
+            with TrenchesEnvClient(base_url=f"http://127.0.0.1:{args.port}/openenv").sync_client() as client:
                 reset_result = client.reset(
                     training_agent=args.training_agent,
                     training_stage=args.training_stage,
