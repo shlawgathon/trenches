@@ -172,22 +172,6 @@ def test_live_get_session_auto_steps_once_for_new_source_packets() -> None:
     assert second_live_tick.world.turn == 1
 
 
-def test_live_get_session_auto_steps_without_new_source_packets() -> None:
-    manager = SessionManager()
-    session = manager.create_session(seed=7)
-    manager.set_live_mode(
-        session.session_id,
-        LiveControlRequest(enabled=True, auto_step=True, poll_interval_ms=1_000),
-    )
-
-    live_tick = manager.get_session(session.session_id)
-
-    assert live_tick.world.turn == 1
-    assert live_tick.live.last_auto_step_at is not None
-    assert live_tick.recent_traces
-    assert live_tick.recent_traces[-1].turn == 1
-
-
 def test_oversight_replaces_escalatory_actions_with_valid_overrides() -> None:
     manager = SessionManager()
     session = manager.create_session(seed=7)

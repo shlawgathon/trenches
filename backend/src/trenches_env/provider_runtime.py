@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from time import perf_counter
@@ -60,7 +59,7 @@ class ProviderDecisionRuntime:
     def __init__(
         self,
         client: httpx.Client | None = None,
-        timeout_seconds: float = 120.0,
+        timeout_seconds: float = 20.0,
         max_attempts: int = 2,
     ) -> None:
         self._client = client or httpx.Client(timeout=timeout_seconds)
@@ -158,11 +157,8 @@ class ProviderDecisionRuntime:
         body: dict[str, Any] = {
             "model": self._resolved_model_name(binding),
             "temperature": 0.1,
-            "max_tokens": 2048,
             "messages": self._messages(request),
         }
-        if binding.provider == "vllm":
-            body["chat_template_kwargs"] = {"enable_thinking": False}
         if binding.supports_tool_calls:
             body["tools"] = [self._openai_emit_action_tool(request.agent_id)]
             body["tool_choice"] = {
@@ -337,28 +333,12 @@ class ProviderDecisionRuntime:
         if text.startswith("```"):
             lines = [line for line in text.splitlines() if not line.startswith("```")]
             text = "\n".join(lines).strip()
-        text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
-        if "<tool_call>" in text and "</tool_call>" in text:
-            text = text.split("<tool_call>", 1)[1].split("</tool_call>", 1)[0].strip()
         try:
             payload = json.loads(text)
         except json.JSONDecodeError as exc:
-            start = text.find("{")
-            end = text.rfind("}")
-            if start == -1 or end == -1 or end <= start:
-                raise ProviderDecisionError(f"provider returned invalid JSON: {exc}") from exc
-            try:
-                payload = json.loads(text[start:end + 1])
-            except json.JSONDecodeError as inner_exc:
-                raise ProviderDecisionError(f"provider returned invalid JSON: {inner_exc}") from inner_exc
+            raise ProviderDecisionError(f"provider returned invalid JSON: {exc}") from exc
         if not isinstance(payload, dict):
             raise ProviderDecisionError("provider payload must be a JSON object")
-        if "arguments" in payload:
-            arguments = payload.get("arguments")
-            if isinstance(arguments, dict):
-                payload = arguments
-            elif isinstance(arguments, str):
-                return ProviderDecisionRuntime._parse_json_payload(arguments)
         return payload
 
     @staticmethod

@@ -253,16 +253,12 @@
     {
       "partner": "Jordan",
       "location": "Golan Defensive Arc",
-      "function": "eastern stability and airspace quiet",
-      "anchor_lat": 32.95,
-      "anchor_lon": 35.8
+      "function": "eastern stability and airspace quiet"
     },
     {
       "partner": "Egypt",
       "location": "Eilat-Aqaba Access Corridor",
-      "function": "southern maritime confidence and regional containment",
-      "anchor_lat": 29.56,
-      "anchor_lon": 35.0
+      "function": "southern maritime confidence and regional containment"
     }
   ],
   "chokepoints": [

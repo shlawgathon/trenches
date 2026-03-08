@@ -161,28 +161,6 @@ export function deriveTimelineEvents(session: SessionState | null): TimelineEven
         }
     }
 
-    // 4) Oversight predictions from prediction_log
-    for (const raw of (session.prediction_log ?? []) as Record<string, unknown>[]) {
-        const predId = typeof raw.prediction_id === "string" ? raw.prediction_id : `pred-log-${events.length}`;
-        const turn = typeof raw.turn === "number" ? raw.turn : session.world.turn;
-        const horizon = typeof raw.time_horizon_turns === "number" ? raw.time_horizon_turns : 1;
-        const summary = typeof raw.summary === "string" ? raw.summary : "Oversight prediction";
-        const confidence = typeof raw.confidence === "number" ? raw.confidence : 0.5;
-        const timestamp = typeof raw.timestamp === "string" ? raw.timestamp : session.updated_at;
-        const agent = typeof raw.agent_id === "string" ? raw.agent_id : "oversight";
-
-        events.push({
-            id: `pred-log-${predId}`,
-            turn: turn + horizon, // prediction is for the *next* turn
-            type: "prediction",
-            agent,
-            summary,
-            severity: confidence,
-            source: "env",
-            timestamp,
-        });
-    }
-
     // Sort by turn asc then by type priority (prediction > actual > injection)
     const typePriority: Record<TimelineEventType, number> = { prediction: 0, actual: 1, injection: 2 };
     events.sort((a, b) => a.turn - b.turn || typePriority[a.type] - typePriority[b.type]);

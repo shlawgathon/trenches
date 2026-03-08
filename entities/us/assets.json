@@ -261,37 +261,27 @@
     {
       "partner": "Qatar",
       "location": "Al Udeid Air Base",
-      "function": "air operations and command continuity",
-      "lat": 25.1173,
-      "lon": 51.315
+      "function": "air operations and command continuity"
     },
     {
       "partner": "Bahrain",
       "location": "Naval Support Activity Bahrain",
-      "function": "maritime presence and escort coordination",
-      "lat": 26.2361,
-      "lon": 50.6088
+      "function": "maritime presence and escort coordination"
     },
     {
       "partner": "United Arab Emirates",
       "location": "Al Dhafra Air Base",
-      "function": "defensive counter-air and ISR",
-      "lat": 24.2482,
-      "lon": 54.5474
+      "function": "defensive counter-air and ISR"
     },
     {
       "partner": "Kuwait",
       "location": "Camp Arifjan",
-      "function": "ground sustainment and surge support",
-      "lat": 28.9347,
-      "lon": 48.0744
+      "function": "ground sustainment and surge support"
     },
     {
       "partner": "Israel",
       "location": "Eastern Mediterranean Patrol Box",
-      "function": "rapid backstop and visible deterrence",
-      "lat": 34.5,
-      "lon": 33.0
+      "function": "rapid backstop and visible deterrence"
     }
   ],
   "chokepoints": [

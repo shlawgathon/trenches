@@ -57,7 +57,7 @@ const EXPANDED_HEIGHT = 220;
 const TURN_WIDTH = 20; // px per turn
 
 type TimelineViewMode = "timeline" | "console";
-type ConsoleEntryKind = "action" | "reaction" | "source" | "event" | "provider" | "prediction";
+type ConsoleEntryKind = "action" | "reaction" | "source" | "event" | "provider";
 
 type ConsoleEntry = {
     id: string;
@@ -227,8 +227,6 @@ export type TimelineInteractionFocus = {
 export type EventTimelineProps = {
     session: SessionState | null;
     onTurnChange?: (turn: number) => void;
-    playing?: boolean;
-    onPlayingChange?: (playing: boolean) => void;
     onRegisterToggle?: (fn: (collapsed: boolean) => void) => void;
     interactionFocus?: TimelineInteractionFocus | null;
     onInteractionFocus?: (focus: TimelineInteractionFocus | null) => void;
@@ -239,8 +237,6 @@ export type EventTimelineProps = {
 export function EventTimeline({
     session,
     onTurnChange,
-    playing: controlledPlaying,
-    onPlayingChange,
     onRegisterToggle,
     interactionFocus,
     onInteractionFocus,
@@ -252,12 +248,13 @@ export function EventTimeline({
     const filterRowRef = useRef<HTMLDivElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const trackScrollRef = useRef<HTMLDivElement>(null);
+    const playIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const [compactFilters, setCompactFilters] = useState(false);
     const syncingScroll = useRef(false);
 
     const [collapsed, setCollapsed] = useState(false);
     const [currentTurn, setCurrentTurn] = useState(0);
-    const [localPlaying, setLocalPlaying] = useState(false);
+    const [playing, setPlaying] = useState(false);
     const [speed, setSpeed] = useState<PlaybackSpeed>(1);
     const [filterAgent, setFilterAgent] = useState<string | null>(null);
     const [filterType, setFilterType] = useState<TimelineEventType | null>(null);
@@ -277,20 +274,6 @@ export function EventTimeline({
     const snapshots = deriveTurnSnapshots(session);
     const maxTurn = session?.world.turn ?? 0;
     const consoleEntries = deriveConsoleEntries(session);
-    const playing = controlledPlaying ?? localPlaying;
-
-    const setTimelinePlaying = useCallback((next: boolean) => {
-        if (controlledPlaying === undefined) {
-            setLocalPlaying(next);
-        }
-        onPlayingChange?.(next);
-    }, [controlledPlaying, onPlayingChange]);
-
-    const pausePlayback = useCallback(() => {
-        if (playing) {
-            setTimelinePlaying(false);
-        }
-    }, [playing, setTimelinePlaying]);
 
     // Filter events
     const filteredEvents = events.filter((e) => {
@@ -317,7 +300,7 @@ export function EventTimeline({
     useEffect(() => {
         const prevMax = prevMaxTurnRef.current;
         prevMaxTurnRef.current = maxTurn;
-        if (!session || isDragging) return;
+        if (!session || isDragging || playing) return;
         // Only auto-advance if user was at (or past) the previous max turn
         if (currentTurn >= prevMax) {
             setCurrentTurn(maxTurn);
@@ -352,6 +335,26 @@ export function EventTimeline({
         onRegisterToggle?.(applyCollapse);
     }, [onRegisterToggle, applyCollapse]);
 
+    // Playback loop
+    useEffect(() => {
+        if (playing && maxTurn > 0) {
+            const intervalMs = 1000 / speed;
+            playIntervalRef.current = setInterval(() => {
+                setCurrentTurn((prev) => {
+                    const next = prev + 1;
+                    if (next > maxTurn) {
+                        setPlaying(false);
+                        return maxTurn;
+                    }
+                    return next;
+                });
+            }, intervalMs);
+        }
+        return () => {
+            if (playIntervalRef.current) clearInterval(playIntervalRef.current);
+        };
+    }, [playing, speed, maxTurn]);
+
     // Sync parent when playback advances currentTurn
     useEffect(() => {
         onTurnChange?.(currentTurn);
@@ -359,7 +362,6 @@ export function EventTimeline({
 
     // Scrubber drag handlers
     const handleTrackClick = (e: React.MouseEvent) => {
-        pausePlayback();
         if (!trackRef.current || maxTurn === 0) return;
         const rect = trackRef.current.getBoundingClientRect();
         const scrollLeft = trackScrollRef.current?.scrollLeft ?? 0;
@@ -373,7 +375,6 @@ export function EventTimeline({
 
     const handleDrag = useCallback(
         (e: MouseEvent) => {
-            pausePlayback();
             if (!trackRef.current || maxTurn === 0) return;
             const rect = trackRef.current.getBoundingClientRect();
             const scrollLeft = trackScrollRef.current?.scrollLeft ?? 0;
@@ -382,7 +383,7 @@ export function EventTimeline({
             setCurrentTurn(turn);
             onTurnChange?.(turn);
         },
-        [maxTurn, onTurnChange, pausePlayback]
+        [maxTurn, onTurnChange]
     );
 
     const handleDragEnd = useCallback(() => {
@@ -402,24 +403,20 @@ export function EventTimeline({
 
     // Control helpers
     const stepBack = () => {
-        pausePlayback();
         const next = Math.max(0, currentTurn - 1);
         setCurrentTurn(next);
         onTurnChange?.(next);
     };
     const stepForward = () => {
-        pausePlayback();
         const next = Math.min(maxTurn, currentTurn + 1);
         setCurrentTurn(next);
         onTurnChange?.(next);
     };
     const rewind = () => {
-        pausePlayback();
         setCurrentTurn(0);
         onTurnChange?.(0);
     };
     const fastForward = () => {
-        pausePlayback();
         setCurrentTurn(maxTurn);
         onTurnChange?.(maxTurn);
     };
@@ -803,7 +800,7 @@ export function EventTimeline({
                                                                 onInteractionFocus?.({ turn: ev.turn, agent: ev.agent === "global" ? null : ev.agent });
                                                             }}
                                                             onLeave={() => { setHoveredEvent(null); setTooltipPos(null); onInteractionFocus?.(null); }}
-                                                            onClick={(ev) => { pausePlayback(); setCurrentTurn(ev.turn); onTurnChange?.(ev.turn); }}
+                                                            onClick={(ev) => { setCurrentTurn(ev.turn); onTurnChange?.(ev.turn); }}
                                                         />
                                                     ))}
                                             </div>
@@ -825,7 +822,7 @@ export function EventTimeline({
                                                                 onInteractionFocus?.({ turn: ev.turn, agent: ev.agent === "global" ? null : ev.agent });
                                                             }}
                                                             onLeave={() => { setHoveredEvent(null); setTooltipPos(null); onInteractionFocus?.(null); }}
-                                                            onClick={(ev) => { pausePlayback(); setCurrentTurn(ev.turn); onTurnChange?.(ev.turn); }}
+                                                            onClick={(ev) => { setCurrentTurn(ev.turn); onTurnChange?.(ev.turn); }}
                                                         />
                                                     ))}
                                             </div>
@@ -865,13 +862,7 @@ export function EventTimeline({
                                                 <SkipBack className="h-3 w-3" />
                                             </button>
                                             <button
-                                                onClick={() => {
-                                                    if (!playing) {
-                                                        setCurrentTurn(maxTurn);
-                                                        onTurnChange?.(maxTurn);
-                                                    }
-                                                    setTimelinePlaying(!playing);
-                                                }}
+                                                onClick={() => setPlaying(!playing)}
                                                 className={cn(
                                                     "flex h-7 w-7 cursor-pointer items-center justify-center transition-colors",
                                                     playing ? "text-primary" : "text-muted-foreground hover:text-foreground"
@@ -899,7 +890,6 @@ export function EventTimeline({
                                                 className="relative h-2 cursor-pointer bg-border/20"
                                                 style={{ width: innerWidth, minWidth: "100%" }}
                                                 onClick={(e) => {
-                                                    pausePlayback();
                                                     if (!trackRef.current) return;
                                                     const rect = trackRef.current.getBoundingClientRect();
                                                     const scrollLeft = trackScrollRef.current?.scrollLeft ?? 0;
@@ -965,7 +955,6 @@ export function EventTimeline({
                                                     onMouseEnter={() => onInteractionFocus?.({ turn: entry.turn, agent: entry.agent })}
                                                     onMouseLeave={() => onInteractionFocus?.(null)}
                                                     onClick={() => {
-                                                        pausePlayback();
                                                         setCurrentTurn(entry.turn);
                                                         onTurnChange?.(entry.turn);
                                                         onInteractionFocus?.({ turn: entry.turn, agent: entry.agent });
@@ -1125,40 +1114,6 @@ function deriveConsoleEntries(session: SessionState | null): ConsoleEntry[] {
             accent: TYPE_COLORS.actual,
         });
     }
-
-    for (const prediction of (session.prediction_log ?? []) as Record<string, unknown>[]) {
-        const agent = typeof prediction.agent_id === "string" ? prediction.agent_id : "oversight";
-        const turn = typeof prediction.turn === "number" ? prediction.turn : session.world.turn;
-        const summary = typeof prediction.summary === "string" ? prediction.summary : "Oversight prediction";
-        const rationale = typeof prediction.rationale === "string" ? prediction.rationale : null;
-        const confidence = typeof prediction.confidence === "number" ? `${(prediction.confidence * 100).toFixed(0)}%` : null;
-        const predictedActor = typeof prediction.predicted_actor === "string" ? prediction.predicted_actor : null;
-        const predictedTarget = typeof prediction.predicted_target === "string" ? prediction.predicted_target : null;
-        const topic = typeof prediction.topic === "string" ? prediction.topic : null;
-        const predictionId = typeof prediction.prediction_id === "string" ? prediction.prediction_id : `pred-${turn}`;
-        const timestamp = typeof prediction.timestamp === "string" ? prediction.timestamp : session.updated_at;
-
-        const detailParts = [
-            topic ? `topic=${topic}` : null,
-            confidence ? `confidence=${confidence}` : null,
-            predictedActor ? `actor=${predictedActor}` : null,
-            predictedTarget ? `target=${predictedTarget}` : null,
-            rationale || null,
-        ].filter(Boolean);
-
-        entries.push({
-            id: `prediction-${predictionId}`,
-            kind: "prediction",
-            turn,
-            agent,
-            title: "Prediction",
-            summary,
-            detail: detailParts.length > 0 ? detailParts.join(" · ") : null,
-            timestamp,
-            accent: "#b388ff",
-        });
-    }
-
 
     return entries
         .sort((a, b) => {
