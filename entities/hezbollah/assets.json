@@ -186,12 +186,16 @@
     {
       "partner": "Iran",
       "location": "Baalbek / Bekaa Axis",
-      "function": "material support, strategic guidance, and deterrence framing"
+      "function": "material support, strategic guidance, and deterrence framing",
+      "anchor_lat": 34.0,
+      "anchor_lon": 36.2
     },
     {
       "partner": "Syrian corridor",
       "location": "Qusayr-Syria Transit Gateway",
-      "function": "replenishment depth and cross-border sustainment"
+      "function": "replenishment depth and cross-border sustainment",
+      "anchor_lat": 34.5,
+      "anchor_lon": 36.6
     }
   ],
   "chokepoints": [

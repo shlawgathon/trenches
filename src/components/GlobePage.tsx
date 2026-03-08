@@ -76,6 +76,17 @@ const AGENT_META: Record<string, { defaultLabel: string; color: string; secondar
 };
 const MAP_NODE_IDS = Object.keys(AGENT_META).filter((id) => id !== "oversight");
 
+const ACTION_ARC_COLORS: Record<string, string> = {
+  strike: "#ff3b30",
+  mobilize: "#ff6b4a",
+  sanction: "#f5a623",
+  deceive: "#d4a017",
+  negotiate: "#34c759",
+  defend: "#007aff",
+  intel_query: "#ff9500",
+  hold: "",
+  oversight_review: "",
+};
 
 const ACTION_HEAT: Record<AgentAction["type"], number> = {
   hold: 2,
@@ -111,6 +122,18 @@ type AgentMapNode = {
   flag: string;
 };
 
+type InteractionArc = {
+  id: string;
+  actor: string;
+  target: string;
+  actionType: string;
+  summary: string;
+  turn: number;
+  fromLngLat: [number, number];
+  toLngLat: [number, number];
+  color: string;
+};
+
 type UnknownRecord = Record<string, unknown>;
 
 export default function GlobePage() {
@@ -119,6 +142,7 @@ export default function GlobePage() {
   const popupRef = useRef<mapboxgl.Popup | null>(null);
   const nodeMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const assetMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const hasFittedBoundsRef = useRef(false);
   const topBarRef = useRef<HTMLDivElement>(null);
   const topBarAnimatedRef = useRef(false);
 
@@ -131,10 +155,13 @@ export default function GlobePage() {
   const [chatOpen, setChatOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [timelineTurn, setTimelineTurn] = useState(0);
+  const [timelinePlaying, setTimelinePlaying] = useState(true);
   const timelineTurnRef = useRef(0);
   const [interactionFocus, setInteractionFocus] = useState<TimelineInteractionFocus | null>(null);
   const [timelineCollapsed, setTimelineCollapsed] = useState(false);
   const pendingSessionRef = useRef<SessionState | null>(null);
+  const sessionRef = useRef<SessionState | null>(null);
+  const liveSyncInFlightRef = useRef(false);
   const [viewportWidth, setViewportWidth] = useState(0);
   const [syntheticEvents, setSyntheticEvents] = useState<SyntheticEvent[]>([]);
   const warnedProviderStatesRef = useRef<Set<string>>(new Set());
@@ -212,6 +239,7 @@ export default function GlobePage() {
   const entityAssets = useMemo(() => deriveSessionEntityAssets(session), [session]);
   const agentMapNodes = useMemo(() => deriveAgentMapNodes(session, entityAssets), [session, entityAssets]);
   const selectedAgentMeta = selectedAgent ? agentMapNodes[selectedAgent] ?? null : null;
+  const interactionArcs = useMemo(() => deriveInteractionArcs(session, agentMapNodes, timelineTurn), [session, agentMapNodes, timelineTurn]);
   const topBarStats = useMemo(() => deriveTopBarStats(session, activityItems.length), [session, activityItems.length]);
   const [selectedExtraStatKey, setSelectedExtraStatKey] = useState<string>("");
   const selectedExtraStat = useMemo(
@@ -245,6 +273,15 @@ export default function GlobePage() {
       return updated;
     });
   };
+
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
+    setTimelinePlaying(session.live.enabled && session.live.auto_step);
+  }, [session?.session_id]);
 
   // If user is rewound, buffer poll updates; when they catch up, flush the buffer
   const isFollowing = !session || timelineTurn >= (session?.world.turn ?? 0);
@@ -321,11 +358,7 @@ export default function GlobePage() {
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
-  const sessionNewsItems = useMemo(() => deriveNewsItems(session), [session]);
-  const newsItems = useMemo(
-    () => mergeNewsItems(sessionNewsItems, liveRssItems),
-    [liveRssItems, sessionNewsItems],
-  );
+  const newsItems = useMemo(() => dedupeNewsItems(liveRssItems).slice(0, 40), [liveRssItems]);
 
   const intensityByAgent = useMemo(() => {
     const intensity = new Map<string, number>();
@@ -385,8 +418,8 @@ export default function GlobePage() {
     popupRef.current = new mapboxgl.Popup({
       closeButton: false,
       closeOnClick: true,
-      anchor: "left",
-      offset: [10, 0],
+      anchor: "bottom",
+      offset: [0, -6],
       className: "asset-name-popup",
     });
 
@@ -435,7 +468,7 @@ export default function GlobePage() {
         if (!cancelled) {
           applySessionSnapshot(sess);
         }
-        // Enable live mode with auto_step so backend steps when RSS signals arrive
+        // Backend live mode owns turn advancement whenever fresh signals arrive.
         const liveSession = await rt.sessionClient.setLiveMode(sess.session_id, {
           enabled: true,
           auto_step: true,
@@ -454,15 +487,52 @@ export default function GlobePage() {
     };
   }, []);
 
-  /* ── Step loop: advance only when following AND real providers exist ── */
+  useEffect(() => {
+    if (!session) return;
+    const desiredLiveEnabled = timelinePlaying;
+    const desiredAutoStep = timelinePlaying;
+    if (
+      session.live.enabled === desiredLiveEnabled
+      && session.live.auto_step === desiredAutoStep
+    ) {
+      return;
+    }
+    if (liveSyncInFlightRef.current) return;
+    const currentSession = session;
+
+    let cancelled = false;
+    liveSyncInFlightRef.current = true;
+
+    async function syncLivePlayback() {
+      try {
+        const rt = window.__trenches;
+        if (!rt) return;
+        const updated = await rt.sessionClient.setLiveMode(currentSession.session_id, {
+          enabled: desiredLiveEnabled,
+          auto_step: desiredAutoStep,
+          poll_interval_ms: currentSession.live.poll_interval_ms,
+        });
+        if (!cancelled) {
+          applySessionSnapshot(updated);
+        }
+      } catch (err) {
+        console.warn("[Timeline live sync error]", err);
+      } finally {
+        liveSyncInFlightRef.current = false;
+      }
+    }
+
+    void syncLivePlayback();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session, timelinePlaying]);
+
+  /* ── Poll loop: sync state only; backend live mode owns turn advancement ── */
   useEffect(() => {
     if (!session) return;
     const sessionId = session.session_id;
-
-    // Check if any agent has a real provider (not pure heuristic fallback)
-    const hasRealProviders = Object.values(session.model_bindings ?? {}).some(
-      (b) => b.decision_mode !== "heuristic_fallback"
-    );
 
     let stopped = false;
     let busy = false;
@@ -474,28 +544,18 @@ export default function GlobePage() {
       try {
         const rt = window.__trenches;
         if (!rt) return;
+        const latest = await rt.sessionClient.getSession(sessionId);
+        if (stopped) return;
 
-        const isFollowing = timelineTurnRef.current >= (session.world.turn ?? 0);
-
-        if (isFollowing && hasRealProviders) {
-          // Step the simulation forward (real providers available)
-          const result = await rt.sessionClient.stepSession(sessionId, {
-            actions: {},
-            external_signals: [],
-          });
-          if (!stopped) {
-            applySessionSnapshot(result.session);
-          }
-        } else if (!isFollowing) {
-          // User is rewound — just poll current state, don't advance
-          const latest = await rt.sessionClient.getSession(sessionId);
-          if (!stopped) {
-            pendingSessionRef.current = latest;
-          }
+        const currentTurn = sessionRef.current?.world.turn ?? 0;
+        const isFollowingLatest = timelineTurnRef.current >= currentTurn;
+        if (isFollowingLatest) {
+          applySessionSnapshot(latest);
+        } else {
+          pendingSessionRef.current = latest;
         }
-        // else: following but no real providers → do nothing (idle)
       } catch (err) {
-        console.warn("[Step loop error]", err);
+        console.warn("[Session poll error]", err);
       } finally {
         busy = false;
       }
@@ -636,65 +696,15 @@ export default function GlobePage() {
       markerEl.type = "button";
       markerEl.style.width = `${layerStyle.size}px`;
       markerEl.style.height = `${layerStyle.size}px`;
-      markerEl.style.borderRadius = layerStyle.shape === "rounded-square" ? "5px" : "999px";
+      markerEl.style.borderRadius = "999px";
       markerEl.style.cursor = "pointer";
       markerEl.style.padding = "0";
       markerEl.style.background = entityMeta.color;
       markerEl.style.opacity = String(layerStyle.opacity);
-      markerEl.style.boxShadow = layerStyle.showLabel
-        ? `0 0 14px ${entityMeta.color}, 0 0 24px ${layerStyle.glowColor}66`
-        : `0 0 7px ${entityMeta.color}`;
+      markerEl.style.boxShadow = `0 0 7px ${entityMeta.color}`;
       markerEl.style.border = `1px solid ${layerStyle.borderColor}`;
-      markerEl.style.display = "flex";
-      markerEl.style.alignItems = "center";
-      markerEl.style.justifyContent = "center";
-      markerEl.style.position = "relative";
       markerEl.title = `${entityMeta.flag} ${entityMeta.label}: ${asset.label} (${asset.category}/${asset.section}) status=${asset.status} | lat ${asset.latitude.toFixed(2)}, lon ${asset.longitude.toFixed(2)}`;
       markerEl.setAttribute("aria-label", `${entityMeta.label} asset ${asset.label}`);
-
-      if (layerStyle.showLabel) {
-        const diamondEl = document.createElement("div");
-        diamondEl.style.position = "absolute";
-        diamondEl.style.inset = "0";
-        diamondEl.style.borderRadius = "5px";
-        diamondEl.style.background = entityMeta.color;
-        diamondEl.style.border = `1px solid ${layerStyle.borderColor}`;
-        diamondEl.style.transform = "rotate(45deg)";
-        diamondEl.style.boxShadow = `0 0 14px ${entityMeta.color}, 0 0 24px ${layerStyle.glowColor}66`;
-        markerEl.style.background = "transparent";
-        markerEl.style.border = "none";
-        markerEl.style.boxShadow = "none";
-        markerEl.appendChild(diamondEl);
-
-        const markerCore = document.createElement("div");
-        markerCore.style.position = "relative";
-        markerCore.style.zIndex = "1";
-        markerCore.style.font = "700 8px ui-monospace, SFMono-Regular, Menlo, monospace";
-        markerCore.style.letterSpacing = "0.08em";
-        markerCore.style.color = "#071014";
-        markerCore.textContent = layerStyle.label ?? "";
-        markerEl.appendChild(markerCore);
-
-        const labelEl = document.createElement("div");
-        labelEl.textContent = asset.label;
-        labelEl.style.position = "absolute";
-        labelEl.style.left = "12px";
-        labelEl.style.top = "50%";
-        labelEl.style.transform = "translateY(-50%)";
-        labelEl.style.zIndex = "1";
-        labelEl.style.padding = "2px 6px";
-        labelEl.style.borderRadius = "999px";
-        labelEl.style.border = `1px solid ${entityMeta.color}aa`;
-        labelEl.style.background = "rgba(7, 16, 20, 0.82)";
-        labelEl.style.backdropFilter = "blur(6px)";
-        labelEl.style.color = "#f5f7fb";
-        labelEl.style.font = "600 9px ui-monospace, SFMono-Regular, Menlo, monospace";
-        labelEl.style.whiteSpace = "nowrap";
-        labelEl.style.pointerEvents = "none";
-        labelEl.style.boxShadow = `0 0 12px ${entityMeta.color}55`;
-        markerEl.appendChild(labelEl);
-      }
-
       markerEl.onclick = () => {
         setSelectedAgent(null);
         popupRef.current
@@ -712,15 +722,102 @@ export default function GlobePage() {
       assetMarkersRef.current.push(marker);
     }
 
+    // Auto-fit map to show all asset markers on first load
+    if (entityAssets.length > 0 && !hasFittedBoundsRef.current) {
+      const bounds = new mapboxgl.LngLatBounds(entityAssets[0].lngLat, entityAssets[0].lngLat);
+      for (const asset of entityAssets) {
+        bounds.extend(asset.lngLat);
+      }
+      map.fitBounds(bounds, { padding: 80, maxZoom: 6, duration: 1500 });
+      hasFittedBoundsRef.current = true;
+    }
+
     return () => {
       assetMarkersRef.current.forEach((marker) => marker.remove());
       assetMarkersRef.current = [];
     };
   }, [agentMapNodes, entityAssets]);
 
+  // ── Interaction arc lines between nations ──
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
 
+    const sourceId = "interaction-arcs";
+    const layerId = "interaction-arc-lines";
+    const glowLayerId = "interaction-arc-glow";
+    const geojson = buildArcFeatureCollection(interactionArcs);
 
+    if (map.getSource(sourceId)) {
+      (map.getSource(sourceId) as mapboxgl.GeoJSONSource).setData(geojson);
+    } else {
+      map.addSource(sourceId, { type: "geojson", data: geojson });
 
+      map.addLayer({
+        id: glowLayerId,
+        type: "line",
+        source: sourceId,
+        paint: {
+          "line-color": ["get", "color"],
+          "line-width": 5,
+          "line-opacity": 0.15,
+          "line-blur": 6,
+        },
+      });
+
+      map.addLayer({
+        id: layerId,
+        type: "line",
+        source: sourceId,
+        paint: {
+          "line-color": ["get", "color"],
+          "line-width": 1.8,
+          "line-opacity": 0.7,
+        },
+      });
+
+      const arcPopup = new mapboxgl.Popup({
+        closeButton: false,
+        closeOnClick: false,
+        anchor: "bottom",
+        offset: [0, -8],
+        className: "arc-tooltip-popup",
+      });
+
+      map.on("mouseenter", layerId, () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", layerId, () => {
+        map.getCanvas().style.cursor = "";
+        arcPopup.remove();
+      });
+      map.on("mousemove", layerId, (e) => {
+        if (!e.features || e.features.length === 0) return;
+        const props = e.features[0].properties;
+        if (!props) return;
+        const actorMeta = AGENT_META[props.actor] ?? { flag: "", defaultLabel: props.actor };
+        const targetMeta = AGENT_META[props.target] ?? { flag: "", defaultLabel: props.target };
+        const actionLabel = String(props.actionType).toUpperCase();
+        const summary = String(props.summary ?? "").slice(0, 100);
+        const turnLabel = `T${props.turn}`;
+        const color = String(props.color);
+        arcPopup
+          .setLngLat(e.lngLat)
+          .setHTML(
+            `<div style="background:rgba(12,12,14,0.92);border:1px solid ${color}44;border-radius:6px;padding:6px 10px;font:500 11px ui-monospace,SFMono-Regular,Menlo,monospace;color:#e0e0e0;max-width:320px;line-height:1.4;box-shadow:0 4px 20px rgba(0,0,0,0.4);">`
+            + `<div style="color:${color};font-weight:700;margin-bottom:3px;letter-spacing:0.06em;">${escapeHtml(actionLabel)} · ${turnLabel}</div>`
+            + `<div style="margin-bottom:2px;">${actorMeta.flag} ${escapeHtml(actorMeta.defaultLabel)} → ${targetMeta.flag} ${escapeHtml(targetMeta.defaultLabel)}</div>`
+            + (summary ? `<div style="color:#aaa;font-size:10px;">${escapeHtml(summary)}</div>` : "")
+            + `</div>`,
+          )
+          .addTo(map);
+      });
+    }
+
+    return () => {
+      // Source data is updated live — only clean up on unmount
+    };
+  }, [interactionArcs, mapReady]);
 
 
   return (
@@ -787,7 +884,7 @@ export default function GlobePage() {
 
 
       {selectedAgent && visible.agentContext && (
-        <div className="absolute bottom-52 left-1/2 z-20 w-[420px] -translate-x-1/2 border border-border/30 bg-card/70 p-3 backdrop-blur-xl">
+        <div className="absolute top-1/2 left-1/2 z-50 w-[420px] -translate-x-1/2 -translate-y-1/2 border border-border/30 bg-card/70 p-3 backdrop-blur-xl" style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}>
           <div className="mb-2 flex items-center justify-between">
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-foreground/80">{selectedAgentMeta?.flag ?? ""} {selectedAgentMeta?.label ?? selectedAgent}</div>
@@ -885,7 +982,7 @@ export default function GlobePage() {
           </div>
         </div>}
 
-        {visible.timeline && <EventTimeline session={session} onTurnChange={(t) => { setTimelineTurn(t); timelineTurnRef.current = t; }} interactionFocus={interactionFocus} onInteractionFocus={setInteractionFocus} onRegisterToggle={(fn) => { togglePanelsRef.current[2] = fn; }} embedded onCollapsedChange={setTimelineCollapsed} />}
+        {visible.timeline && <EventTimeline session={session} onTurnChange={(t) => { setTimelineTurn(t); timelineTurnRef.current = t; }} playing={timelinePlaying} onPlayingChange={setTimelinePlaying} interactionFocus={interactionFocus} onInteractionFocus={setInteractionFocus} onRegisterToggle={(fn) => { togglePanelsRef.current[2] = fn; }} embedded onCollapsedChange={setTimelineCollapsed} />}
       </div>
 
       {visible.newsFeed && <NewsFeed items={newsItems} hydration={session ? getLiveHydration(session.live) : null} interactionFocus={interactionFocus} onInteractionFocus={setInteractionFocus} onRegisterToggle={(fn) => { togglePanelsRef.current[0] = fn; }} onCollapsedChange={(c) => setLeftPanelOpen(!c)} bottomOffset={sideBarBottom} />}
@@ -1022,12 +1119,22 @@ function deriveAgentMapNodes(
 ): Record<string, AgentMapNode> {
   const nodes: Record<string, AgentMapNode> = {};
 
+  // Fixed anchor positions — capital / HQ for each nation
+  const AGENT_ANCHORS: Record<string, [number, number]> = {
+    us: [47.5, 29.3],         // CENTCOM — Kuwait / Gulf region
+    israel: [34.78, 32.08],   // Tel Aviv
+    iran: [51.4, 35.7],       // Tehran
+    hezbollah: [35.5, 33.9],  // Beirut / Bekaa
+    gulf: [54.4, 24.5],       // Abu Dhabi / UAE
+  };
+
   for (const [agentId, meta] of Object.entries(AGENT_META)) {
     const assets = entityAssets.filter((asset) => asset.entityId === agentId);
-    if (assets.length === 0) continue;
+    if (assets.length === 0 && !AGENT_ANCHORS[agentId]) continue;
 
-    const longitude = assets.reduce((sum, asset) => sum + asset.longitude, 0) / assets.length;
-    const latitude = assets.reduce((sum, asset) => sum + asset.latitude, 0) / assets.length;
+    const anchor = AGENT_ANCHORS[agentId];
+    const longitude = anchor ? anchor[0] : assets.reduce((sum, asset) => sum + asset.longitude, 0) / assets.length;
+    const latitude = anchor ? anchor[1] : assets.reduce((sum, asset) => sum + asset.latitude, 0) / assets.length;
     const profile = session?.observations[agentId]?.entity_profile as UnknownRecord | undefined;
 
     nodes[agentId] = {
@@ -1042,48 +1149,13 @@ function deriveAgentMapNodes(
   return nodes;
 }
 
-function getAssetMarkerStyle(asset: SessionEntityAsset): {
-  size: number;
-  opacity: number;
-  borderColor: string;
-  glowColor: string;
-  showLabel: boolean;
-  label: string | null;
-  shape: "circle" | "rounded-square";
-} {
+function getAssetMarkerStyle(asset: SessionEntityAsset): { size: number; opacity: number; borderColor: string } {
   const isStressed = asset.status !== "operational" || (asset.health !== null && asset.health < 80);
-  const isBaseAsset = isBaseCategory(asset.category);
-  const shortLabel = buildAssetShortLabel(asset.label);
   return {
-    size: isBaseAsset ? (isStressed ? 18 : 16) : isStressed ? 9 : 6,
-    opacity: isBaseAsset ? 1 : isStressed ? 1 : 0.82,
-    borderColor: isStressed ? "#ffe082" : isBaseAsset ? "#f8f1ff" : "#ffffff",
-    glowColor: isBaseAsset ? "#ffd166" : "#ffffff",
-    showLabel: isBaseAsset,
-    label: isBaseAsset ? shortLabel : null,
-    shape: isBaseAsset ? "rounded-square" : "circle",
+    size: isStressed ? 9 : 6,
+    opacity: isStressed ? 1 : 0.82,
+    borderColor: isStressed ? "#ffe082" : "#ffffff",
   };
-}
-
-function isBaseCategory(category: string): boolean {
-  const normalized = category.trim().toLowerCase();
-  return (
-    normalized.includes("base")
-    || normalized.includes("naval")
-    || normalized.includes("port")
-    || normalized.includes("logistics")
-    || normalized.includes("command")
-  );
-}
-
-function buildAssetShortLabel(label: string): string {
-  return label
-    .split(/[\s,/()-]+/)
-    .filter(Boolean)
-    .slice(0, 3)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("")
-    .slice(0, 4);
 }
 
 type TopBarExtraStat = {
@@ -1141,16 +1213,15 @@ function deriveTopBarStats(session: SessionState | null, activityCount: number):
   const hydrationValue = hydration.total > 0
     ? `${hydration.ready}/${hydration.total}`
     : "0/0";
-  const resourcePressure = deriveResourcePressure(session);
 
   const topLevelPrimary = Object.entries(world)
     .filter(([key, value]) => key !== "turn" && typeof value === "number")
     .map(([key, value]) => ({
       key,
-      label: key === "oil_pressure" ? "RESOURCE PRESSURE" : humanizeStatKey(key),
-      value: key === "oil_pressure" ? String(Math.round(resourcePressure)) : formatWorldMetric(key, value as number),
+      label: humanizeStatKey(key),
+      value: formatWorldMetric(key, value as number),
       icon: iconForStatKey(key),
-      warn: key === "oil_pressure" ? resourcePressure > 60 : inferWorldMetricWarning(key, value as number),
+      warn: inferWorldMetricWarning(key, value as number),
     }));
 
   const activityStat = {
@@ -1180,48 +1251,6 @@ function deriveTopBarStats(session: SessionState | null, activityCount: number):
   ].filter((stat) => !primary.some((primaryStat) => primaryStat.key === stat.key));
 
   return { primary, extra };
-}
-
-function deriveResourcePressure(session: SessionState): number {
-  const world = session.world;
-  const actorState = world.actor_state ?? {};
-  const activeEvents = world.active_events ?? [];
-
-  const gulfState = actorState.gulf ?? {};
-  const iranState = actorState.iran ?? {};
-  const usState = actorState.us ?? {};
-
-  const shippingEvents = activeEvents.filter((event) => eventMatchesTopic(event, "shipping")).length;
-  const commodityEvents = activeEvents.filter((event) => eventMatchesTopic(event, "commodities")).length;
-  const humanitarianEvents = activeEvents.filter((event) => eventMatchesTopic(event, "humanitarian")).length;
-
-  const demandPressure =
-    Math.max(0, world.market_stress - 25) * 0.22
-    + Math.max(0, world.tension_level - 45) * 0.12;
-  const shippingConstraint =
-    Math.max(0, 78 - (gulfState.shipping_continuity ?? 78)) * 0.45
-    + Math.max(0, 72 - (usState.shipping_security ?? 72)) * 0.28;
-  const supplyRisk =
-    Math.max(0, (iranState.hormuz_leverage ?? 69) - 69) * 0.4
-    + shippingEvents * 3.5
-    + commodityEvents * 4.2
-    + humanitarianEvents * 1.2;
-
-  return clamp(world.oil_pressure + demandPressure + shippingConstraint + supplyRisk, 0, 100);
-}
-
-function eventMatchesTopic(
-  event: SessionState["world"]["active_events"][number],
-  topic: "shipping" | "commodities" | "humanitarian",
-): boolean {
-  const text = `${event.source} ${event.summary}`.toLowerCase();
-  if (topic === "shipping") {
-    return /(shipping|tanker|hormuz|port|maritime|strait|terminal|oil)/.test(text);
-  }
-  if (topic === "commodities") {
-    return /(commodity|gas|lng|mineral|metal|gold|silver|copper|nickel|uranium|phosphate)/.test(text);
-  }
-  return /(humanitarian|aid|civilian|refugee|displacement|relief)/.test(text);
 }
 
 function iconForStatKey(key: string): LucideIcon {
@@ -1459,6 +1488,147 @@ function deriveNewsItems(session: SessionState | null): NewsItem[] {
 
 function isFallbackBinding(binding: EntityModelBinding): boolean {
   return binding.decision_mode === "heuristic_fallback" || binding.provider === "openrouter";
+}
+
+function deriveInteractionArcs(
+  session: SessionState | null,
+  agentMapNodes: Record<string, AgentMapNode>,
+  maxTurn: number,
+): InteractionArc[] {
+  if (!session) return [];
+
+  // Visual target fallback for self-targeting actions (defend, intel_query)
+  const ADVERSARY_FALLBACK: Record<string, string> = {
+    us: "iran",
+    israel: "hezbollah",
+    iran: "israel",
+    hezbollah: "israel",
+    gulf: "iran",
+  };
+
+  const arcs: InteractionArc[] = [];
+  const seen = new Map<string, InteractionArc>();
+  const minTurn = Math.max(0, maxTurn - 3);
+
+  function resolveTarget(actor: string, actionType: string, rawTarget: string | null | undefined): string | null {
+    if (rawTarget && rawTarget !== actor) return rawTarget;
+    // For self-targeting or null-target actions, use adversary as visual target
+    if (actionType !== "hold" && actionType !== "oversight_review" && actionType !== "negotiate") {
+      return ADVERSARY_FALLBACK[actor] ?? null;
+    }
+    return rawTarget ?? null;
+  }
+
+  // Derive from action_log (most recent action per pair wins)
+  for (const entry of session.action_log) {
+    if (entry.turn > maxTurn || entry.turn < minTurn) continue;
+    const target = resolveTarget(entry.actor, entry.action_type, entry.target);
+    if (!target || !(target in agentMapNodes) || !(entry.actor in agentMapNodes)) continue;
+    if (entry.actor === target) continue;
+    if (entry.actor === "oversight" || target === "oversight") continue;
+    if (entry.action_type === "hold" || entry.action_type === "oversight_review") continue;
+
+    const pairKey = `${entry.actor}->${target}`;
+    const existing = seen.get(pairKey);
+    if (existing && existing.turn >= entry.turn) continue;
+
+    const arc: InteractionArc = {
+      id: `arc-${entry.actor}-${target}-${entry.turn}`,
+      actor: entry.actor,
+      target,
+      actionType: entry.action_type,
+      summary: entry.summary,
+      turn: entry.turn,
+      fromLngLat: agentMapNodes[entry.actor].lngLat,
+      toLngLat: agentMapNodes[target].lngLat,
+      color: ACTION_ARC_COLORS[entry.action_type] ?? "#8e8e93",
+    };
+    seen.set(pairKey, arc);
+  }
+
+  // Also derive from recent_traces for actions not yet in action_log
+  for (const trace of session.recent_traces) {
+    if (trace.turn > maxTurn || trace.turn < minTurn) continue;
+    for (const [agentId, action] of Object.entries(trace.actions)) {
+      if (!action) continue;
+      const target = resolveTarget(agentId, action.type, action.target);
+      if (!target || !(target in agentMapNodes) || !(agentId in agentMapNodes)) continue;
+      if (agentId === target) continue;
+      if (agentId === "oversight" || target === "oversight") continue;
+      if (action.type === "hold" || action.type === "oversight_review") continue;
+
+      const pairKey = `${agentId}->${target}`;
+      const existing = seen.get(pairKey);
+      if (existing && existing.turn >= trace.turn) continue;
+
+      const arc: InteractionArc = {
+        id: `arc-${agentId}-${target}-${trace.turn}`,
+        actor: agentId,
+        target,
+        actionType: action.type,
+        summary: action.summary,
+        turn: trace.turn,
+        fromLngLat: agentMapNodes[agentId].lngLat,
+        toLngLat: agentMapNodes[target].lngLat,
+        color: ACTION_ARC_COLORS[action.type] ?? "#8e8e93",
+      };
+      seen.set(pairKey, arc);
+    }
+  }
+
+  arcs.push(...seen.values());
+  return arcs;
+}
+
+function greatCircleArc(from: [number, number], to: [number, number], segments = 48): [number, number][] {
+  const toRad = Math.PI / 180;
+  const toDeg = 180 / Math.PI;
+  const [lng1, lat1] = [from[0] * toRad, from[1] * toRad];
+  const [lng2, lat2] = [to[0] * toRad, to[1] * toRad];
+
+  const dLng = lng2 - lng1;
+  const d = Math.acos(
+    Math.sin(lat1) * Math.sin(lat2) + Math.cos(lat1) * Math.cos(lat2) * Math.cos(dLng),
+  );
+
+  // If points are basically overlapping, just return a straight line
+  if (d < 1e-6) return [from, to];
+
+  const points: [number, number][] = [];
+  for (let i = 0; i <= segments; i++) {
+    const f = i / segments;
+    const A = Math.sin((1 - f) * d) / Math.sin(d);
+    const B = Math.sin(f * d) / Math.sin(d);
+    const x = A * Math.cos(lat1) * Math.cos(lng1) + B * Math.cos(lat2) * Math.cos(lng2);
+    const y = A * Math.cos(lat1) * Math.sin(lng1) + B * Math.cos(lat2) * Math.sin(lng2);
+    const z = A * Math.sin(lat1) + B * Math.sin(lat2);
+    const lat = Math.atan2(z, Math.sqrt(x * x + y * y)) * toDeg;
+    const lng = Math.atan2(y, x) * toDeg;
+    points.push([lng, lat]);
+  }
+  return points;
+}
+
+function buildArcFeatureCollection(arcs: InteractionArc[]): GeoJSON.FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: arcs.map((arc) => ({
+      type: "Feature" as const,
+      properties: {
+        id: arc.id,
+        actor: arc.actor,
+        target: arc.target,
+        actionType: arc.actionType,
+        summary: arc.summary,
+        turn: arc.turn,
+        color: arc.color,
+      },
+      geometry: {
+        type: "LineString" as const,
+        coordinates: greatCircleArc(arc.fromLngLat, arc.toLngLat),
+      },
+    })),
+  };
 }
 
 function deriveActivityItems(session: SessionState | null): ActivityItem[] {

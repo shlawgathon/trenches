@@ -1,12 +1,12 @@
 # Trenches Presentation
 
-This document consolidates the checked-in project markdowns into one presentation-style spec for the Trenches platform. It also incorporates the checked-in deployment scripts under `backend/train_modal.py`, the older `ops/thunder/*.sh` scripts where they clarify infrastructure evolution, and direct operator history about how the system was actually trained, hosted, and iterated in practice.
+This document consolidates the checked-in project markdowns into one presentation-style spec for the Trenches platform. It also incorporates the checked-in deployment scripts under `backend/train_modal.py` and `ops/thunder/*.sh` where they clarify the actual training and serving path.
 
 Important note on source fidelity:
 
-- The markdowns document the simulator, data model, training loop, and runtime abstraction.
-- The actual infrastructure story changed repeatedly during development: Hugging Face, Thunder Compute, Cloudflare tunnels, NorthFlank, and Modal were all tried at different phases before settling on the current stack.
-- Where the repo and the lived deployment history differ, this presentation prioritizes the real operating history.
+- The markdowns fully document the simulator, data model, training loop, and provider abstraction.
+- The repo also documents a Modal-based post-training path and a Thunder-oriented serving path in scripts.
+- The exact `6 Thunder model instances + 1 backend instance + Cloudflare tunnel exposure` topology is not fully written down in the markdowns; that part is included here as the current operating model described in your request, with explicit callouts where the checked-in scripts differ.
 
 ## 1. What Trenches Is
 
@@ -39,13 +39,12 @@ At the product level, Trenches is an operator console plus a simulation backend.
 
 The user sees:
 
-- a full-screen rotating Mapbox globe with fog-of-war styling
-- a top status bar with turn count, live simulation metrics, and map controls
-- a left "Live Intel Feed" sourced from RSS bootstrap items, source packets, events, and public briefs
-- a right "Entity Activity" ledger sourced from backend step traces and rewards
-- a bottom reverse feed / replay surface for playback, event inspection, predicted-vs-actual action review, and provider-source-action tracing
-- an oversight chat panel that can discuss unfolding events, answer state questions, and inject synthetic events with `/inject`
-- a selected-entity context card pinned over the globe when an actor is clicked
+- a globe or theater map
+- live news and reaction feeds
+- recent entity actions
+- a timeline and branch view for what-if exploration
+- a chat panel for injected scenarios
+- per-entity operational context
 
 The backend manages:
 
@@ -66,12 +65,6 @@ The product supports both:
 
 The key rule is that fake manual injections can influence behavior, but should not contaminate the training reward path.
 
-Every entity is also grounded visually:
-
-- each nation or actor has a capital marker
-- each nation or actor has military bases and military assets on the map
-- entity actions are replayed persistently in the visual layer rather than disappearing after one turn
-
 ```mermaid
 flowchart LR
     FE["Frontend Command Center<br/>Next.js + Mapbox"] --> API["Backend Session API<br/>FastAPI"]
@@ -89,17 +82,19 @@ flowchart LR
 
 ## 3. Frontend Spec
 
-The current frontend stack is Next.js 16 with React 19, Tailwind v4, Framer Motion, and Mapbox GL. The checked-in app entrypoint is `app/page.tsx`, which renders `src/components/GlobePage.tsx`. In the intended operating setup, the frontend is hosted on Vercel while the simulation backend runs separately.
+The current frontend stack is Next.js 16 with React 19, Tailwind v4, Framer Motion, and Mapbox GL. The checked-in app entrypoint is `app/page.tsx`, which renders `src/components/GlobePage.tsx`.
 
 The frontend acts as a command center, not a consumer-social dashboard. The intended UI language across the docs is tactical, dark, and operator-first:
 
-- globe-first theater view with animated entity markers and highlighted borders
-- top bar with turn, risk, market, resource-pressure, and map controls
-- live intel feed with hydration status and per-entity filters
-- entity activity ledger with action type, target, reward, and oversight markers
-- chat panel for oversight queries and synthetic event injection
-- reverse feed / timeline with timeline mode and console mode so operators can compare live action, predicted action, and actual outcome
-- selected-entity context panel with current observation summary and latest actions
+- global theater map / globe
+- top bar with simulation stats
+- live news feed
+- activity log
+- chat panel
+- event timeline
+- simulation branch tree
+- inter-agent tension matrix
+- per-entity context panes
 
 The frontend should render different layers differently:
 
@@ -118,30 +113,23 @@ The frontend is responsible for:
 - creating and resetting sessions
 - stepping turns
 - toggling live source mode
-- rendering source-derived intel and action traces from live session state
-- exposing timeline playback and console inspection
-- supporting synthetic scenario injection through the oversight chat surface
-- keeping the globe, side rails, and timeline in sync with the active or rewound turn
-
-Presentation-wise, the frontend is meant to feel like a live command system rather than a static dashboard:
-
-- RSS feeds are surfaced as current world news for the relevant entities
-- persistent action replays stay visible below the main globe
-- Framer Motion is used to keep the globe, side rails, and feed transitions feeling live without turning the UI into a toy
+- showing provider readiness and health
+- showing source health
+- visualizing reactions to public news
+- exposing simulation branches and replay inspection
 
 ### Frontend Runtime Flow
 
 1. App boots and calls `/capabilities`.
-2. App creates a session and immediately enables live mode with `auto_step`.
-3. Frontend renders the current `SessionState` onto the globe, feed, activity rail, and timeline.
-4. A five-second loop either advances the simulation or polls state when the viewer is rewound.
-5. User can inject signals through chat or inspect prior turns in timeline / console mode.
-6. Backend returns updated world state, source packets, reactions, traces, and oversight output.
-7. UI re-renders the globe, rails, timeline, and selected-entity context.
+2. App creates or resets a session.
+3. Frontend renders the current `SessionState`.
+4. User steps the simulation or injects signals.
+5. Backend returns updated world state, reward state, oversight output, and reaction/action logs.
+6. UI re-renders map, feeds, matrix, and per-agent panels.
 
 ## 4. Backend Spec
 
-The backend is a FastAPI service layered with OpenEnv Core and NumPy-based state computation. It exposes both:
+The backend is a FastAPI service that exposes both:
 
 - a session-oriented API for the product UI
 - a native OpenEnv-compatible environment boundary for post-training
@@ -150,8 +138,6 @@ This is the critical engineering split:
 
 - product sessions use the richer FastAPI session API
 - training uses the OpenEnv adapter and scalar reward boundary
-
-In the real deployment path, the backend has often been run locally during development and demo operation while the frontend lived on Vercel and the per-entity inference endpoints lived elsewhere.
 
 ### Main Backend Concepts
 
@@ -262,7 +248,6 @@ Planned and documented source categories include:
 - Telegram / OSINT channels
 - webcams / streams / geospatial feeds
 - Cloudflare Radar outage data in the ingestion layer
-- daily RSS feeds for current live world news
 
 ### Data Layers in the Product
 
@@ -293,15 +278,14 @@ separate enough to reason about.
 
 ### Historical Replay Data
 
-The actual post-training dataset was built around GDELT-centered historical news collection:
+The data path for post-training now supports real historical collection:
 
-- identify a yearly GDELT-backed source set
-- collect daily news feeds from January 1, 2025 through January 1, 2026
-- chunk those daily feeds by entity relevance
-- format them into the same structured shapes expected by the live simulator
-- feed each entity-specific corpus into its own 8B post-training job
-
-This was done deliberately so the finetuning distribution matched live runtime structure as closely as possible. The model was not trained on generic chat data for deployment. It was trained on the same kind of structured event, source, and action context it would later receive live.
+- start from `source_manifest.json`
+- derive allowlisted historical domains
+- query GDELT month by month
+- write raw article audit JSONL
+- convert articles into replay JSON
+- curator-review before production use
 
 Replay JSON uses the same schema the trainer already consumes:
 
@@ -327,7 +311,7 @@ Each event includes:
 - `tags`
 - `impact`
 
-This is important: the project moved from synthetic-only seed replay data toward a real historical collection pipeline, with daily chunked feeds intended to approximate an OpenEnv-style RL post-training distribution. The docs are still right that replay generation needs curation, but the data pipeline itself was built to mirror live usage rather than a disconnected offline format.
+This is important: the project moved from synthetic-only seed replay data toward a real historical collection pipeline, but the docs are explicit that the generated replay still needs curator review because topic, severity, actor/target inference, and impact shaping still contain heuristics.
 
 ## 7. How the Simulator Works
 
@@ -356,8 +340,6 @@ Common actions across entities include:
 - intel query
 - mobilize
 - deceive
-
-Doctrine-specific escalation tooling extends beyond the base set. The intended entity tool surface includes attack, negotiation, sanctions, and even nuclear-escalation pathways for the highest-risk scenarios.
 
 Oversight has its own review/intervention path.
 
@@ -441,10 +423,10 @@ The chosen base model is:
 
 Why it was selected:
 
-- it was a recent early-to-mid 2025 class model, which fit the training window the team wanted
-- it was small enough to fit within realistic compute-credit constraints
-- it was strong enough for structured action + prediction output
-- it was feasible to train separately for all six entities instead of collapsing everything into one policy
+- fits the target post-training window
+- available on Hugging Face
+- strong enough for structured action + prediction output
+- feasible to train separately for all six entities
 
 ### Training Architecture
 
@@ -476,26 +458,22 @@ flowchart LR
 
 ### Training Method
 
-The practical post-training loop became:
+The docs consistently position the current post-training loop as:
 
 - OpenEnv environment boundary
 - Hugging Face TRL training stack
 - GRPO optimization
 - one model per entity
-- data formatted to match live runtime payloads
-
-In plain terms, the six models were post-trained with Hugging Face TRL on top of an OpenEnv-compatible Trenches environment, and the serious GPU training runs were executed on Modal.
 
 The model is not trained as one monolithic policy across all actors. The design is:
 
 - six separate post-training jobs
 - six separate checkpoints
 - six separate entity identities
-- one special oversight model trained on all data rather than only one nation's slice
 
 ### Six Fine-Tuned Models
 
-The project plans and scripts converge on six entity-specific checkpoints, ultimately uploaded to Hugging Face under `@AlazarM`:
+The project plans and scripts converge on six entity-specific checkpoints:
 
 - `trenches-us-qwen3-8b`
 - `trenches-israel-qwen3-8b`
@@ -510,76 +488,73 @@ The docs also include:
 - a Hugging Face T4 smoke test
 - a plan for larger parallelized GPU training
 
-The important product detail is that the finetuned models were taught to emit the same pre-configured data types used by the live system, so the structured output path was part of training rather than a thin inference-time wrapper.
-
 ## 10. Infrastructure Evolution
 
-The infrastructure story was messy in a realistic way and changed multiple times under compute, reliability, and serving constraints.
+The infrastructure story appears in three phases.
 
-### Phase 1: Hugging Face as the First Provider and Registry
+### Phase 1: Local and Hugging Face Proofs
 
-Hugging Face was used early because it was the most natural place to pull a Qwen 8B base model and later publish the finetuned checkpoints.
+The early documented path used:
 
-In practice, this phase included:
+- local `transformers` generation for smoke tests
+- Hugging Face-hosted experiments
+- a Hugging Face T4 smoke run
+- a planned Hugging Face A100-space scale-up
 
-- Hugging Face as the source of the base model
-- early Hugging Face-backed provider experiments
-- attempts to use Hugging Face Spaces
-- eventual publication of the finetuned checkpoints back to Hugging Face under `@AlazarM`
+This phase proved:
 
-The team moved away from Hugging Face for serving because Spaces were difficult to operate and the cost profile was worse than expected.
+- the replay-aware training loop worked
+- the environment and trainer boundary worked
+- the model could emit structured action + prediction outputs
 
-### Phase 2: Thunder, Cloudflare, and NorthFlank Detours
+### Phase 2: Modal for Parallel GPU Training
 
-The team did not move cleanly in a straight line from prototype to final serving.
+The repo then adds a much stronger post-training plan around Modal.
 
-Intermediate attempts included:
+That Modal plan is explicit:
 
-- Thunder Compute for backend infrastructure
-- Cloudflare tunnels as a workaround when instance behavior was unreliable
-- NorthFlank for model pull / serving experiments
+- one parallel training job per entity
+- vLLM in server mode
+- GRPO via TRL
+- full-precision Qwen3-8B
+- dedicated GPU separation between inference and training in the original plan
 
-Those detours created real operational pain:
+The markdown plan describes:
 
-- Thunder Compute instance issues made the path unreliable
-- Cloudflare tunnel plumbing became a headache
-- NorthFlank did not provide the compute shape needed for the six-model inference setup
+- 6 parallel Modal containers
+- A100 80GB x2 per entity in the initial written plan
+- around one hour of wall-clock training
+- six output checkpoints
 
-This matters for the presentation because the project did not simply "choose Modal first." It tried several infrastructure routes and converged on Modal after other paths failed operationally.
-
-### Phase 3: Modal for Training and Inference
-
-After the Hugging Face and infrastructure detours, the project settled back on Modal for the serious work.
-
-Modal ended up handling both post-training and inference after several rounds of vLLM bug-squashing.
-
-This is the clearest final training statement:
-
-- Hugging Face supplied the base models and later stored the finetuned checkpoints
-- TRL supplied the GRPO training stack
-- OpenEnv supplied the replay-aware environment boundary
-- Modal supplied the GPU execution layer for training the six entity models
-
-The checked-in `backend/train_modal.py` captures that direction and automates:
+The checked-in `backend/train_modal.py` later uses Modal with `H200:2` fallback configuration and automates:
 
 - entity-specific replay selection
 - vLLM server startup
 - replay-aware training CLI execution
 - checkpoint storage in a Modal volume
 
-The operational serving shape described by the team is:
+This is the clearest documented transition from prototype training to serious parallel post-training.
 
-- six 8B finetuned entity models
-- one model endpoint per entity
-- each inference model running on an L40 GPU
-- Modal used for the active inference endpoints
-- the backend talking to those endpoints through a vLLM-style OpenAI-compatible surface
+### Phase 3: Thunder Compute for Serving
 
-The migration path is best summarized as:
+The repo also contains Thunder-oriented deployment scripts:
 
-- Hugging Face for model access and checkpoint publication
-- failed or painful experiments on Spaces, Thunder Compute, Cloudflare tunnels, and NorthFlank
-- Modal for the final workable training and serving path
+- `ops/thunder/deploy_trenches_vllm.sh`
+- `ops/thunder/deploy_trenches_app_container.sh`
+
+These scripts show the final serving pattern:
+
+- self-hosted vLLM model endpoints
+- app container with frontend + backend integration
+- model-provider bindings pointed at local OpenAI-compatible `/v1` endpoints
+
+In your deployment history, this is the point where the project moved from Hugging Face-centric experimentation to Modal for training, then to Thunder Compute for serving because the desired GPU supply was not available where you first wanted to run it.
+
+That migration makes engineering sense:
+
+- Hugging Face was good for proof and smoke tests
+- Modal was good for parallel post-training
+- Thunder Compute was good for controlled self-hosted serving of the finetuned checkpoints
 
 ## 11. Provider Switching and Runtime Abstraction
 
@@ -587,6 +562,9 @@ A major engineering choice in the backend is the provider abstraction layer.
 
 The backend supports:
 
+- `openai`
+- `anthropic`
+- `openrouter`
 - `huggingface`
 - `ollama`
 - `vllm`
@@ -612,15 +590,13 @@ For each entity:
 
 This is important operationally. The product does not pretend a model is live when it is not.
 
-### Hugging Face as Model Registry, Not the Final Serving Layer
+### Hugging Face Provider Mode
 
-Hugging Face still matters in the system because:
+When using the `huggingface` provider:
 
-- it provided access to the Qwen 8B base model
-- it stores the finetuned checkpoints under `@AlazarM`
-- it was part of the early provider experiments
-
-But it is no longer the preferred final serving layer for this product.
+- the backend uses the HF router chat-completions endpoint
+- `HF_TOKEN` is the default secret env var if no override is set
+- optional routing policies can bias model routing
 
 ### vLLM Provider Mode
 
@@ -628,33 +604,32 @@ When using `vllm`:
 
 - the backend talks to OpenAI-compatible local endpoints
 - each entity can point to a different local URL
-- this is the mechanism used by the Modal-serving direction as well
-- a substantial amount of engineering time went into stabilizing that vLLM path
+- this is the mechanism used by the Thunder serving path
 
 ## 12. Serving Topology
 
-This section reflects the actual operating model described by the team and treats the Thunder and Cloudflare phases as historical context only.
+This section combines the checked-in Thunder scripts with the current operating model from your request.
 
 ### Intended Production Shape
 
 Target operating layout:
 
-- a Vercel-hosted frontend
-- a FastAPI + OpenEnv backend, often run locally during active development and demos
-- Modal-hosted entity model endpoints for the six finetuned actors
-- backend routing entity decisions to those six model endpoints
-- the whole stack runnable in Docker for local execution
+- 6 Thunder Compute instances for the six finetuned entity models
+- 1 Thunder Compute instance for the app/backend runtime
+- Cloudflare tunnels exposing the frontend and backend session surfaces
+- backend routing entity decisions to the six model endpoints
 
 In that topology:
 
 - each entity gets a dedicated serving endpoint
 - the backend remains the orchestrator and source of session truth
 - the frontend never talks directly to the models
-- the public UI is Vercel-hosted while model ports remain private behind the backend integration
+- the public internet sees the Cloudflare-exposed frontend and API, not the private model ports
 
 ```mermaid
 flowchart TB
-    FE["Vercel frontend"] --> BE["FastAPI + OpenEnv backend"]
+    CF["Cloudflare tunnels"] --> FE["Frontend instance"]
+    CF --> BE["Backend instance"]
     BE --> M1["US model instance"]
     BE --> M2["Israel model instance"]
     BE --> M3["Iran model instance"]
@@ -663,40 +638,54 @@ flowchart TB
     BE --> M6["Oversight model instance"]
 ```
 
-### Historical Note on Thunder, Cloudflare, and NorthFlank
+### What the Checked-In Thunder Scripts Prove
 
-The checked-in Thunder scripts and deployment notes still show older self-hosted attempts:
+The checked-in scripts already prove the architectural shape, even though they do not fully encode the exact `6 + 1` deployment narrative:
 
-- Thunder Compute as an initial backend target
-- Cloudflare tunnels used as a workaround when that path degraded
-- NorthFlank as a later attempt to pull and serve the trained models
-- per-entity serving layouts behind local or tunneled endpoints
+- app container expects backend on `127.0.0.1:8000`
+- frontend runs on `7860`
+- backend provider bindings point to local vLLM endpoints
+- model endpoints are OpenAI-compatible
+- ports `8101` to `8105` are assigned per entity in the current script
 
-That material is useful as historical implementation detail, but it is not the current infrastructure recommendation. The stable direction ended up being Modal-backed inference.
+Current scripted mappings:
 
-### Why the Final Topology Looks the Way It Does
+- US -> `8101`
+- Hezbollah -> `8102`
+- Gulf -> `8103`
+- Israel -> `8104`
+- Iran -> `8105`
 
-The final topology is the result of practical tradeoffs:
+Important current gap:
 
-- frontend on Vercel for simple web deployment
-- backend kept local during iterative development and demos
-- model inference moved to Modal because it offered usable GPU access
-- Hugging Face retained as the model registry
+- the checked-in Thunder app script currently sets `TRENCHES_MODEL_PROVIDER_OVERSIGHT="none"`
+- the checked-in vLLM script currently does not boot an oversight endpoint
 
-That operating split let the team:
+So the repo supports the story "six models were fine-tuned," but the checked-in Thunder serving scripts currently wire five live vLLM entity endpoints plus the app/backend container. The sixth oversight serving endpoint is still a deployment gap relative to the full intended topology.
 
-- keep the command UI lightweight
-- keep the simulator and telemetry logic in FastAPI/OpenEnv
-- keep expensive model inference on dedicated GPU infrastructure
+### Cloudflare Exposure Model
+
+Based on your current deployment description, Cloudflare tunneling sits in front of:
+
+- the frontend experience
+- the backend session API
+
+The clean engineering model is:
+
+- keep model ports private to the Thunder network
+- expose only the frontend and backend through Cloudflare
+- let the backend own all session state, provider routing, and inference telemetry
+
+That is the correct separation for security and control.
 
 ## 13. End-to-End Product Flow
 
 From a user and operator perspective, the platform works like this:
 
-1. User opens the Vercel-hosted frontend.
+1. User opens the Cloudflare-exposed frontend.
 2. Frontend creates a session against the backend.
 3. Backend initializes world state, latent events, belief state, and source projections.
-4. Frontend shows the command map, feeds, persistent replay surfaces, and entity panels.
+4. Frontend shows the command map, feeds, and entity panels.
 5. A step or news injection triggers entity decisions.
 6. Backend routes those decisions to live model providers or heuristic fallback.
 7. Oversight scores risk and may intervene.
@@ -718,8 +707,6 @@ Several design decisions are unusually strong:
 - replay-aware forecasting reward, not just action scoring
 - source manifest reuse across live data and historical collection
 - clean OpenEnv boundary for training without forcing the product API to look like the trainer
-- training data shaped to match live inference schemas
-- separate all-data training for the oversight entity
 
 This gives the system three things at once:
 
@@ -739,13 +726,12 @@ Main remaining gaps:
 - full curated historical truth sets across all entities
 - final wiring for all tool packs into observations
 - stronger provider retry taxonomy and diagnostics
-- long-term hardening beyond the current local-backend plus Modal-inference operating mode
+- full oversight model serving in the Thunder path
 
 Also worth noting:
 
 - some markdowns describe older frontend structure, while the current checked-in frontend is Next.js 16
-- some older docs still overstate Hugging Face, Thunder Compute, or Cloudflare as active infrastructure rather than historical steps
-- the runtime story changed in response to real compute and reliability constraints, which is normal for an ambitious multi-model system
+- some training docs still speak in terms of synthetic seed data even though real historical replay collection now exists
 
 That is normal for a fast-moving repo, but it is worth saying explicitly in a presentation.
 
@@ -776,5 +762,5 @@ This presentation is grounded primarily in:
 Supplemental implementation references used to reconcile deployment/training details:
 
 - `backend/train_modal.py`
-- `ops/thunder/deploy_trenches_vllm.sh` (historical)
-- `ops/thunder/deploy_trenches_app_container.sh` (historical)
+- `ops/thunder/deploy_trenches_vllm.sh`
+- `ops/thunder/deploy_trenches_app_container.sh`

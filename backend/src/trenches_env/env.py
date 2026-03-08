@@ -482,6 +482,10 @@ class FogOfWarDiplomacyEnv:
                 )
             )
             next_session.reaction_log = next_session.reaction_log[-100:]
+        oversight_prediction = self._generate_oversight_prediction(next_session, resolved_actions, before_tension)
+        if oversight_prediction:
+            next_session.prediction_log.append(oversight_prediction)
+            next_session.prediction_log = next_session.prediction_log[-50:]
         self._update_live_source_state(next_session, phase="background" if next_session.live.enabled else None)
         next_session.updated_at = datetime.now(timezone.utc)
 
@@ -561,9 +565,6 @@ class FogOfWarDiplomacyEnv:
             return refreshed
 
         signals, reacted_packets = self._collect_live_external_signals(refreshed)
-        if not signals:
-            return refreshed
-
         actions = self.resolve_policy_actions(refreshed, signals)
         result = self.step_session(
             refreshed,
@@ -1076,10 +1077,7 @@ class FogOfWarDiplomacyEnv:
             if agent_id == "gulf":
                 return "us"
             if agent_id == "oversight":
-                return max(
-                    ("us", "israel", "iran", "hezbollah", "gulf"),
-                    key=lambda candidate: session.world.risk_scores.get(candidate, 0.0),
-                )
+                return None
 
         if action_type in {"strike", "sanction"}:
             adversaries = AGENT_PRIMARY_ADVERSARIES.get(agent_id, ())
@@ -1951,21 +1949,13 @@ class FogOfWarDiplomacyEnv:
             for agent_id, action in actions.items()
             if action.type in {"strike", "mobilize", "deceive", "sanction"}
         ]
-        action_override = {
-            agent_id: self._build_oversight_override_action(
-                world=world,
-                agent_id=agent_id,
-                action=actions[agent_id],
-                signals=signals,
-            )
-            for agent_id in affected
-        }
+        # Oversight only observes and scores risk — it does NOT override agent actions.
+        # Intervention (action overrides) should only happen via observer or execute/inject.
         return OversightIntervention(
             triggered=True,
             risk_score=risk_score,
             reason="Escalation probability exceeded the intervention threshold.",
             affected_agents=affected or ["us", "israel", "iran", "hezbollah", "gulf"],
-            action_override=action_override,
         )
 
     def _resolve_oversight_actions(
@@ -2045,6 +2035,100 @@ class FogOfWarDiplomacyEnv:
             "gulf": "us",
             "oversight": None,
         }.get(agent_id)
+
+    def _generate_oversight_prediction(
+        self,
+        session: SessionState,
+        resolved_actions: dict[str, AgentAction],
+        tension_before: float,
+    ) -> Prediction | None:
+        """Generate a heuristic-based oversight prediction for the next turn."""
+        world = session.world
+        tension_delta = world.tension_level - tension_before
+        nation_ids = [aid for aid in AGENT_IDS if aid != "oversight"]
+
+        # Find the highest-risk nation
+        risk_scores = world.risk_scores
+        if not risk_scores:
+            return None
+        most_risky = max(nation_ids, key=lambda aid: risk_scores.get(aid, 0.0))
+        most_risky_score = risk_scores.get(most_risky, 0.0)
+
+        # Analyze recent action patterns
+        aggressive_actions = {"strike", "sanction", "mobilize", "deceive"}
+        last_aggressive = [
+            a for a in world.last_actions
+            if a.type in aggressive_actions and a.actor != "oversight"
+        ]
+
+        # Determine primary adversary of the predicted actor
+        adversaries = AGENT_PRIMARY_ADVERSARIES.get(most_risky, ())
+        predicted_target = adversaries[0] if adversaries else None
+
+        # Predict action type based on tension trend and risk
+        if tension_delta > 5.0 and most_risky_score > 0.55:
+            predicted_action = "strike"
+            confidence = min(0.85, 0.5 + most_risky_score * 0.3 + tension_delta * 0.01)
+            topic = "military_escalation"
+        elif tension_delta > 2.0 or most_risky_score > 0.45:
+            predicted_action = "sanction"
+            confidence = min(0.75, 0.4 + most_risky_score * 0.25)
+            topic = "economic_pressure"
+        elif len(last_aggressive) >= 2:
+            predicted_action = "mobilize"
+            confidence = min(0.65, 0.35 + len(last_aggressive) * 0.1)
+            topic = "force_posture"
+        elif tension_delta < -3.0:
+            predicted_action = "negotiate"
+            confidence = min(0.7, 0.45 + abs(tension_delta) * 0.02)
+            topic = "diplomatic_channel"
+            # For negotiation, target an ally or partner
+            coalitions = world.coalition_graph.get(most_risky, [])
+            predicted_target = coalitions[0] if coalitions else predicted_target
+        else:
+            predicted_action = "hold"
+            confidence = 0.35
+            topic = "status_quo"
+
+        # Build rationale
+        rationale_parts = [
+            f"Tension {'rose' if tension_delta > 0 else 'fell'} by {abs(tension_delta):.1f} to {world.tension_level:.0f}.",
+            f"{most_risky} has risk score {most_risky_score:.2f} (highest among nations).",
+        ]
+        if last_aggressive:
+            rationale_parts.append(
+                f"Recent aggressive actions: {', '.join(a.actor + ':' + a.type for a in last_aggressive[:3])}."
+            )
+        if world.market_stress > 50:
+            rationale_parts.append(f"Market stress elevated at {world.market_stress:.0f}.")
+
+        severity_map = {
+            "strike": "critical",
+            "mobilize": "high",
+            "sanction": "high",
+            "deceive": "medium",
+            "negotiate": "low",
+            "hold": "low",
+        }
+
+        summary = (
+            f"Oversight predicts {most_risky} will likely {predicted_action}"
+            + (f" targeting {predicted_target}" if predicted_target else "")
+            + f" next turn. Confidence: {confidence:.0%}."
+        )
+
+        return Prediction(
+            agent_id="oversight",
+            turn=world.turn,
+            topic=topic,
+            predicted_actor=most_risky,
+            predicted_target=predicted_target,
+            time_horizon_turns=1,
+            expected_severity=severity_map.get(predicted_action, "medium"),
+            confidence=round(confidence, 3),
+            summary=summary,
+            rationale=" ".join(rationale_parts),
+        )
 
     def _apply_oversight(self, world: WorldState, oversight: OversightIntervention) -> None:
         if not oversight.triggered:
