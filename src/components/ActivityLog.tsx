@@ -80,7 +80,7 @@ export function ActivityLog({ items, onRegisterToggle }: { items: ActivityItem[]
   return (
     <div
       ref={panelRef}
-      className="absolute top-6 bottom-6 right-4 z-20"
+      className="absolute top-6 bottom-6 right-4 z-20 select-none"
       style={{ width: EXPANDED_WIDTH }}
     >
       <div className="relative h-full rounded-md border-[0.75px] border-border/30 p-0">

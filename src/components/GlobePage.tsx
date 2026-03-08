@@ -191,7 +191,7 @@ export default function GlobePage() {
       {/* Top center title */}
       <div className="pointer-events-none absolute top-6 left-1/2 z-20 -translate-x-1/2">
         <div
-          className="pointer-events-auto flex items-center gap-4 border border-border/40 bg-card/60 px-5 py-2.5 font-sans backdrop-blur-xl"
+          className="pointer-events-auto flex select-none items-center gap-4 border border-border/40 bg-card/60 px-5 py-2.5 font-sans backdrop-blur-xl"
           style={{
             boxShadow:
               "0 0 8px rgba(0,0,0,0.03), 0 2px 6px rgba(0,0,0,0.08), inset 0 0 6px 6px rgba(255,255,255,0.04), 0 0 12px rgba(0,0,0,0.15)",
@@ -231,7 +231,7 @@ export default function GlobePage() {
       {/* Bottom center map controls */}
       <div className="pointer-events-none absolute bottom-6 left-1/2 z-20 -translate-x-1/2">
         <div
-          className="pointer-events-auto flex items-center gap-1 border border-border/30 bg-card/30 px-3 py-2 backdrop-blur-xl"
+          className="pointer-events-auto flex select-none items-center gap-1 border border-border/30 bg-card/30 px-3 py-2 backdrop-blur-xl"
           style={{
             boxShadow:
               "0 0 8px rgba(0,0,0,0.03), 0 2px 6px rgba(0,0,0,0.08), inset 0 0 6px 6px rgba(255,255,255,0.04), 0 0 12px rgba(0,0,0,0.15)",
