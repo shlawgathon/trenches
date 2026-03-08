@@ -43,7 +43,7 @@ COMMON_VARS = {
     "MAX_PROMPT_LENGTH": "512",
     "MAX_COMPLETION_LENGTH": "64",
     "VLLM_GPU_MEMORY_UTILIZATION": "0.0",
-    "VLLM_ENABLE_SLEEP_MODE": "true",
+    "VLLM_ENABLE_SLEEP_MODE": "false",
     "SAVE_STRATEGY": "no",
     "UPLOAD_MESSAGE": "Upload Trenches vLLM pilot checkpoint",
 }

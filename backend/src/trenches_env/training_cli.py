@@ -458,8 +458,13 @@ def main() -> None:
     parser.add_argument(
         "--vllm-enable-sleep-mode",
         action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Enable vLLM sleep mode so training and generation take turns on GPU (default: on).",
+        default=False,
+        help=(
+            "Enable vLLM sleep mode (default: off). "
+            "WARNING: vLLM 0.12 sleep mode can crash with CUDA errors when the "
+            "training model uses device_map='auto'. Only enable if you have verified "
+            "compatibility with your vLLM version."
+        ),
     )
     args = parser.parse_args()
 
