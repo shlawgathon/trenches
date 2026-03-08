@@ -500,22 +500,6 @@ def _preview_rollouts(
         )
 
 
-class OpenEnvGRPOTrainer:
-    """Force GRPO to use the custom OpenEnv rollout path across generation backends."""
-
-    def _generate_single_turn(self, prompts: list[str]):  # type: ignore[override]
-        if getattr(self, "rollout_func", None) is None:
-            return super()._generate_single_turn(prompts)
-
-        output = self.rollout_func(prompts, self)
-        required_keys = {"prompt_ids", "completion_ids", "logprobs"}
-        missing = required_keys.difference(output)
-        if missing:
-            raise RuntimeError(f"rollout_func is missing required keys: {sorted(missing)}")
-        extra_fields = {key: value for key, value in output.items() if key not in required_keys}
-        return output["prompt_ids"], output["completion_ids"], output["logprobs"], extra_fields
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train a replay-aware OpenEnv policy for Trenches.")
     parser.add_argument("--model-id", default=DEFAULT_MODEL_ID)
@@ -597,7 +581,7 @@ def main() -> None:
     torch = imports["torch"]
     AutoTokenizer = imports["AutoTokenizer"]
     GRPOConfig = imports["GRPOConfig"]
-    GRPOTrainer = type("OpenEnvGRPOTrainer", (OpenEnvGRPOTrainer, imports["GRPOTrainer"]), {})
+    GRPOTrainer = imports["GRPOTrainer"]
     generate_rollout_completions = imports["generate_rollout_completions"]
     generation_backend = args.generation_backend
     vllm_server_rollout_available = args.vllm_mode == "server"
@@ -722,7 +706,10 @@ def main() -> None:
     train_dataset = _build_dataset(args.training_agent, args.train_size)
     base_prompt = _build_base_prompt(args.training_agent)
 
-    def rollout_func(prompts: list[str], trainer: Any) -> dict[str, list[Any]]:
+    if generation_backend == "vllm" and args.vllm_mode != "server":
+        raise RuntimeError("The OpenEnv rollout integration currently supports vLLM server mode on Modal.")
+
+    def rollout_func(prompts: list[str], trainer_args: Any, processing_class: Any) -> dict[str, list[Any]]:
         grounded_prompts: list[str] = []
         for index, prompt in enumerate(prompts):
             with TrenchesEnvClient(base_url=f"http://127.0.0.1:{args.port}/openenv").sync_client() as client:
@@ -750,11 +737,11 @@ def main() -> None:
             server_rollout = _generate_rollout_completions_vllm_server(
                 prompts=grounded_prompts,
                 server_base_url=f"http://127.0.0.1:{args.vllm_server_port}",
-                num_generations=args.num_generations,
-                temperature=args.temperature,
-                top_p=args.top_p,
-                top_k=args.top_k,
-                max_completion_length=args.max_completion_length,
+                num_generations=int(trainer_args.num_generations),
+                temperature=float(trainer_args.temperature),
+                top_p=float(trainer_args.top_p),
+                top_k=int(args.top_k),
+                max_completion_length=int(trainer_args.max_completion_length),
             )
             prompt_ids = [[int(token) for token in item] for item in server_rollout["prompt_ids"]]
             completion_ids = [[int(token) for token in item] for item in server_rollout["completion_ids"]]
@@ -764,19 +751,16 @@ def main() -> None:
             completion_ids = []
             logprobs = []
             for grounded_prompt in grounded_prompts:
-                if generation_backend == "vllm":
-                    rollout_output = generate_rollout_completions(trainer, [grounded_prompt])[0]
-                else:
-                    rollout_output = {
-                        key: value[0]
-                        for key, value in _generate_rollout_completions_transformers(
-                            trainer=trainer,
-                            prompts=[grounded_prompt],
-                            tokenizer=tokenizer,
-                            max_prompt_length=args.max_prompt_length,
-                            max_completion_length=args.max_completion_length,
-                        ).items()
-                    }
+                rollout_output = {
+                    key: value[0]
+                    for key, value in _generate_rollout_completions_transformers(
+                        trainer=type("_TrainerShim", (), {"model": model_ref})(),
+                        prompts=[grounded_prompt],
+                        tokenizer=tokenizer,
+                        max_prompt_length=args.max_prompt_length,
+                        max_completion_length=args.max_completion_length,
+                    ).items()
+                }
                 prompt_ids.append(list(rollout_output["prompt_ids"]))
                 completion_ids.append(list(rollout_output["completion_ids"]))
                 raw_logprobs = rollout_output["logprobs"]
@@ -792,7 +776,7 @@ def main() -> None:
         env_rewards: list[float] = []
         forecast_rewards: list[float] = []
         for completion_index, completion_text in enumerate(completion_texts):
-            prompt_index = min(completion_index // max(args.num_generations, 1), len(prompts) - 1)
+            prompt_index = min(completion_index // max(int(trainer_args.num_generations), 1), len(prompts) - 1)
             with TrenchesEnvClient(base_url=f"http://127.0.0.1:{args.port}/openenv").sync_client() as client:
                 client.reset(
                     training_agent=args.training_agent,
