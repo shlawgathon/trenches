@@ -12,4 +12,5 @@ backend/.venv
 
 # Training checkpoints (binary files)
 backend/tmp-training-run/
+backend/tmp-*/
 /tmp/smoke-test*
