@@ -14,6 +14,8 @@ import {
     Filter,
     X,
     Trophy,
+    TerminalSquare,
+    Activity,
 } from "lucide-react";
 import gsap from "gsap";
 import { cn } from "@/src/lib/utils";
@@ -52,6 +54,23 @@ const SPEEDS: PlaybackSpeed[] = [0.5, 1, 2, 4];
 
 const COLLAPSED_HEIGHT = 48;
 const EXPANDED_HEIGHT = 180;
+const TIMELINE_PLOT_LEFT = 236;
+const TIMELINE_PLOT_RIGHT = 24;
+
+type TimelineViewMode = "timeline" | "console";
+type ConsoleEntryKind = "action" | "reaction" | "source" | "event";
+
+type ConsoleEntry = {
+    id: string;
+    kind: ConsoleEntryKind;
+    turn: number;
+    agent: string | null;
+    title: string;
+    summary: string;
+    detail: string | null;
+    timestamp: string;
+    accent: string;
+};
 
 /* ── Sub-components ── */
 
@@ -90,21 +109,21 @@ function EventMarker({
         >
             {isInjection ? (
                 <div
-                    className="h-2.5 w-2.5 rotate-45 border"
+                    className="h-3.5 w-3.5 rotate-45 border-2"
                     style={{
-                        backgroundColor: `${color}88`,
+                        backgroundColor: `${color}aa`,
                         borderColor: color,
-                        opacity: isFaded ? 0.35 : 1,
-                        boxShadow: active ? `0 0 8px ${color}` : undefined,
+                        opacity: isFaded ? 0.4 : 1,
+                        boxShadow: active ? `0 0 10px ${color}` : `0 0 3px ${color}40`,
                     }}
                 />
             ) : (
                 <div
-                    className={cn("h-2 w-2 rounded-full", isMatched && "ring-1 ring-offset-1 ring-offset-transparent")}
+                    className={cn("h-3 w-3 rounded-full", isMatched && "ring-2 ring-offset-1 ring-offset-transparent")}
                     style={{
                         backgroundColor: color,
-                        opacity: isFaded ? 0.35 : 0.9,
-                        boxShadow: active ? `0 0 10px ${color}` : isMatched ? `0 0 6px ${color}` : undefined,
+                        opacity: isFaded ? 0.4 : 1,
+                        boxShadow: active ? `0 0 12px ${color}` : `0 0 4px ${color}60`,
                     }}
                 />
             )}
@@ -241,12 +260,16 @@ export function EventTimeline({
     const [hoveredEvent, setHoveredEvent] = useState<TimelineEvent | null>(null);
     const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
     const [isDragging, setIsDragging] = useState(false);
+    const [topAgent, setTopAgent] = useState<string>("oversight");
+    const [bottomAgent, setBottomAgent] = useState<string>("oversight");
+    const [viewMode, setViewMode] = useState<TimelineViewMode>("timeline");
 
     // Derive data
     const rawEvents = deriveTimelineEvents(session);
     const events = linkPredictionsToOutcomes(rawEvents);
     const snapshots = deriveTurnSnapshots(session);
     const maxTurn = session?.world.turn ?? 0;
+    const consoleEntries = deriveConsoleEntries(session);
 
     // Filter events
     const filteredEvents = events.filter((e) => {
@@ -303,7 +326,6 @@ export function EventTimeline({
                         setPlaying(false);
                         return maxTurn;
                     }
-                    onTurnChange?.(next);
                     return next;
                 });
             }, intervalMs);
@@ -311,7 +333,12 @@ export function EventTimeline({
         return () => {
             if (playIntervalRef.current) clearInterval(playIntervalRef.current);
         };
-    }, [playing, speed, maxTurn, onTurnChange]);
+    }, [playing, speed, maxTurn]);
+
+    // Sync parent when playback advances currentTurn
+    useEffect(() => {
+        onTurnChange?.(currentTurn);
+    }, [currentTurn]);
 
     // Scrubber drag handlers
     const handleTrackClick = (e: React.MouseEvent) => {
@@ -489,217 +516,155 @@ export function EventTimeline({
 
                             <div className="ml-auto flex items-center gap-1">
                                 <button
-                                    onClick={() => setShowFilters(!showFilters)}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setViewMode("timeline");
+                                    }}
                                     className={cn(
-                                        "flex h-5 w-5 cursor-pointer items-center justify-center transition-colors",
-                                        showFilters || hasActiveFilters
-                                            ? "text-primary"
-                                            : "text-muted-foreground hover:text-foreground"
+                                        "flex items-center gap-1 border px-2 py-1 text-[8px] font-mono uppercase tracking-[0.18em] transition-colors",
+                                        viewMode === "timeline"
+                                            ? "border-primary/60 bg-primary/15 text-primary"
+                                            : "border-border/30 text-muted-foreground hover:text-foreground"
                                     )}
-                                    title="Filters"
                                 >
-                                    <Filter className="h-3 w-3" />
+                                    <Activity className="h-3 w-3" />
+                                    Timeline
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setViewMode("console");
+                                    }}
+                                    className={cn(
+                                        "flex items-center gap-1 border px-2 py-1 text-[8px] font-mono uppercase tracking-[0.18em] transition-colors",
+                                        viewMode === "console"
+                                            ? "border-primary/60 bg-primary/15 text-primary"
+                                            : "border-border/30 text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    <TerminalSquare className="h-3 w-3" />
+                                    Console
                                 </button>
                             </div>
+
                         </div>
                         {/* Content area with opacity transition matching side panels */}
                         <div className={cn("flex min-w-0 flex-1 flex-col transition-opacity duration-300", collapsed ? "opacity-0 pointer-events-none" : "opacity-100")}>
-
-                        {/* Filter bar (conditional) */}
-                        {showFilters && !collapsed && (
-                            <div className="flex shrink-0 items-center gap-2 border-b border-border/20 px-4 py-1.5">
-                                <span className="text-[8px] font-mono uppercase tracking-wider text-muted-foreground">
-                                    Agent:
-                                </span>
-                                <div className="flex gap-1">
-                                    {agents.map((a) => (
-                                        <button
-                                            key={a}
-                                            onClick={() =>
-                                                setFilterAgent(filterAgent === a ? null : a)
-                                            }
-                                            className={cn(
-                                                "cursor-pointer px-1.5 py-0.5 text-[8px] font-mono uppercase tracking-wider transition-colors",
-                                                filterAgent === a
-                                                    ? "text-foreground"
-                                                    : "text-muted-foreground hover:text-foreground"
-                                            )}
-                                            style={
-                                                filterAgent === a
-                                                    ? {
-                                                        backgroundColor: `${AGENT_COLORS[a] ?? "#888"}20`,
-                                                        borderBottom: `1px solid ${AGENT_COLORS[a] ?? "#888"}`,
-                                                    }
-                                                    : undefined
-                                            }
-                                        >
-                                            {a}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                <div className="mx-2 h-3 w-px bg-border/30" />
-
-                                <span className="text-[8px] font-mono uppercase tracking-wider text-muted-foreground">
-                                    Type:
-                                </span>
-                                <div className="flex gap-1">
-                                    {(["prediction", "actual", "injection"] as TimelineEventType[]).map(
-                                        (t) => (
-                                            <button
-                                                key={t}
-                                                onClick={() =>
-                                                    setFilterType(filterType === t ? null : t)
-                                                }
-                                                className={cn(
-                                                    "cursor-pointer px-1.5 py-0.5 text-[8px] font-mono uppercase tracking-wider transition-colors",
-                                                    filterType === t
-                                                        ? "text-foreground"
-                                                        : "text-muted-foreground hover:text-foreground"
-                                                )}
-                                                style={
-                                                    filterType === t
-                                                        ? {
-                                                            backgroundColor: `${TYPE_COLORS[t]}20`,
-                                                            borderBottom: `1px solid ${TYPE_COLORS[t]}`,
-                                                        }
-                                                        : undefined
-                                                }
-                                            >
-                                                {t}
-                                            </button>
-                                        )
-                                    )}
-                                </div>
-
-                                <div className="mx-2 h-3 w-px bg-border/30" />
-
-                                <span className="text-[8px] font-mono uppercase tracking-wider text-muted-foreground">
-                                    Turn:
-                                </span>
-                                <input
-                                    type="number"
-                                    min={0}
-                                    max={maxTurn}
-                                    placeholder="from"
-                                    value={filterTurnFrom ?? ""}
-                                    onChange={(e) => setFilterTurnFrom(e.target.value ? Number(e.target.value) : null)}
-                                    className="w-10 bg-transparent text-center text-[9px] font-mono text-foreground outline-none border-b border-border/30 focus:border-primary/50"
-                                />
-                                <span className="text-[8px] text-muted-foreground">–</span>
-                                <input
-                                    type="number"
-                                    min={0}
-                                    max={maxTurn}
-                                    placeholder="to"
-                                    value={filterTurnTo ?? ""}
-                                    onChange={(e) => setFilterTurnTo(e.target.value ? Number(e.target.value) : null)}
-                                    className="w-10 bg-transparent text-center text-[9px] font-mono text-foreground outline-none border-b border-border/30 focus:border-primary/50"
-                                />
-
-                                {hasActiveFilters && (
-                                    <button
-                                        onClick={() => {
-                                            setFilterAgent(null);
-                                            setFilterType(null);
-                                            setFilterTurnFrom(null);
-                                            setFilterTurnTo(null);
-                                        }}
-                                        className="ml-auto cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
-                                        title="Clear all filters"
-                                    >
-                                        <X className="h-3 w-3" />
-                                    </button>
-                                )}
-                            </div>
-                        )}
 
                         {/* Scrubber area — hidden when collapsed via overflow */}
                         <div className={cn(
                             "flex min-w-0 flex-1 flex-col transition-opacity duration-300",
                             collapsed ? "opacity-0 pointer-events-none" : "opacity-100"
                         )}>
-                            {!collapsed && (
-                                <div className="flex flex-1 flex-col px-4 py-2">
+                            {!collapsed && (viewMode === "timeline" ? (
+                                <div className="flex flex-1 flex-col px-4 py-1">
                                     {/* Tension backdrop SVG */}
                                     <div className="relative flex-1">
                                         {tensionPath && (
-                                            <svg
-                                                className="absolute inset-0 h-full w-full"
-                                                viewBox="0 0 100 100"
-                                                preserveAspectRatio="none"
-                                            >
+                                            <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
                                                 <defs>
-                                                    <linearGradient
-                                                        id="tensionGrad"
-                                                        x1="0"
-                                                        y1="0"
-                                                        x2="0"
-                                                        y2="1"
-                                                    >
+                                                    <linearGradient id="tensionGrad" x1="0" y1="0" x2="0" y2="1">
                                                         <stop offset="0%" stopColor="#e53935" stopOpacity="0.2" />
                                                         <stop offset="100%" stopColor="#e53935" stopOpacity="0" />
                                                     </linearGradient>
                                                 </defs>
-                                                <path
-                                                    d={`${tensionPath} L 100 100 L 0 100 Z`}
-                                                    fill="url(#tensionGrad)"
-                                                />
-                                                <path
-                                                    d={tensionPath}
-                                                    fill="none"
-                                                    stroke="#e53935"
-                                                    strokeWidth="0.8"
-                                                    strokeOpacity="0.5"
-                                                    vectorEffect="non-scaling-stroke"
-                                                />
-                                                <line
-                                                    x1={progress}
-                                                    y1="0"
-                                                    x2={progress}
-                                                    y2="100"
-                                                    stroke="#e0e0e0"
-                                                    strokeWidth="0.5"
-                                                    strokeOpacity="0.6"
-                                                    vectorEffect="non-scaling-stroke"
-                                                    strokeDasharray="2 2"
-                                                />
+                                                <path d={`${tensionPath} L 100 100 L 0 100 Z`} fill="url(#tensionGrad)" />
+                                                <path d={tensionPath} fill="none" stroke="#e53935" strokeWidth="0.8" strokeOpacity="0.5" vectorEffect="non-scaling-stroke" />
+                                                <line x1={progress} y1="0" x2={progress} y2="100" stroke="#e0e0e0" strokeWidth="0.5" strokeOpacity="0.6" vectorEffect="non-scaling-stroke" strokeDasharray="2 2" />
                                             </svg>
                                         )}
 
-                                        {/* Event markers */}
-                                        <div className="absolute inset-x-0 top-1/2 h-0">
-                                            {filteredEvents.map((event) => {
-                                                const pos = maxTurn > 0 ? event.turn / maxTurn : 0;
-                                                const isMatched = !!event.matchedPredictionId;
-                                                return (
-                                                    <EventMarker
-                                                        key={event.id}
-                                                        event={event}
-                                                        position={pos}
-                                                        isMatched={isMatched}
-                                                        active={eventMatchesInteraction(event)}
-                                                        onHover={(ev, rect) => {
-                                                            setHoveredEvent(ev);
-                                                            setTooltipPos({
-                                                                x: rect.left + rect.width / 2,
-                                                                y: rect.top,
-                                                            });
-                                                            onInteractionFocus?.({ turn: ev.turn, agent: ev.agent === "global" ? null : ev.agent });
-                                                        }}
-                                                        onLeave={() => {
-                                                            setHoveredEvent(null);
-                                                            setTooltipPos(null);
-                                                            onInteractionFocus?.(null);
-                                                        }}
-                                                        onClick={(ev) => {
-                                                            setCurrentTurn(ev.turn);
-                                                            onTurnChange?.(ev.turn);
-                                                            onInteractionFocus?.({ turn: ev.turn, agent: ev.agent === "global" ? null : ev.agent });
-                                                        }}
-                                                    />
-                                                );
-                                            })}
+                                        {/* Top row: agent selector + prediction dots */}
+                                        <div className="absolute inset-x-0 top-[4%] flex items-center gap-1.5 px-2">
+                                            <span className="text-[8px] font-bold font-mono uppercase tracking-widest text-red-400/70 shrink-0 w-8">PRED</span>
+                                            {(["oversight", "us", "israel", "iran", "hezbollah", "gulf"] as const).map((id) => (
+                                                <button
+                                                    key={`top-${id}`}
+                                                    onClick={() => setTopAgent(id)}
+                                                    className={cn(
+                                                        "h-5 px-1.5 text-[8px] font-mono uppercase leading-none cursor-pointer transition-all border rounded-sm",
+                                                        topAgent === id
+                                                            ? "border-current text-foreground bg-foreground/10"
+                                                            : "border-transparent text-muted-foreground/50 hover:text-muted-foreground/80"
+                                                    )}
+                                                    style={topAgent === id ? { borderColor: AGENT_COLORS[id] ?? "#888", color: AGENT_COLORS[id] ?? "#888" } : undefined}
+                                                >
+                                                    {id === "hezbollah" ? "HEZ" : id === "oversight" ? "OVST" : id.toUpperCase()}
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        {/* Top row dots */}
+                                        <div className="absolute top-[22%] h-0" style={{ left: TIMELINE_PLOT_LEFT, right: TIMELINE_PLOT_RIGHT }}>
+                                            {filteredEvents
+                                                .filter((e) => e.type === "prediction" && e.agent === topAgent)
+                                                .map((event) => {
+                                                    const pos = maxTurn > 0 ? event.turn / maxTurn : 0;
+                                                    return (
+                                                        <EventMarker
+                                                            key={event.id}
+                                                            event={event}
+                                                            position={pos}
+                                                            isMatched={!!event.matchedPredictionId}
+                                                            active={eventMatchesInteraction(event)}
+                                                            onHover={(ev, rect) => {
+                                                                setHoveredEvent(ev);
+                                                                setTooltipPos({ x: rect.left + rect.width / 2, y: rect.top });
+                                                                onInteractionFocus?.({ turn: ev.turn, agent: ev.agent === "global" ? null : ev.agent });
+                                                            }}
+                                                            onLeave={() => { setHoveredEvent(null); setTooltipPos(null); onInteractionFocus?.(null); }}
+                                                            onClick={(ev) => { setCurrentTurn(ev.turn); onTurnChange?.(ev.turn); }}
+                                                        />
+                                                    );
+                                                })}
+                                        </div>
+
+                                        {/* Lane divider */}
+                                        <div className="absolute top-[47%] h-px bg-border/30" style={{ left: TIMELINE_PLOT_LEFT, right: TIMELINE_PLOT_RIGHT }} />
+
+                                        {/* Bottom row: agent selector + actual dots */}
+                                        <div className="absolute inset-x-0 top-[52%] flex items-center gap-1.5 px-2">
+                                            <span className="text-[8px] font-bold font-mono uppercase tracking-widest text-emerald-400/70 shrink-0 w-8">REAL</span>
+                                            {(["oversight", "us", "israel", "iran", "hezbollah", "gulf"] as const).map((id) => (
+                                                <button
+                                                    key={`bot-${id}`}
+                                                    onClick={() => setBottomAgent(id)}
+                                                    className={cn(
+                                                        "h-5 px-1.5 text-[8px] font-mono uppercase leading-none cursor-pointer transition-all border rounded-sm",
+                                                        bottomAgent === id
+                                                            ? "border-current text-foreground bg-foreground/10"
+                                                            : "border-transparent text-muted-foreground/50 hover:text-muted-foreground/80"
+                                                    )}
+                                                    style={bottomAgent === id ? { borderColor: AGENT_COLORS[id] ?? "#888", color: AGENT_COLORS[id] ?? "#888" } : undefined}
+                                                >
+                                                    {id === "hezbollah" ? "HEZ" : id === "oversight" ? "OVST" : id.toUpperCase()}
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        {/* Bottom row dots */}
+                                        <div className="absolute top-[72%] h-0" style={{ left: TIMELINE_PLOT_LEFT, right: TIMELINE_PLOT_RIGHT }}>
+                                            {filteredEvents
+                                                .filter((e) => e.type !== "prediction" && e.agent === bottomAgent)
+                                                .map((event) => {
+                                                    const pos = maxTurn > 0 ? event.turn / maxTurn : 0;
+                                                    return (
+                                                        <EventMarker
+                                                            key={event.id}
+                                                            event={event}
+                                                            position={pos}
+                                                            isMatched={!!event.matchedPredictionId}
+                                                            active={eventMatchesInteraction(event)}
+                                                            onHover={(ev, rect) => {
+                                                                setHoveredEvent(ev);
+                                                                setTooltipPos({ x: rect.left + rect.width / 2, y: rect.top });
+                                                                onInteractionFocus?.({ turn: ev.turn, agent: ev.agent === "global" ? null : ev.agent });
+                                                            }}
+                                                            onLeave={() => { setHoveredEvent(null); setTooltipPos(null); onInteractionFocus?.(null); }}
+                                                            onClick={(ev) => { setCurrentTurn(ev.turn); onTurnChange?.(ev.turn); }}
+                                                        />
+                                                    );
+                                                })}
                                         </div>
 
                                         {/* Branch fork markers */}
@@ -711,7 +676,9 @@ export function EventTimeline({
                                                     <div
                                                         key={`fork-${e.id}`}
                                                         className="absolute bottom-0 -translate-x-1/2"
-                                                        style={{ left: `${pos * 100}%` }}
+                                                        style={{
+                                                            left: `calc(${TIMELINE_PLOT_LEFT}px + ((100% - ${TIMELINE_PLOT_LEFT + TIMELINE_PLOT_RIGHT}px) * ${pos}))`,
+                                                        }}
                                                     >
                                                         <GitBranch className="h-3 w-3 text-destructive/70" />
                                                     </div>
@@ -828,7 +795,64 @@ export function EventTimeline({
                                         </div>
                                     </div>
                                 </div>
-                            )}
+                            ) : (
+                                <div className="flex h-full flex-1 flex-col px-4 py-2">
+                                    <div className="mb-2 flex items-center justify-between text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
+                                        <span>Unified console feed</span>
+                                        <span>{consoleEntries.length} entries</span>
+                                    </div>
+                                    <div className="scrollbar-thin flex-1 space-y-2 overflow-y-auto pr-1">
+                                        {consoleEntries.length === 0 ? (
+                                            <div className="flex h-full items-center justify-center text-[11px] font-mono text-muted-foreground">
+                                                No console activity yet.
+                                            </div>
+                                        ) : (
+                                            consoleEntries.map((entry) => (
+                                                <div
+                                                    key={entry.id}
+                                                    className="cursor-pointer border border-border/30 bg-background/20 px-3 py-2 hover:bg-muted/10"
+                                                    onMouseEnter={() => onInteractionFocus?.({ turn: entry.turn, agent: entry.agent })}
+                                                    onMouseLeave={() => onInteractionFocus?.(null)}
+                                                    onClick={() => {
+                                                        setCurrentTurn(entry.turn);
+                                                        onTurnChange?.(entry.turn);
+                                                        onInteractionFocus?.({ turn: entry.turn, agent: entry.agent });
+                                                    }}
+                                                >
+                                                    <div className="mb-1 flex items-center gap-2">
+                                                        <span
+                                                            className="inline-flex h-2 w-2 rounded-full"
+                                                            style={{ backgroundColor: entry.accent }}
+                                                        />
+                                                        <span className="text-[9px] font-semibold uppercase tracking-[0.18em] text-foreground/85">
+                                                            {entry.title}
+                                                        </span>
+                                                        <span className="text-[9px] font-mono text-muted-foreground">
+                                                            T{entry.turn}
+                                                        </span>
+                                                        {entry.agent && (
+                                                            <span className="text-[9px] font-mono text-muted-foreground">
+                                                                {entry.agent}
+                                                            </span>
+                                                        )}
+                                                        <span className="ml-auto text-[9px] font-mono text-muted-foreground/70">
+                                                            {formatConsoleTime(entry.timestamp)}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-[11px] leading-relaxed text-foreground/90">
+                                                        {entry.summary}
+                                                    </p>
+                                                    {entry.detail && (
+                                                        <p className="mt-1 text-[10px] font-mono leading-relaxed text-muted-foreground">
+                                                            {entry.detail}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                         </div>
 
@@ -836,7 +860,7 @@ export function EventTimeline({
                         {collapsed && (
                             <div className="flex flex-1 items-center gap-3 px-4">
                                 <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">
-                                    Timeline T{currentTurn}/{maxTurn}
+                                    {viewMode === "timeline" ? "Timeline" : "Console"} T{currentTurn}/{maxTurn}
                                 </span>
                                 <div className="h-1 flex-1 bg-border/20">
                                     <div
@@ -854,4 +878,103 @@ export function EventTimeline({
             </div>
         </>
     );
+}
+
+function deriveConsoleEntries(session: SessionState | null): ConsoleEntry[] {
+    if (!session) return [];
+
+    const entries: ConsoleEntry[] = [];
+
+    for (const action of session.action_log ?? []) {
+        const providerError = typeof action.metadata?.provider_error === "string" ? action.metadata.provider_error : null;
+        const detailParts = [
+            action.target ? `target=${action.target}` : null,
+            action.reward_total !== undefined ? `reward=${action.reward_total.toFixed(2)}` : null,
+            providerError ? `provider_error=${providerError}` : null,
+        ].filter(Boolean);
+
+        entries.push({
+            id: `action-${action.created_at}-${action.actor}-${action.turn}`,
+            kind: "action",
+            turn: action.turn,
+            agent: action.actor,
+            title: "Action",
+            summary: `${action.actor} ${action.action_type}${action.target ? ` -> ${action.target}` : ""}`,
+            detail: detailParts.length > 0 ? detailParts.join(" · ") : action.summary,
+            timestamp: action.created_at,
+            accent: AGENT_COLORS[action.actor] ?? "#888888",
+        });
+    }
+
+    for (const reaction of session.reaction_log ?? []) {
+        const signalSummary = reaction.signals.map((signal) => signal.headline).slice(0, 2).join(" | ");
+        const actorSummary = reaction.actor_outcomes
+            .map((outcome) => `${outcome.agent_id}:${outcome.action.type}`)
+            .slice(0, 6)
+            .join(", ");
+
+        entries.push({
+            id: `reaction-${reaction.event_id}`,
+            kind: "reaction",
+            turn: reaction.turn,
+            agent: null,
+            title: "Reaction",
+            summary: `${reaction.source} drove ${reaction.actor_outcomes.length} actor responses`,
+            detail: [signalSummary || null, actorSummary || null, reaction.oversight_triggered ? "oversight_triggered=true" : null].filter(Boolean).join(" · ") || null,
+            timestamp: reaction.created_at,
+            accent: reaction.oversight_triggered ? "#e53935" : "#64b5f6",
+        });
+    }
+
+    const seenSourceIds = new Set<string>();
+    for (const [agentId, observation] of Object.entries(session.observations)) {
+        for (const packet of observation.source_packets ?? []) {
+            const dedupeId = `${packet.source_id}-${packet.fetched_at ?? packet.status}`;
+            if (seenSourceIds.has(dedupeId)) continue;
+            seenSourceIds.add(dedupeId);
+
+            entries.push({
+                id: `source-${dedupeId}`,
+                kind: "source",
+                turn: session.world.turn,
+                agent: agentId,
+                title: "Source",
+                summary: `${packet.source_name} [${packet.status}]`,
+                detail: [packet.delivery, packet.kind, packet.summary || null, packet.error || null].filter(Boolean).join(" · ") || null,
+                timestamp: packet.fetched_at ?? session.updated_at,
+                accent: packet.status === "error" ? "#e53935" : packet.status === "pending" ? "#ffa000" : "#689f38",
+            });
+        }
+    }
+
+    for (const event of session.world.active_events ?? []) {
+        entries.push({
+            id: `event-${event.id}`,
+            kind: "event",
+            turn: session.world.turn,
+            agent: event.affected_agents[0] ?? null,
+            title: "Event",
+            summary: event.summary,
+            detail: `${event.source} · severity=${event.severity.toFixed(2)}`,
+            timestamp: session.updated_at,
+            accent: TYPE_COLORS.actual,
+        });
+    }
+
+    return entries
+        .sort((a, b) => {
+            const timeA = Date.parse(a.timestamp);
+            const timeB = Date.parse(b.timestamp);
+            if (Number.isFinite(timeA) && Number.isFinite(timeB) && timeA !== timeB) {
+                return timeB - timeA;
+            }
+            return b.turn - a.turn;
+        })
+        .slice(0, 200);
+}
+
+function formatConsoleTime(timestamp: string): string {
+    const parsed = Date.parse(timestamp);
+    if (!Number.isFinite(parsed)) return timestamp;
+    return new Date(parsed).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }

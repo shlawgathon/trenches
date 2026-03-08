@@ -16,6 +16,7 @@ Provides-Extra: train
 Requires-Dist: accelerate<2.0.0,>=1.0.0; extra == "train"
 Requires-Dist: bitsandbytes>=0.43.0; extra == "train"
 Requires-Dist: datasets<4.0.0,>=3.0.0; extra == "train"
+Requires-Dist: peft<1.0.0,>=0.12.0; extra == "train"
 Requires-Dist: transformers<5.0.0,>=4.55.0; extra == "train"
 Requires-Dist: trl<0.26.0,>=0.25.0; extra == "train"
 

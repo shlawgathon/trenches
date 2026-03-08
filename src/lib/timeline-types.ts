@@ -60,6 +60,7 @@ export function deriveTimelineEvents(session: SessionState | null): TimelineEven
     if (!session) return [];
 
     const events: TimelineEvent[] = [];
+    const oversightReviewTraces = session.recent_traces.filter((trace) => trace.actions.oversight?.type === "oversight_review");
 
     // 1) Actuals — from world active_events
     for (const ev of session.world.active_events) {
@@ -75,41 +76,72 @@ export function deriveTimelineEvents(session: SessionState | null): TimelineEven
         });
     }
 
-    // 2) From recent_traces — actions become predictions
+    // 2) Bootstrap the leading oversight prediction at T0 from the first forecast we have.
+    const firstOversightTrace = oversightReviewTraces[0];
+    if (firstOversightTrace) {
+        const firstOversightAction = firstOversightTrace.actions.oversight;
+        if (firstOversightAction?.type === "oversight_review") {
+            events.push({
+                id: "pred-oversight-bootstrap-0",
+                turn: 0,
+                type: "prediction",
+                agent: "oversight",
+                summary: `[Prediction] ${firstOversightAction.summary}`,
+                severity: Math.abs(firstOversightTrace.tension_after - firstOversightTrace.tension_before) / 10,
+                source: "env",
+                timestamp: firstOversightTrace.created_at,
+            });
+        }
+    }
+
+    // 2) From recent_traces — actions become events
     for (const trace of session.recent_traces) {
         const agentIds = Object.keys(trace.actions);
         for (const agentId of agentIds) {
             const action = trace.actions[agentId];
             if (!action) continue;
 
-            // Escalation actions (strike, mobilize, sanction) are "predictions" of impact
-            const isPredictive = ["strike", "mobilize", "sanction", "deceive"].includes(action.type);
+            const isOversightReview = agentId === "oversight" && action.type === "oversight_review";
 
-            events.push({
-                id: `trace-${agentId}-${trace.turn}`,
-                turn: trace.turn,
-                type: isPredictive ? "prediction" : "actual",
-                agent: action.actor,
-                summary: action.summary,
-                severity: Math.abs(trace.tension_after - trace.tension_before) / 10,
-                source: "env",
-                timestamp: trace.created_at,
-            });
+            if (isOversightReview) {
+                // Oversight prediction leads by one turn:
+                // - completed trace N yields the green assessment for N-1
+                // - the same trace yields the red prediction for N
+                events.push({
+                    id: `pred-${agentId}-${trace.turn}`,
+                    turn: trace.turn,
+                    type: "prediction",
+                    agent: "oversight",
+                    summary: `[Prediction] ${action.summary}`,
+                    severity: Math.abs(trace.tension_after - trace.tension_before) / 10,
+                    source: "env",
+                    timestamp: trace.created_at,
+                });
+                events.push({
+                    id: `actual-oversight-${trace.turn - 1}`,
+                    turn: Math.max(0, trace.turn - 1),
+                    type: "actual",
+                    agent: "oversight",
+                    summary: `[Assessment] ${action.summary}`,
+                    severity: Math.abs(trace.tension_after - trace.tension_before) / 10,
+                    source: "env",
+                    timestamp: trace.created_at,
+                });
+            } else {
+                // All other agent actions are actuals (green)
+                events.push({
+                    id: `trace-${agentId}-${trace.turn}`,
+                    turn: trace.turn,
+                    type: "actual",
+                    agent: action.actor,
+                    summary: action.summary,
+                    severity: Math.abs(trace.tension_after - trace.tension_before) / 10,
+                    source: "env",
+                    timestamp: trace.created_at,
+                });
+            }
         }
 
-        // Oversight interventions as special events
-        if (trace.oversight.triggered) {
-            events.push({
-                id: `oversight-${trace.turn}`,
-                turn: trace.turn,
-                type: "actual",
-                agent: "oversight",
-                summary: trace.oversight.reason,
-                severity: trace.oversight.risk_score / 100,
-                source: "env",
-                timestamp: trace.created_at,
-            });
-        }
     }
 
     // 3) Injections — from active_events with manual source
@@ -129,8 +161,8 @@ export function deriveTimelineEvents(session: SessionState | null): TimelineEven
         }
     }
 
-    // Sort by turn asc then by type priority (actual > prediction > injection)
-    const typePriority: Record<TimelineEventType, number> = { actual: 0, prediction: 1, injection: 2 };
+    // Sort by turn asc then by type priority (prediction > actual > injection)
+    const typePriority: Record<TimelineEventType, number> = { prediction: 0, actual: 1, injection: 2 };
     events.sort((a, b) => a.turn - b.turn || typePriority[a.type] - typePriority[b.type]);
 
     return events;
@@ -154,14 +186,21 @@ export function linkPredictionsToOutcomes(events: TimelineEvent[]): TimelineEven
     const predictions = events.filter((e) => e.type === "prediction");
     const actuals = events.filter((e) => e.type === "actual");
 
-    // Simple matching: same agent, within 2 turns
+    // Oversight predictions lead by one turn, so prefer the prior-turn actual.
     for (const pred of predictions) {
-        const match = actuals.find(
+        const exactLeadMatch = actuals.find(
+            (a) =>
+                a.agent === pred.agent &&
+                a.turn === pred.turn - 1 &&
+                !a.matchedPredictionId
+        );
+        const nearbyFallbackMatch = actuals.find(
             (a) =>
                 a.agent === pred.agent &&
                 Math.abs(a.turn - pred.turn) <= 2 &&
                 !a.matchedPredictionId
         );
+        const match = exactLeadMatch ?? nearbyFallbackMatch;
         if (match) {
             pred.matchedPredictionId = match.id;
             match.matchedPredictionId = pred.id;

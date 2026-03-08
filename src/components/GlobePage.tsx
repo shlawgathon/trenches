@@ -1,28 +1,57 @@
+// @refresh reset
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ZoomIn, ZoomOut, RotateCcw, Columns2, Maximize, MessageSquare } from "lucide-react";
+import gsap from "gsap";
+import {
+  Activity,
+  Boxes,
+  BrainCircuit,
+  ChevronDown,
+  Clock3,
+  Columns2,
+  Droplets,
+  Gauge,
+  History,
+  ListFilter,
+  LucideIcon,
+  Maximize,
+  MessageSquare,
+  Radar,
+  RotateCcw,
+  ShieldAlert,
+  ShieldCheck,
+  Signal,
+  TrendingUp,
+  Users,
+  Workflow,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import { NewsFeed } from "@/src/components/NewsFeed";
 import { ActivityLog } from "@/src/components/ActivityLog";
-import { ChatPanel } from "@/src/components/ChatPanel";
+import { ChatPanel, type SyntheticEvent } from "@/src/components/ChatPanel";
 import { EventTimeline, type TimelineInteractionFocus } from "@/src/components/EventTimeline";
 
 import { cn } from "@/src/lib/utils";
-import type { AgentAction, SessionState } from "@/src/lib/types";
+import { GlowingEffect } from "@/src/components/ui/glowing-effect";
+import type { AgentAction, ExternalSignal, SessionState } from "@/src/lib/types";
 import { bootstrapPlatform } from "@/src/app/bootstrap";
-import { deriveTimelineEvents } from "@/src/lib/timeline-types";
 import { getMapboxToken } from "@/src/lib/env";
-import usAssets from "../../entities/us/assets.json";
-import israelAssets from "../../entities/israel/assets.json";
-import iranAssets from "../../entities/iran/assets.json";
-import hezbollahAssets from "../../entities/hezbollah/assets.json";
-import gulfAssets from "../../entities/gulf/assets.json";
-import oversightAssets from "../../entities/oversight/assets.json";
 
 const MAP_STYLE = "mapbox://styles/mapbox/dark-v11";
 const DEFAULT_CENTER: [number, number] = [41.8, 27.8];
 const DEFAULT_ZOOM = 1.8;
+// Side panel widths: NewsFeed left (16px margin + 340/48px) · ActivityLog right (16px margin + 360/48px)
+const LEFT_PANEL_OPEN_W = 356;   // 16 + 340
+const LEFT_PANEL_COLLAPSED_W = 64; // 16 + 48
+const RIGHT_PANEL_OPEN_W = 376;  // 16 + 360
+const RIGHT_PANEL_COLLAPSED_W = 64; // 16 + 48
+const TOP_BAR_GAP = 6;          // gap between panel edge and top bar
+const TOP_BAR_MAX_WIDTH = 1600;
+const TOP_BAR_MIN_WIDTH = 420;
+const TOP_BAR_COMPACT_BREAKPOINT = 640;
 
 
 const INTEL_HIDDEN_LAYERS = [
@@ -37,15 +66,15 @@ const INTEL_HIDDEN_LAYERS = [
   "road-secondary-tertiary",
 ];
 
-const AGENT_MAP_NODES: Record<string, { label: string; lngLat: [number, number]; color: string; secondaryColor: string; flag: string }> = {
-  us: { label: "United States", lngLat: [-77.0369, 38.9072], color: "#b22234", secondaryColor: "#3c3b6e", flag: "🇺🇸" },
-  israel: { label: "Israel", lngLat: [35.2137, 31.7683], color: "#005eb8", secondaryColor: "#ffffff", flag: "🇮🇱" },
-  iran: { label: "Iran", lngLat: [51.389, 35.6892], color: "#239f40", secondaryColor: "#da0000", flag: "🇮🇷" },
-  hezbollah: { label: "Hezbollah", lngLat: [35.5018, 33.8938], color: "#f4c542", secondaryColor: "#1f7a1f", flag: "🇱🇧" },
-  gulf: { label: "Gulf", lngLat: [54.3773, 24.4539], color: "#00732f", secondaryColor: "#ce1126", flag: "🇦🇪" },
-  oversight: { label: "Oversight", lngLat: [2.3522, 48.8566], color: "#1f4e79", secondaryColor: "#f4c542", flag: "🏳️‍⚖️" },
+const AGENT_META: Record<string, { defaultLabel: string; color: string; secondaryColor: string; flag: string }> = {
+  us: { defaultLabel: "United States", color: "#b22234", secondaryColor: "#3c3b6e", flag: "🇺🇸" },
+  israel: { defaultLabel: "Israel", color: "#005eb8", secondaryColor: "#ffffff", flag: "🇮🇱" },
+  iran: { defaultLabel: "Iran", color: "#239f40", secondaryColor: "#da0000", flag: "🇮🇷" },
+  hezbollah: { defaultLabel: "Hezbollah", color: "#f4c542", secondaryColor: "#1f7a1f", flag: "🇱🇧" },
+  gulf: { defaultLabel: "Gulf", color: "#00732f", secondaryColor: "#ce1126", flag: "🇦🇪" },
+  oversight: { defaultLabel: "Oversight", color: "#1f4e79", secondaryColor: "#f4c542", flag: "🏳️‍⚖️" },
 };
-const MAP_NODE_IDS = Object.keys(AGENT_MAP_NODES).filter((id) => id !== "oversight");
+const MAP_NODE_IDS = Object.keys(AGENT_META).filter((id) => id !== "oversight");
 
 
 const ACTION_HEAT: Record<AgentAction["type"], number> = {
@@ -59,100 +88,30 @@ const ACTION_HEAT: Record<AgentAction["type"], number> = {
   deceive: 48,
   oversight_review: 6,
 };
-
-type AssetRecord = Record<string, unknown>;
-
-const ENTITY_ASSET_PACKS = {
-  us: usAssets,
-  israel: israelAssets,
-  iran: iranAssets,
-  hezbollah: hezbollahAssets,
-  gulf: gulfAssets,
-  oversight: oversightAssets,
-} as const;
-
-const ASSET_LAYERS = [
-  "locations",
-  "fronts",
-  "infrastructure",
-  "strategic_sites",
-  "alliance_anchors",
-  "chokepoints",
-  "geospatial_anchors",
-] as const;
-
-
-const ASSET_LAYER_STYLE: Record<(typeof ASSET_LAYERS)[number], { size: number; opacity: number }> = {
-  locations: { size: 7, opacity: 0.95 },
-  fronts: { size: 8, opacity: 0.92 },
-  infrastructure: { size: 6, opacity: 0.9 },
-  strategic_sites: { size: 9, opacity: 1 },
-  alliance_anchors: { size: 8, opacity: 0.95 },
-  chokepoints: { size: 10, opacity: 1 },
-  geospatial_anchors: { size: 7, opacity: 0.95 },
-};
-
-type HardCodedEntityAsset = {
+type SessionEntityAsset = {
   id: string;
   entityId: string;
   label: string;
-  layer: (typeof ASSET_LAYERS)[number];
+  category: string;
+  section: string;
+  status: string;
+  health: number | null;
   lngLat: [number, number];
   latitude: number;
   longitude: number;
-  hasDirectCoordinates: boolean;
+  notes: string | null;
+  lastChangeReason: string | null;
 };
 
-const HARD_CODED_ENTITY_ASSETS: HardCodedEntityAsset[] = Object.entries(ENTITY_ASSET_PACKS).flatMap(([entityId, pack]) => {
-  const locationLookup = new Map<string, [number, number]>();
-  for (const record of (pack.locations ?? []) as AssetRecord[]) {
-    const name = typeof record.name === "string" ? record.name : undefined;
-    const lat = typeof record.lat === "number" ? record.lat : undefined;
-    const lon = typeof record.lon === "number" ? record.lon : undefined;
-    if (name && lat !== undefined && lon !== undefined) {
-      locationLookup.set(name, [lon, lat]);
-    }
-  }
+type AgentMapNode = {
+  label: string;
+  lngLat: [number, number];
+  color: string;
+  secondaryColor: string;
+  flag: string;
+};
 
-  return ASSET_LAYERS.flatMap((layer) => {
-    const rawRecords = (pack as unknown as Record<string, unknown>)[layer];
-    const records = Array.isArray(rawRecords) ? (rawRecords.filter((item): item is AssetRecord => typeof item === "object" && item !== null)) : [];
-    return records
-      .map((record, index) => {
-        const lat = typeof record.lat === "number" ? record.lat : undefined;
-        const lon = typeof record.lon === "number" ? record.lon : undefined;
-        const anchorLat = typeof record.anchor_lat === "number" ? record.anchor_lat : undefined;
-        const anchorLon = typeof record.anchor_lon === "number" ? record.anchor_lon : undefined;
-        const linkedLocation = typeof record.location === "string" ? locationLookup.get(record.location) : undefined;
-
-        const resolved =
-          lat !== undefined && lon !== undefined
-            ? { lngLat: [lon, lat] as [number, number], hasDirectCoordinates: true }
-            : anchorLat !== undefined && anchorLon !== undefined
-              ? { lngLat: [anchorLon, anchorLat] as [number, number], hasDirectCoordinates: true }
-              : linkedLocation
-                ? { lngLat: linkedLocation, hasDirectCoordinates: false }
-                : null;
-
-        if (!resolved) {
-          return null;
-        }
-
-        const label = typeof record.name === "string" ? record.name : `${entityId} ${layer} ${index + 1}`;
-        return {
-          id: `${entityId}-${layer}-${index}`,
-          entityId,
-          layer,
-          label,
-          lngLat: resolved.lngLat,
-          longitude: resolved.lngLat[0],
-          latitude: resolved.lngLat[1],
-          hasDirectCoordinates: resolved.hasDirectCoordinates,
-        };
-      })
-      .filter(Boolean) as HardCodedEntityAsset[];
-  });
-});
+type UnknownRecord = Record<string, unknown>;
 
 export default function GlobePage() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -160,16 +119,77 @@ export default function GlobePage() {
   const popupRef = useRef<mapboxgl.Popup | null>(null);
   const nodeMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const assetMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const topBarRef = useRef<HTMLDivElement>(null);
+  const topBarAnimatedRef = useRef(false);
 
   const [session, setSession] = useState<SessionState | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [leftPanelOpen, setLeftPanelOpen] = useState(true);
+  const [rightPanelOpen, setRightPanelOpen] = useState(true);
   const [panelsCollapsed, setPanelsCollapsed] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [timelineTurn, setTimelineTurn] = useState(0);
   const [interactionFocus, setInteractionFocus] = useState<TimelineInteractionFocus | null>(null);
   const [timelineCollapsed, setTimelineCollapsed] = useState(false);
+  const [viewportWidth, setViewportWidth] = useState(() => (typeof window === "undefined" ? 0 : window.innerWidth));
+  const [syntheticEvents, setSyntheticEvents] = useState<SyntheticEvent[]>([]);
+  // Snapshot cache: stores SessionState *before* each injection for true rewind
+  const snapshotCacheRef = useRef<Map<string, SessionState>>(new Map());
+
+  const handleInjectEvent = async (signal: ExternalSignal) => {
+    const rt = window.__trenches;
+    const sid = session?.session_id;
+    if (!rt || !sid) throw new Error("No active session");
+    // Snapshot current state before injection
+    const preInjectSnapshot = session;
+    const result = await rt.sessionClient.ingestNews(sid, { signals: [signal] });
+    applySessionSnapshot(result.session);
+    const eventId = `synth-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    // Cache the pre-injection state for rewind
+    if (preInjectSnapshot) {
+      snapshotCacheRef.current.set(eventId, preInjectSnapshot);
+    }
+    setSyntheticEvents((prev) => [
+      ...prev,
+      {
+        id: eventId,
+        signal,
+        injectedAtTurn: result.session.world.turn,
+        timestamp: Date.now(),
+      },
+    ]);
+  };
+
+  const handleRemoveEvent = (eventId: string) => {
+    setSyntheticEvents((prev) => prev.map((e) => (e.id === eventId ? { ...e, removed: true } : e)));
+    snapshotCacheRef.current.delete(eventId);
+  };
+
+  const handleRewindToEvent = (eventId: string) => {
+    const evt = syntheticEvents.find((e) => e.id === eventId);
+    if (!evt) return;
+    // Restore the exact pre-injection session state
+    const snapshot = snapshotCacheRef.current.get(eventId);
+    if (snapshot) {
+      setSession(snapshot);
+      setTimelineTurn(snapshot.world.turn);
+    } else {
+      // Fallback: just rewind the scrubber
+      setTimelineTurn(Math.max(0, evt.injectedAtTurn - 1));
+    }
+    // Mark this and all later events as removed + clean up their snapshots
+    setSyntheticEvents((prev) =>
+      prev.map((e) => {
+        if (e.injectedAtTurn >= evt.injectedAtTurn) {
+          snapshotCacheRef.current.delete(e.id);
+          return { ...e, removed: true };
+        }
+        return e;
+      }),
+    );
+  };
 
   // Bottom offset for side panels: just clear the timeline + bottom padding + small gap
   const sideBarBottom = timelineCollapsed ? 72 : 204;
@@ -185,11 +205,111 @@ export default function GlobePage() {
   const togglePanelsRef = useRef<Array<(collapsed: boolean) => void>>([]);
 
   const activityItems = useMemo(() => deriveActivityItems(session), [session]);
-  const newsItems = useMemo(() => deriveNewsItems(session), [session]);
+  const simNewsItems = useMemo(() => deriveNewsItems(session), [session]);
+  const entityAssets = useMemo(() => deriveSessionEntityAssets(session), [session]);
+  const agentMapNodes = useMemo(() => deriveAgentMapNodes(session, entityAssets), [session, entityAssets]);
+  const selectedAgentMeta = selectedAgent ? agentMapNodes[selectedAgent] ?? null : null;
+  const topBarStats = useMemo(() => deriveTopBarStats(session, activityItems.length), [session, activityItems.length]);
+  const [selectedExtraStatKey, setSelectedExtraStatKey] = useState<string>("");
+  const selectedExtraStat = useMemo(
+    () => topBarStats.extra.find((stat) => stat.key === selectedExtraStatKey) ?? topBarStats.extra[0] ?? null,
+    [selectedExtraStatKey, topBarStats.extra],
+  );
+  const topBarLayout = useMemo(() => {
+    const leftW = leftPanelOpen ? LEFT_PANEL_OPEN_W : LEFT_PANEL_COLLAPSED_W;
+    const rightW = rightPanelOpen ? RIGHT_PANEL_OPEN_W : RIGHT_PANEL_COLLAPSED_W;
+    const available = Math.max(TOP_BAR_MIN_WIDTH, viewportWidth - leftW - rightW - TOP_BAR_GAP * 2);
+    const width = Math.min(TOP_BAR_MAX_WIDTH, available);
+    // Center between the two panel edges, not the viewport center
+    const leftEdge = leftW + TOP_BAR_GAP;
+    const rightEdge = viewportWidth - rightW - TOP_BAR_GAP;
+    const centerX = (leftEdge + rightEdge) / 2;
+    const offsetFromCenter = centerX - viewportWidth / 2;
+    return { width, offsetX: offsetFromCenter };
+  }, [leftPanelOpen, rightPanelOpen, viewportWidth]);
+  const topBarCompact = topBarLayout.width < TOP_BAR_COMPACT_BREAKPOINT;
+
+  const applySessionSnapshot = (next: SessionState) => {
+    setSession((current) => {
+      if (!current) return next;
+      if (next.world.turn > current.world.turn) return next;
+      if (next.world.turn === current.world.turn && next.updated_at >= current.updated_at) return next;
+      return current;
+    });
+    setTimelineTurn((current) => Math.max(current, next.world.turn));
+  };
+
+  useEffect(() => {
+    if (!topBarStats.extra.some((stat) => stat.key === selectedExtraStatKey) && topBarStats.extra[0]) {
+      setSelectedExtraStatKey(topBarStats.extra[0].key);
+    }
+  }, [selectedExtraStatKey, topBarStats.extra]);
+
+  useEffect(() => {
+    const updateViewportWidth = () => setViewportWidth(window.innerWidth);
+    updateViewportWidth();
+    window.addEventListener("resize", updateViewportWidth);
+    return () => window.removeEventListener("resize", updateViewportWidth);
+  }, []);
+
+  useEffect(() => {
+    const topBar = topBarRef.current;
+    if (!topBar) return;
+
+    if (!topBarAnimatedRef.current) {
+      gsap.set(topBar, { width: topBarLayout.width, x: topBarLayout.offsetX });
+      topBarAnimatedRef.current = true;
+      return;
+    }
+
+    const tween = gsap.to(topBar, {
+      width: topBarLayout.width,
+      x: topBarLayout.offsetX,
+      duration: 0.45,
+      ease: "power2.inOut",
+      overwrite: "auto",
+    });
+    return () => {
+      tween.kill();
+    };
+  }, [topBarLayout]);
+
+  // Fetch real RSS items from our API route
+  const [liveRssItems, setLiveRssItems] = useState<NewsItem[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchRss() {
+      try {
+        const res = await fetch("/api/rss");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        const items: NewsItem[] = (data.items ?? []).map((item: { title: string; link: string; translateUrl: string | null; source: string; agent: string; pubDate: string }, i: number) => ({
+          id: `rss-${i}-${item.link.slice(-20)}`,
+          source: item.source,
+          summary: item.title,
+          severity: 3,
+          timestamp: item.pubDate,
+          turn: 0,
+          agent: item.agent,
+          type: "event" as const,
+          url: item.link,
+          translateUrl: item.translateUrl,
+        }));
+        setLiveRssItems(items);
+      } catch { /* silently fail */ }
+    }
+    fetchRss();
+    const interval = setInterval(fetchRss, 60_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
+
+  // Merge: live RSS first, then simulation items
+  const newsItems = useMemo(() => [...liveRssItems, ...simNewsItems], [liveRssItems, simNewsItems]);
 
   const intensityByAgent = useMemo(() => {
     const intensity = new Map<string, number>();
-    for (const [agent] of Object.entries(AGENT_MAP_NODES)) intensity.set(agent, 10);
+    for (const [agent] of Object.entries(AGENT_META)) intensity.set(agent, 10);
 
     if (!session) return intensity;
 
@@ -291,17 +411,33 @@ export default function GlobePage() {
       try {
         const rt = await bootstrapPlatform();
         if (cancelled || rt.backendStatus !== "healthy") return;
-        const sess = await rt.sessionClient.createSession({ seed: 7 });
+        const sess = await rt.sessionClient.createSession();
+        // Enable live mode with auto_step so backend steps when RSS signals arrive
         const liveSession = await rt.sessionClient.setLiveMode(sess.session_id, {
           enabled: true,
           auto_step: true,
-          poll_interval_ms: 10000,
+          poll_interval_ms: 5000,
         });
-        const refreshed = await rt.sessionClient.refreshSources(sess.session_id);
         if (!cancelled) {
-          setSession(refreshed ?? liveSession);
-          setTimelineTurn((refreshed ?? liveSession).world.turn);
+          applySessionSnapshot(liveSession);
         }
+
+        // Prime the first turn immediately so activity is not blocked on the live polling loop.
+        rt.sessionClient.stepSession(sess.session_id, {
+          actions: {},
+          external_signals: [],
+        }).then((stepped) => {
+          if (!cancelled) {
+            applySessionSnapshot(stepped.session);
+          }
+        }).catch(() => {});
+
+        // Warm-start sources in background without overwriting a newer stepped session.
+        rt.sessionClient.refreshSources(sess.session_id).then((refreshed) => {
+          if (!cancelled && refreshed) {
+            applySessionSnapshot(refreshed);
+          }
+        }).catch(() => {});
       } catch (err) {
         console.warn("[Session bootstrap failed]", err);
       }
@@ -312,6 +448,61 @@ export default function GlobePage() {
     };
   }, []);
 
+  /* ── Hybrid step loop: poll for RSS-driven updates + force-step fallback ── */
+  useEffect(() => {
+    if (!session) return;
+    const sessionId = session.session_id;
+
+    let stopped = false;
+    let busy = false;
+    let lastStepTurn = session.world.turn;
+    let ticksSinceAdvance = 0;
+    const POLL_MS = 5_000;          // poll every 5s
+    const FORCE_STEP_AFTER = 1;     // force-step after 1 idle poll (5s)
+
+    const interval = setInterval(async () => {
+      if (stopped || busy) return;
+      busy = true;
+      try {
+        const rt = window.__trenches;
+        if (!rt) return;
+
+        // 1) Poll getSession — the backend auto-steps if RSS signals pending
+        let latest = await rt.sessionClient.getSession(sessionId);
+
+        // 2) If no turn advancement after FORCE_STEP_AFTER polls, force a step
+        //    This ensures the sim advances even when no RSS data arrives
+        if (latest.world.turn <= lastStepTurn) {
+          ticksSinceAdvance++;
+          if (ticksSinceAdvance >= FORCE_STEP_AFTER) {
+            const result = await rt.sessionClient.stepSession(sessionId, {
+              actions: {},
+              external_signals: [],
+            });
+            latest = result.session;
+            ticksSinceAdvance = 0;
+          }
+        } else {
+          ticksSinceAdvance = 0;
+        }
+
+        if (!stopped) {
+          lastStepTurn = latest.world.turn;
+          applySessionSnapshot(latest);
+        }
+      } catch (err) {
+        console.warn("[Step loop error]", err);
+      } finally {
+        busy = false;
+      }
+    }, POLL_MS);
+
+    return () => {
+      stopped = true;
+      clearInterval(interval);
+    };
+  }, [session?.session_id]);
+
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -320,7 +511,8 @@ export default function GlobePage() {
     nodeMarkersRef.current = [];
 
     for (const agentId of MAP_NODE_IDS) {
-      const meta = AGENT_MAP_NODES[agentId];
+      const meta = agentMapNodes[agentId];
+      if (!meta) continue;
       const intensity = intensityByAgent.get(agentId) ?? 10;
       const markerEl = document.createElement("button");
       markerEl.type = "button";
@@ -383,7 +575,7 @@ export default function GlobePage() {
 
       nodeMarkersRef.current.push(marker);
     }
-  }, [intensityByAgent, selectedAgent]);
+  }, [agentMapNodes, intensityByAgent]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -392,11 +584,11 @@ export default function GlobePage() {
     assetMarkersRef.current.forEach((marker) => marker.remove());
     assetMarkersRef.current = [];
 
-    for (const asset of HARD_CODED_ENTITY_ASSETS) {
-      const entityMeta = AGENT_MAP_NODES[asset.entityId];
+    for (const asset of entityAssets) {
+      const entityMeta = agentMapNodes[asset.entityId];
       if (!entityMeta) continue;
 
-      const layerStyle = ASSET_LAYER_STYLE[asset.layer];
+      const layerStyle = getAssetMarkerStyle(asset);
       const markerEl = document.createElement("button");
       markerEl.type = "button";
       markerEl.style.width = `${layerStyle.size}px`;
@@ -407,15 +599,15 @@ export default function GlobePage() {
       markerEl.style.background = entityMeta.color;
       markerEl.style.opacity = String(layerStyle.opacity);
       markerEl.style.boxShadow = `0 0 7px ${entityMeta.color}`;
-      markerEl.style.border = `1px solid ${entityMeta.secondaryColor}`;
-      markerEl.title = `${entityMeta.flag} ${entityMeta.label}: ${asset.label} (${asset.layer}) | lat ${asset.latitude.toFixed(2)}, lon ${asset.longitude.toFixed(2)}`;
+      markerEl.style.border = `1px solid ${layerStyle.borderColor}`;
+      markerEl.title = `${entityMeta.flag} ${entityMeta.label}: ${asset.label} (${asset.category}/${asset.section}) status=${asset.status} | lat ${asset.latitude.toFixed(2)}, lon ${asset.longitude.toFixed(2)}`;
       markerEl.setAttribute("aria-label", `${entityMeta.label} asset ${asset.label}`);
       markerEl.onclick = () => {
         setSelectedAgent(null);
         popupRef.current
           ?.setLngLat(asset.lngLat)
           .setHTML(
-            `<div style="background:${entityMeta.color};color:#071014;padding:4px 8px;border-radius:999px;border:1px solid ${entityMeta.color};font:600 10px ui-monospace, SFMono-Regular, Menlo, monospace;letter-spacing:0.08em;text-transform:uppercase;box-shadow:0 4px 16px rgba(0,0,0,0.25);white-space:nowrap;">${escapeHtml(asset.label)}</div>`,
+            `<div style="background:${entityMeta.color};color:#071014;padding:4px 8px;border-radius:999px;border:1px solid ${entityMeta.color};font:600 10px ui-monospace, SFMono-Regular, Menlo, monospace;letter-spacing:0.08em;text-transform:uppercase;box-shadow:0 4px 16px rgba(0,0,0,0.25);white-space:nowrap;">${escapeHtml(asset.label)} · ${escapeHtml(asset.status)}</div>`,
           )
           .addTo(map);
       };
@@ -431,7 +623,7 @@ export default function GlobePage() {
       assetMarkersRef.current.forEach((marker) => marker.remove());
       assetMarkersRef.current = [];
     };
-  }, []);
+  }, [agentMapNodes, entityAssets]);
 
 
 
@@ -442,28 +634,60 @@ export default function GlobePage() {
     <div className="relative h-screen w-screen overflow-hidden bg-background">
       <div ref={mapContainerRef} className="absolute inset-0" style={{ width: "100vw", height: "100vh" }} />
 
-      {visible.topBar && <div className="pointer-events-none absolute top-6 left-1/2 z-20 -translate-x-1/2">
-        <div
-          className="pointer-events-auto flex select-none items-center gap-4 border border-border/40 bg-card/60 px-5 py-2.5 font-sans backdrop-blur-xl"
-          style={{
-            boxShadow:
-              "0 0 8px rgba(0,0,0,0.03), 0 2px 6px rgba(0,0,0,0.08), inset 0 0 6px 6px rgba(255,255,255,0.04), 0 0 12px rgba(0,0,0,0.15)",
-          }}
-        >
-          <div className="h-2 w-2 animate-pulse rounded-full bg-primary" />
-          <span className="text-xs font-semibold tracking-[0.2em] text-foreground/80 uppercase">Trenches</span>
-          <span className="text-[10px] font-mono text-muted-foreground">{session ? `T${timelineTurn}` : "IDLE"}</span>
+      {visible.topBar && <div ref={topBarRef} className="pointer-events-none absolute top-4 left-1/2 z-20 -translate-x-1/2">
+        <div className="relative h-full rounded-md border-[0.75px] border-border/30">
+          <GlowingEffect spread={40} glow={true} disabled={false} proximity={64} inactiveZone={0.01} borderWidth={2} />
+          <div
+            className="pointer-events-auto flex h-9 w-full select-none items-center gap-3 overflow-hidden rounded-md bg-card/25 px-4 font-sans backdrop-blur-lg"
+            style={{
+              boxShadow:
+                "0 0 8px rgba(0,0,0,0.03), 0 2px 6px rgba(0,0,0,0.08), inset 0 0 6px 6px rgba(255,255,255,0.04), 0 0 12px rgba(0,0,0,0.15)",
+            }}
+          >
+          <div className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-primary" />
+          <span className={cn("shrink-0 text-xs font-semibold tracking-[0.2em] text-foreground/80 uppercase", topBarCompact && "tracking-[0.16em]")}>Trenches</span>
+          <span className="shrink-0 text-[10px] font-mono text-muted-foreground">{session ? `T${timelineTurn}` : "IDLE"}</span>
           {session && (
             <>
-              <div className="mx-1 h-4 w-px bg-border/40" />
-              <div className="flex items-center gap-4 font-mono text-xs">
-                <StatusPill label="TENSION" value={session.world.tension_level.toFixed(0)} warn={session.world.tension_level > 60} />
-                <StatusPill label="MARKET" value={session.world.market_stress.toFixed(0)} warn={session.world.market_stress > 60} />
-                <StatusPill label="OIL" value={session.world.oil_pressure.toFixed(0)} warn={session.world.oil_pressure > 60} />
-                <StatusPill label="EVENTS" value={String(session.world.active_events.length)} />
+              <div className="mx-0.5 h-4 w-px shrink-0 bg-border/40" />
+              <div className="flex min-w-0 flex-1 items-center justify-between gap-3 font-mono text-xs">
+                <div className="flex min-w-0 items-center gap-3 overflow-hidden whitespace-nowrap">
+                {topBarStats.primary.map((stat) => (
+                  <StatusPill key={stat.key} label={stat.label} value={stat.value} warn={stat.warn} icon={stat.icon} compact={topBarCompact} />
+                ))}
+                </div>
+                {selectedExtraStat && (
+                  <div className="flex shrink-0 items-center gap-2">
+                    {topBarCompact ? (
+                      <ListFilter className="h-3.5 w-3.5 text-muted-foreground" />
+                    ) : (
+                      <label htmlFor="topbar-extra-stat" className="text-muted-foreground">STAT</label>
+                    )}
+                    <div className="relative shrink-0">
+                      <select
+                        id="topbar-extra-stat"
+                        value={selectedExtraStat.key}
+                        onChange={(event) => setSelectedExtraStatKey(event.target.value)}
+                        className={cn(
+                          "appearance-none border border-border/30 bg-card/30 py-1 text-[10px] uppercase tracking-[0.14em] text-foreground outline-none",
+                          topBarCompact ? "w-[148px] pl-2.5 pr-8" : "w-[190px] pl-3 pr-9",
+                        )}
+                      >
+                        {topBarStats.extra.map((stat) => (
+                          <option key={stat.key} value={stat.key}>
+                            {stat.label}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute top-1/2 right-2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    </div>
+                    <StatusPill label={selectedExtraStat.label} value={selectedExtraStat.value} warn={selectedExtraStat.warn} icon={selectedExtraStat.icon} compact={topBarCompact} />
+                  </div>
+                )}
               </div>
             </>
           )}
+          </div>
         </div>
       </div>}
 
@@ -473,7 +697,7 @@ export default function GlobePage() {
         <div className="absolute bottom-52 left-1/2 z-20 w-[420px] -translate-x-1/2 border border-border/30 bg-card/70 p-3 backdrop-blur-xl">
           <div className="mb-2 flex items-center justify-between">
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-foreground/80">{AGENT_MAP_NODES[selectedAgent]?.flag} {AGENT_MAP_NODES[selectedAgent]?.label}</div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-foreground/80">{selectedAgentMeta?.flag ?? ""} {selectedAgentMeta?.label ?? selectedAgent}</div>
               <div className="text-[9px] font-mono text-muted-foreground">Model context and action history</div>
             </div>
             <button
@@ -507,15 +731,22 @@ export default function GlobePage() {
           open={chatOpen}
           onClose={() => setChatOpen(false)}
           sessionId={session?.session_id ?? null}
+          session={session}
+          syntheticEvents={syntheticEvents}
+          onInjectEvent={handleInjectEvent}
+          onRemoveEvent={handleRemoveEvent}
+          onRewindToEvent={handleRewindToEvent}
         />
         {visible.mapControls && <div className="pointer-events-auto">
-          <div
-            className="flex select-none items-center gap-1 border border-border/30 bg-card/30 px-3 py-2 backdrop-blur-xl"
-            style={{
-              boxShadow:
-                "0 0 8px rgba(0,0,0,0.03), 0 2px 6px rgba(0,0,0,0.08), inset 0 0 6px 6px rgba(255,255,255,0.04), 0 0 12px rgba(0,0,0,0.15)",
-            }}
-          >
+          <div className="relative rounded-md border-[0.75px] border-border/30">
+            <GlowingEffect spread={40} glow={true} disabled={false} proximity={64} inactiveZone={0.01} borderWidth={2} />
+            <div
+              className="flex select-none items-center gap-1 rounded-md bg-card/30 px-3 py-2 backdrop-blur-xl"
+              style={{
+                boxShadow:
+                  "0 0 8px rgba(0,0,0,0.03), 0 2px 6px rgba(0,0,0,0.08), inset 0 0 6px 6px rgba(255,255,255,0.04), 0 0 12px rgba(0,0,0,0.15)",
+              }}
+            >
             <button onClick={() => mapRef.current?.easeTo({ zoom: (mapRef.current?.getZoom() ?? DEFAULT_ZOOM) + 0.8, duration: 300 })} disabled={!mapReady} className="flex h-7 w-7 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40" title="Zoom in">
               <ZoomIn className="h-3.5 w-3.5" />
             </button>
@@ -548,6 +779,8 @@ export default function GlobePage() {
               onClick={() => {
                 const next = !panelsCollapsed;
                 setPanelsCollapsed(next);
+                setLeftPanelOpen(!next);
+                setRightPanelOpen(!next);
                 togglePanelsRef.current.forEach((fn) => fn(next));
               }}
               className="flex h-7 w-7 cursor-pointer items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
@@ -555,14 +788,15 @@ export default function GlobePage() {
             >
               {panelsCollapsed ? <Columns2 className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
             </button>
+            </div>
           </div>
         </div>}
 
         {visible.timeline && <EventTimeline session={session} onTurnChange={setTimelineTurn} interactionFocus={interactionFocus} onInteractionFocus={setInteractionFocus} onRegisterToggle={(fn) => { togglePanelsRef.current[2] = fn; }} embedded onCollapsedChange={setTimelineCollapsed} />}
       </div>
 
-      {visible.newsFeed && <NewsFeed items={newsItems} interactionFocus={interactionFocus} onInteractionFocus={setInteractionFocus} onRegisterToggle={(fn) => { togglePanelsRef.current[0] = fn; }} bottomOffset={sideBarBottom} />}
-      {visible.activityLog && <ActivityLog items={activityItems} focusTurn={timelineTurn} interactionFocus={interactionFocus} onInteractionFocus={setInteractionFocus} onRegisterToggle={(fn) => { togglePanelsRef.current[1] = fn; }} bottomOffset={sideBarBottom} />}
+      {visible.newsFeed && <NewsFeed items={newsItems} interactionFocus={interactionFocus} onInteractionFocus={setInteractionFocus} onRegisterToggle={(fn) => { togglePanelsRef.current[0] = fn; }} onCollapsedChange={(c) => setLeftPanelOpen(!c)} bottomOffset={sideBarBottom} />}
+      {visible.activityLog && <ActivityLog items={activityItems} focusTurn={timelineTurn} interactionFocus={interactionFocus} onInteractionFocus={setInteractionFocus} onRegisterToggle={(fn) => { togglePanelsRef.current[1] = fn; }} onCollapsedChange={(c) => setRightPanelOpen(!c)} bottomOffset={sideBarBottom} />}
 
       {mapError && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-background">
@@ -577,10 +811,22 @@ export default function GlobePage() {
   );
 }
 
-function StatusPill({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
+function StatusPill({
+  label,
+  value,
+  warn,
+  icon: Icon,
+  compact = false,
+}: {
+  label: string;
+  value: string;
+  warn?: boolean;
+  icon: LucideIcon;
+  compact?: boolean;
+}) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-muted-foreground">{label}</span>
+    <div className="flex shrink-0 items-center gap-2 whitespace-nowrap" title={`${label} ${value}`}>
+      {compact ? <Icon className="h-3.5 w-3.5 text-muted-foreground" /> : <span className="text-muted-foreground">{label}</span>}
       <span className={warn ? "text-primary font-bold" : "text-foreground"}>{value}</span>
     </div>
   );
@@ -595,6 +841,302 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#39;");
 }
 
+function getStringValue(record: UnknownRecord, key: string): string | null {
+  const value = record[key];
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function getNumberValue(record: UnknownRecord, key: string): number | null {
+  const value = record[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function deriveSessionEntityAssets(session: SessionState | null): SessionEntityAsset[] {
+  if (!session) return [];
+
+  const items: SessionEntityAsset[] = [];
+
+  const worldAssetState = session.world.asset_state;
+  if (worldAssetState) {
+    for (const [entityId, assetsById] of Object.entries(worldAssetState)) {
+      for (const asset of Object.values(assetsById)) {
+        const latitude = typeof asset.latitude === "number" ? asset.latitude : null;
+        const longitude = typeof asset.longitude === "number" ? asset.longitude : null;
+        if (latitude === null || longitude === null) continue;
+
+        items.push({
+          id: asset.asset_id,
+          entityId,
+          label: asset.name,
+          category: asset.category,
+          section: asset.section,
+          status: asset.status,
+          health: asset.health,
+          notes: asset.notes ?? null,
+          lastChangeReason: asset.last_change_reason ?? null,
+          lngLat: [longitude, latitude],
+          longitude,
+          latitude,
+        });
+      }
+    }
+
+    if (items.length > 0) {
+      return items;
+    }
+  }
+
+  for (const [entityId, observation] of Object.entries(session.observations)) {
+    for (const rawAsset of observation.strategic_assets) {
+      if (!rawAsset || typeof rawAsset !== "object") continue;
+      const asset = rawAsset as UnknownRecord;
+      const latitude = getNumberValue(asset, "latitude");
+      const longitude = getNumberValue(asset, "longitude");
+      if (latitude === null || longitude === null) continue;
+
+      const label = getStringValue(asset, "name") ?? `${entityId} asset`;
+      const category = getStringValue(asset, "category") ?? "tracked";
+      const section = getStringValue(asset, "section") ?? "theater";
+      const status = getStringValue(asset, "status") ?? "operational";
+      const health = getNumberValue(asset, "health");
+      const notes = getStringValue(asset, "notes");
+      const lastChangeReason = getStringValue(asset, "last_change_reason");
+      const assetId = getStringValue(asset, "asset_id") ?? `${entityId}-${label}-${latitude}-${longitude}`;
+
+      items.push({
+        id: assetId,
+        entityId,
+        label,
+        category,
+        section,
+        status,
+        health,
+        notes,
+        lastChangeReason,
+        lngLat: [longitude, latitude],
+        longitude,
+        latitude,
+      });
+    }
+  }
+
+  return items;
+}
+
+function deriveAgentMapNodes(
+  session: SessionState | null,
+  entityAssets: SessionEntityAsset[],
+): Record<string, AgentMapNode> {
+  const nodes: Record<string, AgentMapNode> = {};
+
+  for (const [agentId, meta] of Object.entries(AGENT_META)) {
+    const assets = entityAssets.filter((asset) => asset.entityId === agentId);
+    if (assets.length === 0) continue;
+
+    const longitude = assets.reduce((sum, asset) => sum + asset.longitude, 0) / assets.length;
+    const latitude = assets.reduce((sum, asset) => sum + asset.latitude, 0) / assets.length;
+    const profile = session?.observations[agentId]?.entity_profile as UnknownRecord | undefined;
+
+    nodes[agentId] = {
+      label: getStringValue(profile ?? {}, "display_name") ?? meta.defaultLabel,
+      lngLat: [longitude, latitude],
+      color: meta.color,
+      secondaryColor: meta.secondaryColor,
+      flag: meta.flag,
+    };
+  }
+
+  return nodes;
+}
+
+function getAssetMarkerStyle(asset: SessionEntityAsset): { size: number; opacity: number; borderColor: string } {
+  const isStressed = asset.status !== "operational" || (asset.health !== null && asset.health < 80);
+  return {
+    size: isStressed ? 9 : 6,
+    opacity: isStressed ? 1 : 0.82,
+    borderColor: isStressed ? "#ffe082" : "#ffffff",
+  };
+}
+
+type TopBarExtraStat = {
+  key: string;
+  label: string;
+  value: string;
+  icon: LucideIcon;
+  warn?: boolean;
+};
+
+function deriveTopBarStats(session: SessionState | null, activityCount: number): {
+  primary: TopBarExtraStat[];
+  extra: TopBarExtraStat[];
+} {
+  if (!session) return { primary: [], extra: [] };
+
+  const world = session.world as Record<string, unknown>;
+  const riskScores = asNumberMap(world.risk_scores);
+  const behavior = asNumberMap(world.behavioral_consistency);
+  const emaTension = asNumberMap(world.ema_tension);
+  const coalitionGraph = asArrayMap(world.coalition_graph);
+  const actorState = asObjectMap(world.actor_state);
+  const assetState = asObjectMap(world.asset_state);
+  const activeEvents = asObjectArray(world.active_events);
+  const latentEvents = asObjectArray(world.latent_events);
+  const lastActions = asObjectArray(world.last_actions);
+  const hiddenIntents = asObjectMap(world.hidden_intents);
+  const liveQueue = Object.values(session.live.source_queue_sizes).reduce((sum, value) => sum + value, 0);
+  const coalitionLinks = Object.values(coalitionGraph).reduce((sum, targets) => sum + targets.length, 0);
+  const assetCount = Object.values(assetState).reduce((sum, assets) => sum + Object.keys(assets).length, 0);
+
+  const topLevelPrimary = Object.entries(world)
+    .filter(([key, value]) => key !== "turn" && typeof value === "number")
+    .map(([key, value]) => ({
+      key,
+      label: humanizeStatKey(key),
+      value: formatWorldMetric(key, value as number),
+      icon: iconForStatKey(key),
+      warn: inferWorldMetricWarning(key, value as number),
+    }));
+
+  const activityStat = {
+    key: "activity",
+    label: "ACTIVITY",
+    value: String(activityCount),
+    icon: iconForStatKey("activity"),
+    warn: activityCount > 24,
+  };
+
+  const primary = [...topLevelPrimary, activityStat];
+  const extra = [
+    { key: "active_events", label: "ACTIVE EVENTS", value: String(activeEvents.length), icon: iconForStatKey("active_events"), warn: activeEvents.length > 8 },
+    { key: "latent_events", label: "LATENT EVENTS", value: String(latentEvents.length), icon: iconForStatKey("latent_events"), warn: latentEvents.length > 12 },
+    { key: "last_actions", label: "LAST ACTIONS", value: String(lastActions.length), icon: iconForStatKey("last_actions"), warn: lastActions.length > 5 },
+    { key: "agents", label: "AGENTS", value: String(Object.keys(actorState).length), icon: iconForStatKey("agents") },
+    { key: "assets", label: "ASSETS", value: String(assetCount), icon: iconForStatKey("assets"), warn: assetCount === 0 },
+    { key: "coalitions", label: "COALITIONS", value: String(coalitionLinks), icon: iconForStatKey("coalitions"), warn: coalitionLinks === 0 },
+    { key: "avg_risk", label: "AVG RISK", value: formatAverage(riskScores), icon: iconForStatKey("avg_risk"), warn: averageOfMap(riskScores) > 0.6 },
+    { key: "max_risk", label: "MAX RISK", value: formatPercent(maxOfMap(riskScores)), icon: iconForStatKey("max_risk"), warn: maxOfMap(riskScores) > 0.75 },
+    { key: "avg_consistency", label: "AVG CONSISTENCY", value: formatAverage(behavior), icon: iconForStatKey("avg_consistency"), warn: averageOfMap(behavior) < 0.45 },
+    { key: "avg_ema", label: "AVG EMA", value: formatPercent(averageOfMap(emaTension) / 100), icon: iconForStatKey("avg_ema"), warn: averageOfMap(emaTension) > 60 },
+    { key: "hidden_intents", label: "HIDDEN INTENTS", value: String(Object.keys(hiddenIntents).length), icon: iconForStatKey("hidden_intents") },
+    { key: "live_queue", label: "LIVE QUEUE", value: String(liveQueue), icon: iconForStatKey("live_queue"), warn: liveQueue > 0 },
+    { key: "recent_traces", label: "RECENT TRACES", value: String(session.recent_traces.length), icon: iconForStatKey("recent_traces") },
+  ].filter((stat) => !primary.some((primaryStat) => primaryStat.key === stat.key));
+
+  return { primary, extra };
+}
+
+function iconForStatKey(key: string): LucideIcon {
+  switch (key) {
+    case "tension":
+    case "tension_level":
+    case "avg_risk":
+    case "max_risk":
+      return ShieldAlert;
+    case "market":
+    case "market_stress":
+      return TrendingUp;
+    case "oil":
+    case "oil_pressure":
+      return Droplets;
+    case "activity":
+      return Activity;
+    case "active_events":
+      return Radar;
+    case "latent_events":
+      return Clock3;
+    case "last_actions":
+    case "recent_traces":
+      return History;
+    case "agents":
+      return Users;
+    case "assets":
+      return Boxes;
+    case "coalitions":
+      return Workflow;
+    case "avg_consistency":
+      return ShieldCheck;
+    case "avg_ema":
+      return Gauge;
+    case "hidden_intents":
+      return BrainCircuit;
+    case "live_queue":
+      return Signal;
+    default:
+      return Gauge;
+  }
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function asNumberMap(value: unknown): Record<string, number> {
+  if (!value || typeof value !== "object") return {};
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, number] => typeof entry[1] === "number"),
+  );
+}
+
+function asArrayMap(value: unknown): Record<string, string[]> {
+  if (!value || typeof value !== "object") return {};
+  return Object.fromEntries(
+    Object.entries(value).map(([key, raw]) => [
+      key,
+      Array.isArray(raw) ? raw.filter((item): item is string => typeof item === "string") : [],
+    ]),
+  );
+}
+
+function asObjectMap(value: unknown): Record<string, Record<string, unknown>> {
+  if (!value || typeof value !== "object") return {};
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, Record<string, unknown>] => typeof entry[1] === "object" && entry[1] !== null),
+  );
+}
+
+function asObjectArray(value: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null);
+}
+
+function averageOfMap(values: Record<string, number>): number {
+  const entries = Object.values(values);
+  if (entries.length === 0) return 0;
+  return entries.reduce((sum, value) => sum + value, 0) / entries.length;
+}
+
+function maxOfMap(values: Record<string, number>): number {
+  const entries = Object.values(values);
+  if (entries.length === 0) return 0;
+  return Math.max(...entries);
+}
+
+function formatAverage(values: Record<string, number>): string {
+  return formatPercent(averageOfMap(values));
+}
+
+function formatPercent(unitValue: number): string {
+  return String(Math.round(unitValue * 100));
+}
+
+function humanizeStatKey(key: string): string {
+  return key.replaceAll("_", " ").toUpperCase();
+}
+
+function formatWorldMetric(key: string, value: number): string {
+  if (key.endsWith("_level") || key.endsWith("_stress") || key.endsWith("_pressure")) {
+    return String(Math.round(value));
+  }
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function inferWorldMetricWarning(key: string, value: number): boolean {
+  if (key.includes("tension") || key.includes("stress") || key.includes("pressure")) {
+    return value > 60;
+  }
+  return false;
+}
+
 export type NewsItem = {
   id: string;
   source: string;
@@ -604,6 +1146,8 @@ export type NewsItem = {
   turn: number;
   agent: string | null;
   type: "event" | "intel";
+  url: string;
+  translateUrl?: string | null;
 };
 
 export type ActivityItem = {
@@ -633,6 +1177,7 @@ function deriveNewsItems(session: SessionState | null): NewsItem[] {
       turn: session.world.turn,
       agent: event.affected_agents[0] ?? null,
       type: "event",
+      url: `https://news.google.com/search?q=${encodeURIComponent(event.summary.slice(0, 80))}`,
     });
   }
 
@@ -647,6 +1192,7 @@ function deriveNewsItems(session: SessionState | null): NewsItem[] {
         turn: session.world.turn,
         agent: agentId,
         type: "intel",
+        url: `https://news.google.com/search?q=${encodeURIComponent(brief.summary.slice(0, 80))}`,
       });
     }
   }
@@ -677,5 +1223,3 @@ function deriveActivityItems(session: SessionState | null): ActivityItem[] {
   }
   return items.slice(0, 120);
 }
-
-

@@ -35,7 +35,7 @@ const ACTION_LABELS: Record<string, string> = {
   sanction: "SANCTION",
   mobilize: "MOBILIZE",
   deceive: "DECEIVE",
-  oversight_review: "REVIEW",
+  oversight_review: "PREDICT",
 };
 
 type InteractionFocus = {
@@ -56,10 +56,22 @@ function TensionIndicator({ delta }: { delta: number }) {
   return <TrendingDown className="h-3 w-3 text-secondary" />;
 }
 
+function formatRelativeTime(date: Date): string {
+  const now = Date.now();
+  const diffS = Math.floor((now - date.getTime()) / 1000);
+  if (diffS < 10) return "just now";
+  if (diffS < 60) return `${diffS}s ago`;
+  const diffM = Math.floor(diffS / 60);
+  if (diffM < 60) return `${diffM}m ago`;
+  const diffH = Math.floor(diffM / 60);
+  return `${diffH}h ago`;
+}
+
 export function ActivityLog({
   items,
   focusTurn,
   onRegisterToggle,
+  onCollapsedChange,
   interactionFocus,
   onInteractionFocus,
   bottomOffset = 80,
@@ -67,6 +79,7 @@ export function ActivityLog({
   items: ActivityItem[];
   focusTurn?: number;
   onRegisterToggle?: (fn: (collapsed: boolean) => void) => void;
+  onCollapsedChange?: (collapsed: boolean) => void;
   interactionFocus?: InteractionFocus | null;
   onInteractionFocus?: (focus: InteractionFocus | null) => void;
   bottomOffset?: number;
@@ -74,9 +87,14 @@ export function ActivityLog({
   const [collapsed, setCollapsed] = useState(false);
   const visibleItems = focusTurn === undefined ? items : items.filter((item) => item.turn <= focusTurn);
   const panelRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const prevItemIdsRef = useRef<Set<string>>(new Set());
+  const onCollapsedChangeRef = useRef(onCollapsedChange);
+  onCollapsedChangeRef.current = onCollapsedChange;
 
-  const applyCollapse = (next: boolean) => {
+  const applyCollapse = useRef((next: boolean) => {
     setCollapsed(next);
+    onCollapsedChangeRef.current?.(next);
     if (panelRef.current) {
       gsap.to(panelRef.current, {
         width: next ? COLLAPSED_WIDTH : EXPANDED_WIDTH,
@@ -84,7 +102,7 @@ export function ActivityLog({
         ease: "power2.inOut",
       });
     }
-  };
+  }).current;
 
   useEffect(() => {
     onRegisterToggle?.(applyCollapse);
@@ -108,8 +126,27 @@ export function ActivityLog({
     });
   }, [bottomOffset]);
 
+  // Animate new items — first slides from top, rest push down naturally
+  useEffect(() => {
+    if (!listRef.current || visibleItems.length === 0) return;
+    const prevIds = prevItemIdsRef.current;
+    const newIds = visibleItems.map((i) => i.id).filter((id) => !prevIds.has(id));
+    if (newIds.length > 0 && newIds[0]) {
+      const firstEl = listRef.current?.querySelector(`[data-item-id="${CSS.escape(newIds[0])}"]`);
+      if (firstEl) {
+        gsap.fromTo(
+          firstEl,
+          { opacity: 0, y: -30, height: 0, paddingTop: 0, paddingBottom: 0 },
+          { opacity: 1, y: 0, height: "auto", paddingTop: "", paddingBottom: "", duration: 0.4, ease: "power2.out" }
+        );
+      }
+      listRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    prevItemIdsRef.current = new Set(visibleItems.map((i) => i.id));
+  }, [visibleItems]);
+
   return (
-    <div ref={panelRef} className="absolute top-6 right-4 z-20 select-none" style={{ width: EXPANDED_WIDTH, bottom: initialBottomRef.current }}>
+    <div ref={panelRef} className="absolute top-4 right-4 z-20 select-none" style={{ width: EXPANDED_WIDTH, bottom: initialBottomRef.current }}>
       <div className="relative h-full rounded-md border-[0.75px] border-border/30 p-0">
         <GlowingEffect spread={40} glow={true} disabled={false} proximity={64} inactiveZone={0.01} borderWidth={2} />
         <div
@@ -141,7 +178,7 @@ export function ActivityLog({
               <span className="ml-auto text-[9px] font-mono text-muted-foreground">{visibleItems.length}</span>
             </div>
 
-            <div className="flex-1 overflow-y-auto scrollbar-thin">
+            <div ref={listRef} className="flex-1 overflow-y-auto scrollbar-thin">
               {visibleItems.length === 0 ? (
                 <div className="flex h-full items-center justify-center p-6">
                   <p className="text-center text-xs font-mono text-muted-foreground">No agent actions recorded.<br />Awaiting simulation step.</p>
@@ -153,10 +190,13 @@ export function ActivityLog({
                       interactionFocus &&
                       item.turn === interactionFocus.turn &&
                       (!interactionFocus.agent || item.agent === interactionFocus.agent);
+                    const ts = item.timestamp ? new Date(item.timestamp) : null;
+                    const timeLabel = ts ? formatRelativeTime(ts) : "";
 
                     return (
                       <div
                         key={item.id}
+                        data-item-id={item.id}
                         className={cn("group px-4 py-3 transition-colors hover:bg-muted/20 cursor-pointer", highlighted && "bg-primary/10 ring-1 ring-primary/40")}
                         onMouseEnter={() => onInteractionFocus?.({ turn: item.turn, agent: item.agent })}
                         onMouseLeave={() => onInteractionFocus?.(null)}
@@ -183,6 +223,7 @@ export function ActivityLog({
 
                             <div className="flex items-center gap-3 text-[9px] font-mono text-muted-foreground">
                               <span>T{item.turn}</span>
+                              {timeLabel && <span className="text-muted-foreground/60">{timeLabel}</span>}
                               {item.rewardTotal !== null && (
                                 <span className={cn(item.rewardTotal >= 0 ? "text-secondary" : "text-primary")}>
                                   {item.rewardTotal >= 0 ? "+" : ""}
