@@ -27,7 +27,7 @@ app = modal.App("trenches-grpo-training")
 # Image: install trl, vllm, transformers, and the trenches backend
 # ---------------------------------------------------------------------------
 GIT_REPO_URL = "https://github.com/shlawgathon/trenches.git"
-GIT_REF = "modal-training"
+GIT_REF = "main"
 
 training_image = (
     modal.Image.debian_slim(python_version="3.12")
