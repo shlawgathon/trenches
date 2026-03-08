@@ -458,13 +458,8 @@ def main() -> None:
     parser.add_argument(
         "--vllm-enable-sleep-mode",
         action=argparse.BooleanOptionalAction,
-        default=False,
-        help=(
-            "Enable vLLM sleep mode (default: off). "
-            "WARNING: vLLM 0.12 sleep mode can crash with CUDA errors when the "
-            "training model uses device_map='auto'. Only enable if you have verified "
-            "compatibility with your vLLM version."
-        ),
+        default=True,
+        help="Enable vLLM sleep mode so training and generation take turns on GPU (default: on).",
     )
     args = parser.parse_args()
 
@@ -513,7 +508,7 @@ def main() -> None:
         model_ref = AutoModelForCausalLM.from_pretrained(
             args.model_id,
             quantization_config=bnb_config,
-            device_map="auto",
+            device_map={"": 0},
         )
         peft_config = LoraConfig(
             task_type=TaskType.CAUSAL_LM,
@@ -531,51 +526,58 @@ def main() -> None:
         )
     else:
         print(f"Loading {args.model_id} in bfloat16")
+        # IMPORTANT: Do NOT use device_map="auto" here. Accelerate's auto device
+        # map wraps modules with dispatch hooks that break vLLM sleep mode's
+        # buffer.data.copy_() during wake_up. Using device_map={"":0} places
+        # everything on GPU 0 without dispatch hooks.
         model_ref = AutoModelForCausalLM.from_pretrained(
             args.model_id,
             torch_dtype=torch.bfloat16,
-            device_map="auto",
+            device_map={"": 0},
         )
 
     # Auto-detect vLLM GPU memory utilization.
-    # After loading the policy model, measure free memory and estimate how much
-    # will remain after the reference model is loaded by GRPOTrainer.
     # vLLM's init check requires: total_gpu * utilization <= free_memory_at_init.
     #
-    # Real-world observation on A100-80GB with Qwen3-8B (bf16):
-    #   - Policy model uses ~15.7 GiB
-    #   - Ref model + CUDA overhead uses ~30.8 GiB (≈ 2× policy, due to
-    #     accelerate device_map, CUDA context, allocator caching, fragmentation)
-    #   - Free after both: ~32.8 / 79.3 GiB
-    # So we conservatively estimate ref + overhead ≈ 2× policy footprint.
+    # With sleep mode ON (default): during generation, training + ref models are
+    # offloaded, so vLLM can use most of the GPU. But at INIT time, the ref model
+    # hasn't been loaded yet, so free memory ≈ total - policy_model.
+    # The ref model will be loaded but then offloaded before vLLM init with sleep mode.
+    #
+    # Without sleep mode: all 3 models coexist, so utilization must be conservative.
     if generation_backend == "vllm" and torch.cuda.is_available():
         free_bytes, total_bytes = torch.cuda.mem_get_info(0)
         free_gib = free_bytes / (1024 ** 3)
         total_gib = total_bytes / (1024 ** 3)
         used_gib = total_gib - free_gib
-        # Ref model + CUDA overhead typically uses ~2x the policy footprint
-        estimated_free_after_ref = max(free_gib - used_gib * 2, free_gib * 0.3)
+
+        if args.vllm_enable_sleep_mode:
+            # Sleep mode: ref model will be loaded then offloaded before vLLM init.
+            # But we still need to survive the init check when ref is on GPU.
+            # Ref model ≈ same size as policy (used_gib), so free ≈ free - used.
+            # Use 80% of that for safety.
+            estimated_free_at_init = max(free_gib - used_gib, free_gib * 0.3)
+        else:
+            # No sleep mode: ref + CUDA overhead ≈ 2× policy footprint.
+            estimated_free_at_init = max(free_gib - used_gib * 2, free_gib * 0.3)
 
         if args.vllm_gpu_memory_utilization <= 0:
-            # Auto-detect: use 80% of estimated post-ref free memory for safety
-            auto_util = round((estimated_free_after_ref * 0.80) / total_gib, 2)
+            auto_util = round((estimated_free_at_init * 0.80) / total_gib, 2)
             auto_util = max(0.15, min(auto_util, 0.80))
             args.vllm_gpu_memory_utilization = auto_util
             print(
                 f"Auto-detected vllm_gpu_memory_utilization={auto_util} "
                 f"(GPU: {total_gib:.1f} GiB total, {free_gib:.1f} GiB free after policy, "
-                f"used_by_policy={used_gib:.1f} GiB, "
-                f"~{estimated_free_after_ref:.1f} GiB estimated free after ref+overhead)"
+                f"used_by_policy={used_gib:.1f} GiB, sleep_mode={args.vllm_enable_sleep_mode}, "
+                f"~{estimated_free_at_init:.1f} GiB estimated free at vLLM init)"
             )
         else:
-            max_safe = round((estimated_free_after_ref * 0.80) / total_gib, 2)
+            max_safe = round((estimated_free_at_init * 0.80) / total_gib, 2)
             if args.vllm_gpu_memory_utilization > max_safe:
                 clamped = max(0.15, max_safe)
                 print(
                     f"WARNING: vllm_gpu_memory_utilization={args.vllm_gpu_memory_utilization} "
-                    f"exceeds estimated safe max {max_safe} — clamping to {clamped} "
-                    f"(GPU: {total_gib:.1f} GiB total, {free_gib:.1f} GiB free, "
-                    f"~{estimated_free_after_ref:.1f} GiB estimated post-ref)"
+                    f"exceeds estimated safe max {max_safe} — clamping to {clamped}"
                 )
                 args.vllm_gpu_memory_utilization = clamped
 
