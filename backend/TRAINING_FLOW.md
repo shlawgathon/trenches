@@ -8,7 +8,7 @@ flowchart TD
         A["python -m trenches_env.training_cli<br/>--model-id · --training-agent · --replay-id<br/>--output-dir · --generation-backend"]
     end
 
-    A -->|"Loads base model<br/>from HuggingFace Hub"| B["🤗 HuggingFace Model<br/>(e.g. Qwen/Qwen2.5-0.5B-Instruct<br/>or sshleifer/tiny-gpt2)"]
+    A -->|"Loads base model<br/>from HuggingFace Hub"| B["🤗 HuggingFace Model<br/>(e.g. Qwen/Qwen3-8B<br/>or sshleifer/tiny-gpt2)"]
     A -->|"Starts in-process"| C["FastAPI Backend<br/>server.py → uvicorn<br/>localhost:8000"]
 
     B --> D["GRPOTrainer<br/>(HF TRL)"]

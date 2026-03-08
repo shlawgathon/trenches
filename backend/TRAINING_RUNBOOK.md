@@ -79,7 +79,7 @@ Replay file shape:
         "market_stress_delta": 4.2,
         "oil_pressure_delta": 5.25,
         "actor_metric_deltas": {
-          "us": {"shipping_security": -4.2, "regional_access": -4.2}
+          "us": { "shipping_security": -4.2, "regional_access": -4.2 }
         }
       }
     }
@@ -227,7 +227,7 @@ Example:
 
 ```bash
 backend/.venv/bin/python -m trenches_env.training_cli \
-  --model-id Qwen/Qwen2.5-0.5B-Instruct \
+  --model-id Qwen/Qwen3-8B \
   --generation-backend transformers \
   --training-agent us \
   --training-stage stage_1_dense \
@@ -255,7 +255,7 @@ Then run:
 
 ```bash
 backend/.venv/bin/python -m trenches_env.training_cli \
-  --model-id Qwen/Qwen2.5-0.5B-Instruct \
+  --model-id Qwen/Qwen3-8B \
   --generation-backend vllm \
   --training-agent us \
   --training-stage stage_1_dense \

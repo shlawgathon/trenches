@@ -15,7 +15,7 @@ from trenches_env.openenv_client import TrenchesEnvClient
 from trenches_env.rl import AGENT_ALLOWED_ACTIONS
 from trenches_env.server import create_app
 
-DEFAULT_MODEL_ID = "Qwen/Qwen2.5-0.5B-Instruct"
+DEFAULT_MODEL_ID = "Qwen/Qwen3-8B"
 DEFAULT_REPLAY_ID = "us_synthetic_seed_2025_2026"
 DEFAULT_TRAINING_STAGE = "stage_1_dense"
 

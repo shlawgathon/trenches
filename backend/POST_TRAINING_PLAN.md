@@ -2,9 +2,9 @@
 
 ## Overview
 
-6 HF A100 Spaces running in parallel. Total wall time: **1 hour**. Total cost: **$15**.
+6 HF A100 Spaces running in parallel. Total wall time: **1 hour**. Total cost: **$15**. Base model: **Qwen/Qwen3-8B** (no quantization).
 
-GRPO post-training on OpenEnv. Qwen3.5-9B already knows how to reason — we're aligning it to each entity's policy behavior through the environment reward signal.
+GRPO post-training on OpenEnv. Qwen3-8B already knows how to reason — we're aligning it to each entity's policy behavior through the environment reward signal.
 
 ## Cost
 
@@ -18,9 +18,8 @@ Researched from TRL docs, DeepSeek-R1 paper, Open-R1 recipe, and TRL OpenEnv exa
 
 ```yaml
 # Model
-model_id: Qwen/Qwen3.5-9B
-quantization: 4-bit NF4 (bitsandbytes, bnb_4bit_compute_dtype=bfloat16)
-# Research: QLoRA + NF4 outperforms raw 4-bit for RL post-training.
+model_id: Qwen/Qwen3-8B
+# No quantization — full precision on A100 80GB.
 # Quantization noise actually aids exploration (QeRL paper).
 
 # GRPO Core (from DeepSeek-R1 + Open-R1 recipes)
@@ -66,14 +65,14 @@ training_stage: stage_1_dense
 
 ### Why These Settings
 
-| Setting                    | Value                  | Source/Reasoning                                                                               |
-| -------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------- |
-| `num_generations: 16`      | DeepSeek-R1            | More rollouts = better advantage estimation. 16 is the standard for GRPO                       |
-| `beta: 0.001`              | DeepSeek-R1            | Low KL penalty allows the model to explore further from base policy                            |
-| `learning_rate: 5e-6`      | Open-R1 + TRL examples | 10x higher than our earlier setting; post-training on instruct models converges with higher LR |
-| `gradient_accumulation: 8` | TRL OpenEnv Sudoku     | Effective batch of 8 stabilizes updates without excessive VRAM                                 |
-| `temperature: 0.8`         | TRL OpenEnv Sudoku     | Encourages diverse completions during rollout                                                  |
-| `NF4 quantization`         | QeRL paper (2026)      | Quantization noise enhances RL exploration; NF4 outperforms raw 4-bit                          |
+| Setting                    | Value                                           | Source/Reasoning                                                                               |
+| -------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `num_generations: 16`      | DeepSeek-R1                                     | More rollouts = better advantage estimation. 16 is the standard for GRPO                       |
+| `beta: 0.001`              | DeepSeek-R1                                     | Low KL penalty allows the model to explore further from base policy                            |
+| `learning_rate: 5e-6`      | Open-R1 + TRL examples                          | 10x higher than our earlier setting; post-training on instruct models converges with higher LR |
+| `gradient_accumulation: 8` | TRL OpenEnv Sudoku                              | Effective batch of 8 stabilizes updates without excessive VRAM                                 |
+| `temperature: 0.8`         | TRL OpenEnv Sudoku                              | Encourages diverse completions during rollout                                                  |
+| `No quantization`          | A100 80GB has enough VRAM for 8B full precision | Full precision avoids quantization noise and simplifies checkpointing                          |
 
 ## Per-Space Command
 
@@ -81,11 +80,10 @@ Replace `ENTITY` with: `us`, `israel`, `iran`, `hezbollah`, `gulf`, `oversight`
 
 ```bash
 python -m trenches_env.training_cli \
-  --model-id Qwen/Qwen3.5-9B \
-  --quantize-4bit \
+  --model-id Qwen/Qwen3-8B \
   --training-agent ENTITY \
   --replay-id ENTITY_synthetic_seed_2025_2026 \
-  --output-dir checkpoints/ENTITY-qwen3.5-9b-4bit \
+  --output-dir checkpoints/ENTITY-qwen3-8b \
   --generation-backend transformers \
   --training-stage stage_1_dense \
   --max-steps 100 \
@@ -102,12 +100,12 @@ python -m trenches_env.training_cli \
 ## HuggingFace Hub Output
 
 ```
-shlawgathon/trenches-us-qwen3.5-9b-4bit
-shlawgathon/trenches-israel-qwen3.5-9b-4bit
-shlawgathon/trenches-iran-qwen3.5-9b-4bit
-shlawgathon/trenches-hezbollah-qwen3.5-9b-4bit
-shlawgathon/trenches-gulf-qwen3.5-9b-4bit
-shlawgathon/trenches-oversight-qwen3.5-9b-4bit
+shlawgathon/trenches-us-qwen3-8b
+shlawgathon/trenches-israel-qwen3-8b
+shlawgathon/trenches-iran-qwen3-8b
+shlawgathon/trenches-hezbollah-qwen3-8b
+shlawgathon/trenches-gulf-qwen3-8b
+shlawgathon/trenches-oversight-qwen3-8b
 ```
 
 Each checkpoint contains: `config.json`, `model.safetensors`, `tokenizer.json`, `generation_config.json`, `training_args.bin`
