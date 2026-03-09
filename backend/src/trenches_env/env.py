@@ -556,18 +556,18 @@ class FogOfWarDiplomacyEnv:
         return scenario_signals_for_turn(scenario_id, turn)
 
     def maybe_auto_step_live_session(self, session: SessionState) -> SessionState:
-        refreshed = self.refresh_session_sources(session, phase="background" if session.live.enabled else None)
-        if not refreshed.live.enabled or not refreshed.live.auto_step:
-            return refreshed
+        # Skip redundant refresh — the background runner already called background_refresh_session
+        if not session.live.enabled or not session.live.auto_step:
+            return session
 
         now = datetime.now(timezone.utc)
-        if not self._live_auto_step_due(refreshed, now):
-            return refreshed
+        if not self._live_auto_step_due(session, now):
+            return session
 
-        signals, reacted_packets = self._collect_live_external_signals(refreshed)
-        actions = self.resolve_policy_actions(refreshed, signals)
+        signals, reacted_packets = self._collect_live_external_signals(session)
+        actions = self.resolve_policy_actions(session, signals)
         result = self.step_session(
-            refreshed,
+            session,
             StepSessionRequest(actions=actions, external_signals=signals),
         )
         next_session = result.session
@@ -2043,72 +2043,113 @@ class FogOfWarDiplomacyEnv:
         tension_before: float,
     ) -> Prediction | None:
         """Generate a heuristic-based oversight prediction for the next turn."""
+        import random
+
         world = session.world
         tension_delta = world.tension_level - tension_before
         nation_ids = [aid for aid in AGENT_IDS if aid != "oversight"]
 
-        # Find the highest-risk nation
         risk_scores = world.risk_scores
         if not risk_scores:
             return None
-        most_risky = max(nation_ids, key=lambda aid: risk_scores.get(aid, 0.0))
-        most_risky_score = risk_scores.get(most_risky, 0.0)
 
-        # Analyze recent action patterns
-        aggressive_actions = {"strike", "sanction", "mobilize", "deceive"}
-        last_aggressive = [
-            a for a in world.last_actions
-            if a.type in aggressive_actions and a.actor != "oversight"
+        # Cycle through nations — penalize recently predicted actors
+        previous_predictions = getattr(session, "prediction_log", []) or []
+        recent_actors = [
+            p.predicted_actor
+            for p in previous_predictions[-3:]
+            if hasattr(p, "predicted_actor")
         ]
 
-        # Determine primary adversary of the predicted actor
+        scored = []
+        for aid in nation_ids:
+            score = risk_scores.get(aid, 0.0)
+            recency_penalty = sum(0.15 for r in recent_actors if r == aid)
+            scored.append((aid, max(0.0, score - recency_penalty)))
+        scored.sort(key=lambda x: x[1], reverse=True)
+
+        candidates = scored[: min(3, len(scored))]
+        weights = [max(0.05, s) for _, s in candidates]
+        most_risky = random.choices([c for c, _ in candidates], weights=weights, k=1)[0]
+        most_risky_score = risk_scores.get(most_risky, 0.0)
+
+        actor_recent = [
+            a for a in world.last_actions
+            if a.actor == most_risky and a.type in {"strike", "sanction", "mobilize", "deceive"}
+        ]
+
         adversaries = AGENT_PRIMARY_ADVERSARIES.get(most_risky, ())
         predicted_target = adversaries[0] if adversaries else None
 
-        # Predict action type based on tension trend and risk
-        if tension_delta > 5.0 and most_risky_score > 0.55:
-            predicted_action = "strike"
-            confidence = min(0.85, 0.5 + most_risky_score * 0.3 + tension_delta * 0.01)
-            topic = "military_escalation"
-        elif tension_delta > 2.0 or most_risky_score > 0.45:
-            predicted_action = "sanction"
-            confidence = min(0.75, 0.4 + most_risky_score * 0.25)
-            topic = "economic_pressure"
-        elif len(last_aggressive) >= 2:
-            predicted_action = "mobilize"
-            confidence = min(0.65, 0.35 + len(last_aggressive) * 0.1)
-            topic = "force_posture"
+        current_action = resolved_actions.get(most_risky)
+        current_type = current_action.type if current_action else None
+
+        # Weight possible next actions based on context
+        action_weights: dict[str, float] = {
+            "strike": 0.05, "sanction": 0.1, "mobilize": 0.1,
+            "defend": 0.15, "negotiate": 0.25, "intel_query": 0.15, "hold": 0.2,
+        }
+
+        if tension_delta > 5.0:
+            action_weights["strike"] += 0.35
+            action_weights["mobilize"] += 0.2
+        elif tension_delta > 2.0:
+            action_weights["sanction"] += 0.25
+            action_weights["mobilize"] += 0.15
         elif tension_delta < -3.0:
-            predicted_action = "negotiate"
-            confidence = min(0.7, 0.45 + abs(tension_delta) * 0.02)
-            topic = "diplomatic_channel"
-            # For negotiation, target an ally or partner
+            action_weights["negotiate"] += 0.3
+
+        if most_risky_score > 0.6:
+            action_weights["strike"] += 0.2
+            action_weights["sanction"] += 0.15
+        elif most_risky_score > 0.4:
+            action_weights["sanction"] += 0.1
+            action_weights["defend"] += 0.1
+
+        if actor_recent:
+            action_weights["mobilize"] += 0.1 * len(actor_recent)
+
+        if current_type and current_type in action_weights:
+            action_weights[current_type] *= 0.5
+
+        action_list = list(action_weights.keys())
+        w = [max(0.01, action_weights[a]) for a in action_list]
+        predicted_action = random.choices(action_list, weights=w, k=1)[0]
+
+        total_w = sum(w)
+        chosen_w = max(0.01, action_weights[predicted_action])
+        confidence = min(0.85, 0.30 + (chosen_w / total_w) * 0.5 + most_risky_score * 0.15)
+
+        if predicted_action == "negotiate":
             coalitions = world.coalition_graph.get(most_risky, [])
             predicted_target = coalitions[0] if coalitions else predicted_target
+            topic = "diplomatic_channel"
+        elif predicted_action == "strike":
+            topic = "military_escalation"
+        elif predicted_action in {"sanction", "deceive"}:
+            topic = "economic_pressure"
+        elif predicted_action == "mobilize":
+            topic = "force_posture"
+        elif predicted_action in {"defend", "intel_query"}:
+            topic = "security_posture"
         else:
-            predicted_action = "hold"
-            confidence = 0.35
             topic = "status_quo"
 
-        # Build rationale
         rationale_parts = [
             f"Tension {'rose' if tension_delta > 0 else 'fell'} by {abs(tension_delta):.1f} to {world.tension_level:.0f}.",
-            f"{most_risky} has risk score {most_risky_score:.2f} (highest among nations).",
+            f"{most_risky} has risk score {most_risky_score:.2f}.",
         ]
-        if last_aggressive:
+        if actor_recent:
             rationale_parts.append(
-                f"Recent aggressive actions: {', '.join(a.actor + ':' + a.type for a in last_aggressive[:3])}."
+                f"Recent aggressive actions by {most_risky}: {', '.join(a.type for a in actor_recent[:3])}."
             )
         if world.market_stress > 50:
             rationale_parts.append(f"Market stress elevated at {world.market_stress:.0f}.")
 
         severity_map = {
-            "strike": "critical",
-            "mobilize": "high",
-            "sanction": "high",
-            "deceive": "medium",
-            "negotiate": "low",
-            "hold": "low",
+            "strike": "critical", "mobilize": "high", "sanction": "high",
+            "deceive": "medium", "defend": "medium", "intel_query": "low",
+            "negotiate": "low", "hold": "low",
         }
 
         summary = (
