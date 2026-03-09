@@ -444,12 +444,17 @@ export function EventTimeline({
     const currentSnapshot = snapshots.find((s) => s.turn === currentTurn);
     const progress = maxTurn > 0 ? (currentTurn / maxTurn) * 100 : 0;
 
-    // Auto-scroll to keep current turn visible
+    // Auto-scroll only when playhead goes off-screen (not continuous centering)
     useEffect(() => {
         const el = scrollRef.current;
         if (!el || collapsed) return;
-        const targetX = turnToX(currentTurn) - el.clientWidth / 2;
-        el.scrollTo({ left: Math.max(0, targetX), behavior: "smooth" });
+        const headX = turnToX(currentTurn);
+        const viewLeft = el.scrollLeft;
+        const viewRight = viewLeft + el.clientWidth;
+        // Only scroll if playhead is near the edge or off-screen
+        if (headX < viewLeft + 40 || headX > viewRight - 60) {
+            el.scrollTo({ left: Math.max(0, headX - el.clientWidth * 0.75), behavior: "smooth" });
+        }
     }, [currentTurn, collapsed, maxTurn]);
 
     // Sync scroll between dot area and scrubber track

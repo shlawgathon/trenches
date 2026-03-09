@@ -239,7 +239,7 @@ export default function GlobePage() {
   const entityAssets = useMemo(() => deriveSessionEntityAssets(session), [session]);
   const agentMapNodes = useMemo(() => deriveAgentMapNodes(session, entityAssets), [session, entityAssets]);
   const selectedAgentMeta = selectedAgent ? agentMapNodes[selectedAgent] ?? null : null;
-  const interactionArcs = useMemo(() => deriveInteractionArcs(session, agentMapNodes, timelineTurn), [session, agentMapNodes, timelineTurn]);
+  const interactionArcs = useMemo(() => deriveInteractionArcs(session, agentMapNodes, entityAssets, timelineTurn), [session, agentMapNodes, entityAssets, timelineTurn]);
   const topBarStats = useMemo(() => deriveTopBarStats(session, activityItems.length), [session, activityItems.length]);
   const [selectedExtraStatKey, setSelectedExtraStatKey] = useState<string>("");
   const selectedExtraStat = useMemo(
@@ -280,7 +280,8 @@ export default function GlobePage() {
 
   useEffect(() => {
     if (!session) return;
-    setTimelinePlaying(session.live.enabled && session.live.auto_step);
+    // Always start playing on session load — the live sync effect will push this to the backend
+    setTimelinePlaying(true);
   }, [session?.session_id]);
 
   // If user is rewound, buffer poll updates; when they catch up, flush the buffer
@@ -354,11 +355,51 @@ export default function GlobePage() {
       } catch { /* silently fail */ }
     }
     fetchRss();
-    const interval = setInterval(fetchRss, 60_000);
+    const interval = setInterval(fetchRss, 15_000);
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
-  const newsItems = useMemo(() => dedupeNewsItems(liveRssItems).slice(0, 40), [liveRssItems]);
+  // Derive news items from session source packets (live intel per turn)
+  const prevSourceItemsRef = useRef<NewsItem[]>([]);
+  const sessionSourceItems = useMemo(() => {
+    if (!session) return prevSourceItemsRef.current;
+    const items: NewsItem[] = [];
+    const isGoogleNoise = (s: string) =>
+      /site:|"Google News"|^Google News$/i.test(s);
+
+    for (const [agentId, observation] of Object.entries(session.observations)) {
+      const packets = (observation as any).source_packets ?? [];
+      for (const packet of packets) {
+        if (packet.status !== "ok") continue;
+        // Use sample_items for actual article headlines
+        const sampleItems: string[] = packet.sample_items ?? [];
+        const headlines = sampleItems.filter((s: string) => s && !isGoogleNoise(s));
+        if (headlines.length === 0 && packet.summary && !isGoogleNoise(packet.summary)) {
+          headlines.push(packet.summary);
+        }
+        for (let i = 0; i < headlines.length; i++) {
+          items.push({
+            id: `src-${agentId}-${packet.source_id}-${i}`,
+            source: packet.source_name ?? packet.source_id,
+            summary: headlines[i],
+            severity: 4,
+            timestamp: packet.fetched_at ?? session.updated_at,
+            turn: session.world.turn,
+            agent: agentId,
+            type: "intel" as const,
+            url: packet.probe_url ?? "",
+          });
+        }
+      }
+    }
+    // Keep previous items if current derivation is empty (packets still loading)
+    if (items.length > 0) {
+      prevSourceItemsRef.current = items;
+    }
+    return items.length > 0 ? items : prevSourceItemsRef.current;
+  }, [session?.updated_at]);
+
+  const newsItems = useMemo(() => dedupeNewsItems([...sessionSourceItems, ...liveRssItems]).slice(0, 50), [sessionSourceItems, liveRssItems]);
 
   const intensityByAgent = useMemo(() => {
     const intensity = new Map<string, number>();
@@ -472,7 +513,7 @@ export default function GlobePage() {
         const liveSession = await rt.sessionClient.setLiveMode(sess.session_id, {
           enabled: true,
           auto_step: true,
-          poll_interval_ms: 5000,
+          poll_interval_ms: 2000,
         });
         if (!cancelled) {
           applySessionSnapshot(liveSession);
@@ -510,7 +551,7 @@ export default function GlobePage() {
         const updated = await rt.sessionClient.setLiveMode(currentSession.session_id, {
           enabled: desiredLiveEnabled,
           auto_step: desiredAutoStep,
-          poll_interval_ms: currentSession.live.poll_interval_ms,
+          poll_interval_ms: 2_000,
         });
         if (!cancelled) {
           applySessionSnapshot(updated);
@@ -536,7 +577,7 @@ export default function GlobePage() {
 
     let stopped = false;
     let busy = false;
-    const POLL_MS = 5_000;
+    const POLL_MS = 2_000;
 
     const interval = setInterval(async () => {
       if (stopped || busy) return;
@@ -1418,6 +1459,7 @@ function dedupeNewsItems(items: NewsItem[]): NewsItem[] {
   }
 
   return [...byFingerprint.values()].sort((a, b) => {
+    if (b.turn !== a.turn) return b.turn - a.turn;
     const aTs = new Date(a.timestamp).getTime() || 0;
     const bTs = new Date(b.timestamp).getTime() || 0;
     return bTs - aTs;
@@ -1493,6 +1535,7 @@ function isFallbackBinding(binding: EntityModelBinding): boolean {
 function deriveInteractionArcs(
   session: SessionState | null,
   agentMapNodes: Record<string, AgentMapNode>,
+  entityAssets: SessionEntityAsset[],
   maxTurn: number,
 ): InteractionArc[] {
   if (!session) return [];
@@ -1508,10 +1551,40 @@ function deriveInteractionArcs(
 
   const arcs: InteractionArc[] = [];
   const seen = new Map<string, InteractionArc>();
+
+  // Group assets by entity for coordinate lookups
+  const assetsByEntity = new Map<string, SessionEntityAsset[]>();
+  for (const asset of entityAssets) {
+    const list = assetsByEntity.get(asset.entityId) || [];
+    list.push(asset);
+    assetsByEntity.set(asset.entityId, list);
+  }
+
+  // Pick a deterministic-ish asset coordinate for a given entity + turn
+  function pickAssetLngLat(entityId: string, turn: number): [number, number] | null {
+    const assets = assetsByEntity.get(entityId);
+    if (!assets || assets.length === 0) return null;
+    return assets[turn % assets.length].lngLat;
+  }
   const minTurn = Math.max(0, maxTurn - 3);
 
   function resolveTarget(actor: string, actionType: string, rawTarget: string | null | undefined): string | null {
-    if (rawTarget && rawTarget !== actor) return rawTarget;
+    // Normalize a descriptive target like "Hezbollah's border infrastructure" → "hezbollah"
+    function normalizeTarget(t: string): string | null {
+      const lower = t.toLowerCase();
+      // Check exact match first
+      if (lower in agentMapNodes) return lower;
+      // Fuzzy: check if any known agent ID appears in the descriptive target
+      for (const agentId of Object.keys(agentMapNodes)) {
+        if (lower.includes(agentId)) return agentId;
+      }
+      return null;
+    }
+
+    if (rawTarget && rawTarget !== actor) {
+      const normalized = normalizeTarget(rawTarget);
+      if (normalized && normalized !== actor) return normalized;
+    }
     // For self-targeting or null-target actions, use adversary as visual target
     if (actionType !== "hold" && actionType !== "oversight_review" && actionType !== "negotiate") {
       return ADVERSARY_FALLBACK[actor] ?? null;
@@ -1539,8 +1612,8 @@ function deriveInteractionArcs(
       actionType: entry.action_type,
       summary: entry.summary,
       turn: entry.turn,
-      fromLngLat: agentMapNodes[entry.actor].lngLat,
-      toLngLat: agentMapNodes[target].lngLat,
+      fromLngLat: pickAssetLngLat(entry.actor, entry.turn) ?? agentMapNodes[entry.actor].lngLat,
+      toLngLat: pickAssetLngLat(target, entry.turn) ?? agentMapNodes[target].lngLat,
       color: ACTION_ARC_COLORS[entry.action_type] ?? "#8e8e93",
     };
     seen.set(pairKey, arc);
@@ -1568,8 +1641,8 @@ function deriveInteractionArcs(
         actionType: action.type,
         summary: action.summary,
         turn: trace.turn,
-        fromLngLat: agentMapNodes[agentId].lngLat,
-        toLngLat: agentMapNodes[target].lngLat,
+        fromLngLat: pickAssetLngLat(agentId, trace.turn) ?? agentMapNodes[agentId].lngLat,
+        toLngLat: pickAssetLngLat(target, trace.turn) ?? agentMapNodes[target].lngLat,
         color: ACTION_ARC_COLORS[action.type] ?? "#8e8e93",
       };
       seen.set(pairKey, arc);

@@ -211,12 +211,19 @@ export function ActivityLog({
                               <span className="inline-flex items-center border border-border/50 px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-muted-foreground">
                                 {ACTION_LABELS[item.actionType] ?? item.actionType.toUpperCase()}
                               </span>
-                              {item.target && (
-                                <>
-                                  <ChevronRight className="h-2.5 w-2.5 text-muted-foreground/50" />
-                                  <span className="text-[9px] font-mono text-accent">{item.target}</span>
-                                </>
-                              )}
+                              {item.target && (() => {
+                                const lower = item.target.toLowerCase();
+                                const matchedAgent = Object.keys(AGENT_COLORS).find(
+                                  (id) => lower === id || lower.includes(id)
+                                );
+                                const targetColor = matchedAgent ? AGENT_COLORS[matchedAgent] : "#8e8e93";
+                                return (
+                                  <>
+                                    <ChevronRight className="h-2.5 w-2.5 text-muted-foreground/50" />
+                                    <span className="text-[9px] font-mono" style={{ color: targetColor }}>{item.target}</span>
+                                  </>
+                                );
+                              })()}
                             </div>
 
                             <p className="mb-1.5 text-xs leading-relaxed text-foreground/80 font-sans">{item.summary}</p>
